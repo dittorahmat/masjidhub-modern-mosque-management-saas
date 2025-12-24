@@ -15,6 +15,18 @@ export interface User {
   id: string;
   name: string;
 }
+// Restoring types for TemplateDemo.tsx
+export interface Chat {
+  id: string;
+  title: string;
+}
+export interface ChatMessage {
+  id: string;
+  chatId: string;
+  userId: string;
+  text: string;
+  ts: number;
+}
 export interface Transaction {
   id: string;
   tenantId: string;
@@ -63,4 +75,17 @@ export interface Tenant {
   address?: string;
   bankInfo?: string;
   bio?: string;
+  status: 'active' | 'pending' | 'suspended';
+}
+// Super Admin Specific Types
+export interface GlobalStats {
+  totalTenants: number;
+  totalUsers: number;
+  totalBalance: number;
+  activeEvents: number;
+}
+export interface TenantWithStats extends Tenant {
+  memberCount: number;
+  totalBalance: number;
+  eventCount: number;
 }

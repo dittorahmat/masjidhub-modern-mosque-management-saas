@@ -8,6 +8,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const { items } = await TenantEntity.list(env);
     return items.find(t => t.slug === slug);
   };
+  // --- PUBLIC & AUTH ---
   app.post('/api/auth/register', async (c) => {
     const { name, email, mosqueName, slug } = await c.req.json();
     if (!name || !email || !mosqueName || !slug) return bad(c, 'All fields are required');
@@ -18,7 +19,8 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       name: mosqueName,
       slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, ''),
       ownerId: userId,
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      status: 'active'
     });
     const user = await UserEntity.create(c.env, {
       id: userId,
@@ -30,10 +32,49 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     return ok(c, { user, tenant });
   });
   app.post('/api/auth/login', async (c) => {
+    const { email } = await c.req.json();
     const { items } = await UserEntity.list(c.env);
-    const user = items[0] || UserEntity.initialState;
+    const user = items.find(u => u.email === email) || items[0];
     return ok(c, { user });
   });
+  // --- SUPER ADMIN ROUTES ---
+  app.get('/api/super/summary', async (c) => {
+    const { items: tenants } = await TenantEntity.list(c.env);
+    const { items: users } = await UserEntity.list(c.env);
+    const { items: txs } = await TransactionEntity.list(c.env);
+    const { items: events } = await EventEntity.list(c.env);
+    const totalBalance = txs.reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0);
+    const activeEvents = events.filter(e => e.date > Date.now()).length;
+    return ok(c, {
+      totalTenants: tenants.length,
+      totalUsers: users.length,
+      totalBalance,
+      activeEvents
+    });
+  });
+  app.get('/api/super/tenants', async (c) => {
+    const { items: tenants } = await TenantEntity.list(c.env);
+    const { items: txs } = await TransactionEntity.list(c.env);
+    const { items: users } = await UserEntity.list(c.env);
+    const { items: events } = await EventEntity.list(c.env);
+    const enriched = tenants.map(t => {
+      const tTxs = txs.filter(tx => tx.tenantId === t.id);
+      const tUsers = users.filter(u => u.tenantIds.includes(t.id));
+      const tEvents = events.filter(e => e.tenantId === t.id);
+      return {
+        ...t,
+        totalBalance: tTxs.reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0),
+        memberCount: tUsers.length,
+        eventCount: tEvents.length
+      };
+    });
+    return ok(c, enriched);
+  });
+  app.get('/api/super/users', async (c) => {
+    const { items } = await UserEntity.list(c.env);
+    return ok(c, items);
+  });
+  // --- TENANT ROUTES ---
   app.get('/api/tenants/:slug', async (c) => {
     const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
     if (!tenant) return notFound(c, 'Mosque not found');

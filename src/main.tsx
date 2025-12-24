@@ -18,12 +18,18 @@ import { OverviewPage } from '@/pages/dashboard/OverviewPage';
 import { Toaster } from '@/components/ui/sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicPortalPage from '@/pages/PublicPortalPage';
+// Lazy Dashboard Pages
 const FinancePage = lazy(() => import('@/pages/dashboard/FinancePage'));
 const InventoryPage = lazy(() => import('@/pages/dashboard/InventoryPage'));
 const EventsPage = lazy(() => import('@/pages/dashboard/EventsPage'));
 const MembersPage = lazy(() => import('@/pages/dashboard/MembersPage'));
 const SettingsPage = lazy(() => import('@/pages/dashboard/SettingsPage'));
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
+// Super Admin Pages
+const SuperAdminLayout = lazy(() => import('@/pages/super-admin/SuperAdminLayout'));
+const SuperAdminDashboard = lazy(() => import('@/pages/super-admin/SuperAdminDashboard'));
+const SuperTenantsPage = lazy(() => import('@/pages/super-admin/SuperTenantsPage'));
+const SuperUsersPage = lazy(() => import('@/pages/super-admin/SuperUsersPage'));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -65,6 +71,20 @@ const router = createBrowserRouter([
     path: "/portal/:slug",
     element: <PublicPortalPage />,
     errorElement: <RouteErrorBoundary />,
+  },
+  {
+    path: "/super-admin",
+    element: (
+      <Suspense fallback={<LoadingFallback />}>
+        <SuperAdminLayout />
+      </Suspense>
+    ),
+    errorElement: <RouteErrorBoundary />,
+    children: [
+      { path: "dashboard", element: <SuperAdminDashboard /> },
+      { path: "tenants", element: <SuperTenantsPage /> },
+      { path: "users", element: <SuperUsersPage /> },
+    ]
   },
   {
     path: "/app/:slug",

@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutDashboard, Wallet, Package, Calendar, Settings, Users, LogOut } from "lucide-react";
+import { LayoutDashboard, Wallet, Package, Calendar, Settings, Users, LogOut, ShieldCheck } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import {
   Sidebar,
@@ -24,6 +24,7 @@ export function AppSidebar(): JSX.Element {
     { name: "Kegiatan", icon: Calendar, href: `/app/${slug}/events` },
     { name: "Anggota", icon: Users, href: `/app/${slug}/members` },
   ];
+  const isSuper = user?.role === 'superadmin';
   return (
     <Sidebar className="border-r">
       <SidebarHeader className="h-16 flex items-center px-4 border-b">
@@ -42,6 +43,20 @@ export function AppSidebar(): JSX.Element {
         </div>
       </SidebarHeader>
       <SidebarContent>
+        {isSuper && (
+          <SidebarGroup>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild className="bg-destructive/5 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                  <Link to="/super-admin/dashboard" className="flex items-center gap-3">
+                    <ShieldCheck className="h-5 w-5" />
+                    <span className="font-bold">Platform Admin</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroup>
+        )}
         <SidebarGroup>
           <SidebarMenu>
             {navigation.map((item) => (

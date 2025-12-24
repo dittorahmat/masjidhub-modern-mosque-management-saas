@@ -7,12 +7,12 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api-client';
 import { useAppStore } from '@/lib/store';
 import { toast } from 'sonner';
-import { Landmark } from 'lucide-react';
+import { Landmark, ShieldAlert } from 'lucide-react';
 export default function LoginPage() {
   const navigate = useNavigate();
   const setUser = useAppStore(s => s.setUser);
   const [loading, setLoading] = useState(false);
-  const [email] = useState('admin@masjidhub.com');
+  const [email, setEmail] = useState('admin@masjidhub.com');
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -23,7 +23,11 @@ export default function LoginPage() {
       });
       setUser(user);
       toast.success('Selamat datang kembali!');
-      navigate('/app/al-hikmah/dashboard');
+      if (user.role === 'superadmin') {
+        navigate('/super-admin/dashboard');
+      } else {
+        navigate('/app/al-hikmah/dashboard');
+      }
     } catch (err: any) {
       toast.error(err.message || 'Login gagal');
     } finally {
@@ -44,22 +48,22 @@ export default function LoginPage() {
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
               <Label htmlFor="email">Alamat Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                defaultValue={email} 
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 className="bg-stone-50"
                 placeholder="admin@masjid.org"
-                readOnly
               />
-              <p className="text-[10px] text-muted-foreground italic">Gunakan email demo di atas untuk masuk.</p>
+              <p className="text-[10px] text-muted-foreground italic">Use admin@masjidhub.com (Super Admin demo email)</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Kata Sandi</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                defaultValue="password" 
+              <Input
+                id="password"
+                type="password"
+                defaultValue="password"
                 className="bg-stone-50"
                 readOnly
               />
@@ -68,6 +72,13 @@ export default function LoginPage() {
               {loading ? 'Memproses...' : 'Masuk Sekarang'}
             </Button>
           </form>
+          <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 flex gap-3">
+            <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0" />
+            <div className="text-xs text-amber-800 space-y-1">
+              <p className="font-bold">Demo Mode Active</p>
+              <p>Type any email to login as regular admin, or use the default for Super Admin access.</p>
+            </div>
+          </div>
           <div className="text-center">
             <p className="text-sm text-muted-foreground">
               Belum punya akun? <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/register')}>Daftar Masjid</Button>

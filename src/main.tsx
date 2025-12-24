@@ -18,12 +18,12 @@ import { OverviewPage } from '@/pages/dashboard/OverviewPage';
 import { Toaster } from '@/components/ui/sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import PublicPortalPage from '@/pages/PublicPortalPage';
-// Lazy load operational modules
 const FinancePage = lazy(() => import('@/pages/dashboard/FinancePage'));
 const InventoryPage = lazy(() => import('@/pages/dashboard/InventoryPage'));
 const EventsPage = lazy(() => import('@/pages/dashboard/EventsPage'));
 const MembersPage = lazy(() => import('@/pages/dashboard/MembersPage'));
 const SettingsPage = lazy(() => import('@/pages/dashboard/SettingsPage'));
+const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -45,6 +45,15 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <LandingPage />,
+    errorElement: <RouteErrorBoundary />,
+  },
+  {
+    path: "/login",
+    element: (
+      <Suspense fallback={<LoadingFallback />}>
+        <LoginPage />
+      </Suspense>
+    ),
     errorElement: <RouteErrorBoundary />,
   },
   {
@@ -121,7 +130,6 @@ export function AppRoot() {
     </StrictMode>
   );
 }
-// Singleton Root Pattern to prevent HMR warnings and multiple initializations
 const container = document.getElementById('root');
 if (container) {
   const globalRoot = window as any;

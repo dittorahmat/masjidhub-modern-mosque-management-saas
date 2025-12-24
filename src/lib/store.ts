@@ -1,6 +1,5 @@
 import { create } from 'zustand';
-import type { AppUser } from '../../worker/entities';
-import type { Tenant } from '../../shared/types';
+import type { AppUser, Tenant } from '@shared/types';
 interface AppState {
   user: AppUser | null;
   currentTenant: Tenant | null;

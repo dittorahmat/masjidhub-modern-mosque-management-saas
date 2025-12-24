@@ -3,20 +3,17 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
 }
+export type UserRole = 'superadmin' | 'mosque_admin' | 'takmir' | 'jamaah';
+export interface AppUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  tenantIds: string[];
+}
 export interface User {
   id: string;
   name: string;
-}
-export interface Chat {
-  id: string;
-  title: string;
-}
-export interface ChatMessage {
-  id: string;
-  chatId: string;
-  userId: string;
-  text: string;
-  ts: number;
 }
 export interface Transaction {
   id: string;

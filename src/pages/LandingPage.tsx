@@ -22,9 +22,11 @@ export function LandingPage() {
                   Mulai Digitalisasi Masjid <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-xl">
-                Lihat Demo
-              </Button>
+              <Link to="/app/al-hikmah/dashboard">
+                <Button size="lg" variant="outline" className="h-14 px-8 text-lg rounded-xl">
+                  Lihat Demo
+                </Button>
+              </Link>
             </div>
           </div>
           <div className="relative animate-gentle-bounce">

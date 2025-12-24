@@ -4,6 +4,7 @@ import { UserEntity, TenantEntity, TransactionEntity, InventoryItemEntity, Event
 import { ok, bad, notFound } from './core-utils';
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   const getTenantBySlug = async (env: Env, slug: string) => {
+    await TenantEntity.ensureSeed(env); await UserEntity.ensureSeed(env);
     const { items } = await TenantEntity.list(env);
     return items.find(t => t.slug === slug);
   };

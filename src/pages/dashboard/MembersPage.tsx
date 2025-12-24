@@ -9,7 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Search, UserPlus, Mail, ShieldCheck } from 'lucide-react';
-import type { AppUser } from '../../../worker/entities';
+import type { AppUser } from '@shared/types';
 export default function MembersPage() {
   const { slug } = useParams();
   const [searchTerm, setSearchTerm] = useState('');

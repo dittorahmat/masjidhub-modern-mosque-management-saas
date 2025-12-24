@@ -5,6 +5,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { useAppStore } from '@/lib/store';
 import { api } from '@/lib/api-client';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { Tenant } from '@shared/types';
 export function DashboardLayout() {
   const { slug } = useParams();
   const user = useAppStore(s => s.user);
@@ -14,18 +15,18 @@ export function DashboardLayout() {
     async function loadTenant() {
       if (!slug) return;
       try {
-        const tenant = await api<any>(`/api/tenants/${slug}`);
+        const tenant = await api<Tenant>(`/api/tenants/${slug}`);
         setCurrentTenant(tenant);
       } catch (err) {
-        console.error("Failed to load tenant", err);
+        console.error(`Failed to load tenant ${slug}`, err);
       }
     }
     loadTenant();
   }, [slug, setCurrentTenant]);
   // For Phase 1 demo, if no user, we simulate a login or redirect
   // Real apps would check auth tokens here
-  if (!user && slug !== 'al-hikmah') { 
-    // Usually redirect to /login
+  if (!user && slug !== 'al-hikmah') {
+    return <Navigate to="/login" replace />;
   }
   if (!currentTenant && slug) {
     return (

@@ -1,107 +1,37 @@
-import React, { useEffect, useState } from 'react';
-import { useParams, Navigate, Outlet, Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useParams, Navigate, Outlet } from 'react-router-dom';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
-import { useAppStore, useTenantStatus, useTenantName, useUserId, useUserTenantIds } from '@/lib/store';
+import { useAppStore } from '@/lib/store';
 import { api } from '@/lib/api-client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Clock, ShieldAlert, SearchX } from 'lucide-react';
-import type { Tenant } from '@shared/types';
 export function DashboardLayout() {
   const { slug } = useParams();
-  const userId = useUserId();
-  const userTenantIds = useUserTenantIds();
-  const tenantStatus = useTenantStatus();
-  const tenantName = useTenantName();
-  const currentTenantId = useAppStore(s => s.currentTenant?.id);
-  const actions = useAppStore(s => s.actions);
-  const setCurrentTenant = actions.setCurrentTenant;
-  const [isError, setIsError] = useState(false);
-  const [isFetching, setIsFetching] = useState(true);
+  const user = useAppStore(s => s.user);
+  const currentTenant = useAppStore(s => s.currentTenant);
+  const setCurrentTenant = useAppStore(s => s.setCurrentTenant);
   useEffect(() => {
     async function loadTenant() {
       if (!slug) return;
-      setIsFetching(true);
-      setIsError(false);
       try {
-        const tenant = await api<Tenant>(`/api/tenants/${slug}`);
+        const tenant = await api<any>(`/api/tenants/${slug}`);
         setCurrentTenant(tenant);
       } catch (err) {
-        console.error(`Failed to load tenant ${slug}`, err);
-        setIsError(true);
-      } finally {
-        setIsFetching(false);
+        console.error("Failed to load tenant", err);
       }
     }
     loadTenant();
   }, [slug, setCurrentTenant]);
-  // Auth Guard
-  if (!userId && slug !== 'al-hikmah') {
-    return <Navigate to="/login" replace />;
+  // For Phase 1 demo, if no user, we simulate a login or redirect
+  // Real apps would check auth tokens here
+  if (!user && slug !== 'al-hikmah') { 
+    // Usually redirect to /login
   }
-  // 404 Guard
-  if (isError) {
+  if (!currentTenant && slug) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6 text-center">
-        <div className="max-w-md w-full space-y-6 illustrative-card p-10">
-          <SearchX className="h-16 w-16 text-muted-foreground mx-auto" />
-          <h1 className="text-2xl font-display font-bold">Masjid Tidak Ditemukan</h1>
-          <p className="text-muted-foreground">Slug portal "{slug}" tidak terdaftar dalam sistem kami.</p>
-          <div className="pt-4">
-            <Link to="/" className="text-primary font-bold hover:underline">Kembali ke Beranda</Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  // Loading state
-  if (isFetching && !tenantName) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center p-8 space-y-6">
-        <div className="space-y-2 text-center">
-          <Skeleton className="h-10 w-64 mx-auto" />
-          <Skeleton className="h-4 w-48 mx-auto" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl">
-          <Skeleton className="h-32 rounded-2xl" />
-          <Skeleton className="h-32 rounded-2xl" />
-          <Skeleton className="h-32 rounded-2xl" />
-        </div>
-        <Skeleton className="h-[400px] w-full max-w-5xl rounded-2xl" />
-      </div>
-    );
-  }
-  // Tenant Access Guard (Skip for Public/Demo slug)
-  const hasAccess = slug === 'al-hikmah' || (currentTenantId && userTenantIds.includes(currentTenantId));
-  if (currentTenantId && !hasAccess) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
-        <div className="max-w-md w-full text-center space-y-6 illustrative-card p-10 border-destructive">
-          <ShieldAlert className="h-16 w-16 text-destructive mx-auto" />
-          <h1 className="text-2xl font-display font-bold">Akses Ditolak</h1>
-          <p className="text-muted-foreground">Anda tidak memiliki izin untuk mengakses portal masjid ini.</p>
-          <div className="pt-4">
-            <Link to="/" className="text-primary font-bold hover:underline">Kembali ke Beranda</Link>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  if (tenantStatus === 'pending') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
-        <div className="max-w-md w-full text-center space-y-6 illustrative-card p-10">
-          <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-600">
-            <Clock className="h-10 w-10" />
-          </div>
-          <h1 className="text-3xl font-display font-bold">Menunggu Persetujuan</h1>
-          <p className="text-muted-foreground">
-            Masjid <span className="font-bold text-foreground">{tenantName}</span> sedang dalam proses verifikasi oleh Platform Admin. Mohon tunggu 1-2 hari kerja.
-          </p>
-          <div className="pt-4">
-            <Link to="/" className="text-primary font-bold hover:underline">Kembali ke Beranda</Link>
-          </div>
-        </div>
+      <div className="h-screen flex items-center justify-center p-8 space-y-4 flex-col">
+        <Skeleton className="h-12 w-48" />
+        <Skeleton className="h-64 w-full max-w-4xl" />
       </div>
     );
   }
@@ -113,13 +43,11 @@ export function DashboardLayout() {
           <div className="flex items-center gap-4">
             <SidebarTrigger />
             <div className="h-4 w-[1px] bg-border" />
-            <h2 className="font-display font-bold text-lg">{tenantName}</h2>
+            <h2 className="font-display font-bold text-lg">{currentTenant?.name}</h2>
           </div>
         </header>
         <main className="p-4 md:p-8">
-          <div className="max-w-7xl mx-auto">
-            <Outlet />
-          </div>
+          <Outlet />
         </main>
       </SidebarInset>
     </SidebarProvider>

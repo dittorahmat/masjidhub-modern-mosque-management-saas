@@ -1,72 +1,79 @@
-/* This is a demo sidebar. **COMPULSORY** Edit this file to customize the sidebar OR remove it from appLayout OR don't use appLayout at all */
 import React from "react";
-import { Home, Layers, Compass, Star, Settings, LifeBuoy } from "lucide-react";
+import { LayoutDashboard, Wallet, Package, Calendar, Settings, Users, LogOut } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarHeader,
-  SidebarSeparator,
-  SidebarInput,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarMenuAction,
-  SidebarMenuBadge,
 } from "@/components/ui/sidebar";
-
+import { useAppStore } from "@/lib/store";
 export function AppSidebar(): JSX.Element {
+  const { slug } = useParams();
+  const currentTenant = useAppStore(s => s.currentTenant);
+  const user = useAppStore(s => s.user);
+  const logout = useAppStore(s => s.logout);
+  const navigation = [
+    { name: "Dashboard", icon: LayoutDashboard, href: `/app/${slug}/dashboard` },
+    { name: "Finance", icon: Wallet, href: `/app/${slug}/finance` },
+    { name: "Inventory", icon: Package, href: `/app/${slug}/inventory` },
+    { name: "Events", icon: Calendar, href: `/app/${slug}/events` },
+    { name: "Members", icon: Users, href: `/app/${slug}/members` },
+  ];
   return (
-    <Sidebar>
-      <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1">
-          <div className="h-6 w-6 rounded-md bg-gradient-to-br from-indigo-500 to-purple-500" />
-          <span className="text-sm font-medium">Demo Sidebar</span>
+    <Sidebar className="border-r">
+      <SidebarHeader className="h-16 flex items-center px-4 border-b">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-white">
+            <LayoutDashboard className="h-5 w-5" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-sm font-bold font-display truncate w-32">
+              {currentTenant?.name || "MasjidHub"}
+            </span>
+            <span className="text-xs text-muted-foreground capitalize">
+              {user?.role.replace('_', ' ') || "Admin"}
+            </span>
+          </div>
         </div>
-        <SidebarInput placeholder="Search" />
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild isActive>
-                <a href="#"><Home /> <span>Home</span></a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <a href="#"><Layers /> <span>Projects</span></a>
-              </SidebarMenuButton>
-              <SidebarMenuAction>
-                <Star className="size-4" />
-              </SidebarMenuAction>
-            </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <a href="#"><Compass /> <span>Explore</span></a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          </SidebarMenu>
-        </SidebarGroup>
-
-        <SidebarSeparator />
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Quick Links</SidebarGroupLabel>
-          <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton asChild>
-                <a href="#"><Star /> <span>Starred</span></a>
-              </SidebarMenuButton>
-              <SidebarMenuBadge>5</SidebarMenuBadge>
-            </SidebarMenuItem>
+            {navigation.map((item) => (
+              <SidebarMenuItem key={item.name}>
+                <SidebarMenuButton asChild tooltip={item.name}>
+                  <Link to={item.href} className="flex items-center gap-3">
+                    <item.icon className="h-5 w-5" />
+                    <span className="font-medium">{item.name}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            ))}
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter>
-        <div className="px-2 text-xs text-muted-foreground">A simple shadcn sidebar</div>
+      <SidebarFooter className="p-4 border-t">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild>
+              <Link to={`/app/${slug}/settings`} className="flex items-center gap-3">
+                <Settings className="h-5 w-5" />
+                <span>Settings</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton onClick={logout} className="text-destructive hover:text-destructive">
+              <LogOut className="h-5 w-5" />
+              <span>Logout</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );

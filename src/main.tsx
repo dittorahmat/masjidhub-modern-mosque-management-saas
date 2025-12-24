@@ -1,8 +1,8 @@
 import '@/lib/errorReporter';
 import { enableMapSet } from "immer";
 enableMapSet();
-import { StrictMode, lazy, Suspense } from 'react'
-import { createRoot, type Root } from 'react-dom/client'
+import React, { StrictMode, lazy, Suspense } from 'react';
+import { createRoot } from 'react-dom/client';
 import {
   createBrowserRouter,
   RouterProvider,
@@ -10,22 +10,24 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
-import '@/index.css'
+import '@/index.css';
+// Core Pages
 import { LandingPage } from '@/pages/LandingPage';
 import { RegisterMosquePage } from '@/pages/auth/RegisterMosquePage';
 import { DashboardLayout } from '@/pages/dashboard/DashboardLayout';
 import { OverviewPage } from '@/pages/dashboard/OverviewPage';
+import PublicPortalPage from '@/pages/PublicPortalPage';
+// UI
 import { Toaster } from '@/components/ui/sonner';
 import { Skeleton } from '@/components/ui/skeleton';
-import PublicPortalPage from '@/pages/PublicPortalPage';
-// Lazy Dashboard Pages
+// Lazy Components
 const FinancePage = lazy(() => import('@/pages/dashboard/FinancePage'));
 const InventoryPage = lazy(() => import('@/pages/dashboard/InventoryPage'));
 const EventsPage = lazy(() => import('@/pages/dashboard/EventsPage'));
 const MembersPage = lazy(() => import('@/pages/dashboard/MembersPage'));
 const SettingsPage = lazy(() => import('@/pages/dashboard/SettingsPage'));
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
-// Super Admin Pages
+// Super Admin
 const SuperAdminLayout = lazy(() => import('@/pages/super-admin/SuperAdminLayout'));
 const SuperAdminDashboard = lazy(() => import('@/pages/super-admin/SuperAdminDashboard'));
 const SuperTenantsPage = lazy(() => import('@/pages/super-admin/SuperTenantsPage'));
@@ -40,9 +42,9 @@ const queryClient = new QueryClient({
 });
 function LoadingFallback() {
   return (
-    <div className="p-8 space-y-4">
+    <div className="min-h-screen flex flex-col items-center justify-center p-8 space-y-4">
       <Skeleton className="h-12 w-48" />
-      <Skeleton className="h-64 w-full" />
+      <Skeleton className="h-64 w-full max-w-4xl" />
       <p className="text-sm text-muted-foreground animate-pulse text-center">Memuat...</p>
     </div>
   );
@@ -138,8 +140,9 @@ const router = createBrowserRouter([
     ]
   }
 ]);
-export function AppRoot() {
-  return (
+const rootElement = document.getElementById('root');
+if (rootElement) {
+  createRoot(rootElement).render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <ErrorBoundary>
@@ -149,12 +152,4 @@ export function AppRoot() {
       </QueryClientProvider>
     </StrictMode>
   );
-}
-const container = document.getElementById('root');
-if (container) {
-  const globalRoot = window as any;
-  if (!globalRoot.__reactRoot) {
-    globalRoot.__reactRoot = createRoot(container);
-  }
-  (globalRoot.__reactRoot as Root).render(<AppRoot />);
 }

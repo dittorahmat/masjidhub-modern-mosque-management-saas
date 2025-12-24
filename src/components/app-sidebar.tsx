@@ -18,11 +18,11 @@ export function AppSidebar(): JSX.Element {
   const user = useAppStore(s => s.user);
   const logout = useAppStore(s => s.logout);
   const navigation = [
-    { name: "Dashboard", icon: LayoutDashboard, href: `/app/${slug}/dashboard` },
-    { name: "Finance", icon: Wallet, href: `/app/${slug}/finance` },
-    { name: "Inventory", icon: Package, href: `/app/${slug}/inventory` },
-    { name: "Events", icon: Calendar, href: `/app/${slug}/events` },
-    { name: "Members", icon: Users, href: `/app/${slug}/members` },
+    { name: "Dasbor", icon: LayoutDashboard, href: `/app/${slug}/dashboard` },
+    { name: "Keuangan", icon: Wallet, href: `/app/${slug}/finance` },
+    { name: "Inventaris", icon: Package, href: `/app/${slug}/inventory` },
+    { name: "Kegiatan", icon: Calendar, href: `/app/${slug}/events` },
+    { name: "Anggota", icon: Users, href: `/app/${slug}/members` },
   ];
   return (
     <Sidebar className="border-r">
@@ -63,14 +63,14 @@ export function AppSidebar(): JSX.Element {
             <SidebarMenuButton asChild>
               <Link to={`/app/${slug}/settings`} className="flex items-center gap-3">
                 <Settings className="h-5 w-5" />
-                <span>Settings</span>
+                <span>Pengaturan</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton onClick={logout} className="text-destructive hover:text-destructive">
               <LogOut className="h-5 w-5" />
-              <span>Logout</span>
+              <span>Keluar</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

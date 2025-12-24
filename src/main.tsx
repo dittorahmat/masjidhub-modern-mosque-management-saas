@@ -2,7 +2,7 @@ import '@/lib/errorReporter';
 import { enableMapSet } from "immer";
 enableMapSet();
 import { StrictMode, lazy, Suspense } from 'react'
-import { createRoot } from 'react-dom/client'
+import { createRoot, type Root } from 'react-dom/client'
 import {
   createBrowserRouter,
   RouterProvider,
@@ -37,6 +37,7 @@ function LoadingFallback() {
     <div className="p-8 space-y-4">
       <Skeleton className="h-12 w-48" />
       <Skeleton className="h-64 w-full" />
+      <p className="text-sm text-muted-foreground animate-pulse text-center">Memuat...</p>
     </div>
   );
 }
@@ -120,4 +121,12 @@ export function AppRoot() {
     </StrictMode>
   );
 }
-createRoot(document.getElementById('root')!).render(<AppRoot />);
+// Singleton Root Pattern to prevent HMR warnings and multiple initializations
+const container = document.getElementById('root');
+if (container) {
+  const globalRoot = window as any;
+  if (!globalRoot.__reactRoot) {
+    globalRoot.__reactRoot = createRoot(container);
+  }
+  (globalRoot.__reactRoot as Root).render(<AppRoot />);
+}

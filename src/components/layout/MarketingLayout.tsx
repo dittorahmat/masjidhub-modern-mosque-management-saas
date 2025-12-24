@@ -13,10 +13,10 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
           </Link>
           <div className="flex items-center gap-4">
             <Link to="/login">
-              <Button variant="ghost">Login</Button>
+              <Button variant="ghost">Masuk</Button>
             </Link>
             <Link to="/register">
-              <Button className="bg-primary hover:bg-primary/90">Register Mosque</Button>
+              <Button className="bg-primary hover:bg-primary/90">Daftar Masjid</Button>
             </Link>
           </div>
         </div>
@@ -27,7 +27,7 @@ export function MarketingLayout({ children }: { children: React.ReactNode }) {
       <footer className="bg-stone-100 border-t py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-muted-foreground">
           <p className="font-display font-bold text-lg text-foreground mb-2">MasjidHub</p>
-          <p>© 2024 Digitalizing the Ummah. Built for communities.</p>
+          <p>© 2024 Digitalisasi Ummat. Dibangun untuk komunitas.</p>
         </div>
       </footer>
     </div>

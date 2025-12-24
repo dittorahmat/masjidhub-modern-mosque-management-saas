@@ -25,32 +25,31 @@ export function OverviewPage() {
     else acc.expense += tx.amount;
     return acc;
   }, { income: 0, expense: 0 });
-  // Simple chart data mapping (mocking some trend for visual)
   const chartData = [
-    { name: 'Mon', income: 4000, expense: 2400 },
-    { name: 'Tue', income: 3000, expense: 1398 },
-    { name: 'Wed', income: 2000, expense: 9800 },
-    { name: 'Thu', income: 2780, expense: 3908 },
-    { name: 'Fri', income: 1890, expense: 4800 },
-    { name: 'Sat', income: 2390, expense: 3800 },
-    { name: 'Sun', income: 3490, expense: 4300 },
+    { name: 'Sen', income: 4000, expense: 2400 },
+    { name: 'Sel', income: 3000, expense: 1398 },
+    { name: 'Rab', income: 2000, expense: 9800 },
+    { name: 'Kam', income: 2780, expense: 3908 },
+    { name: 'Jum', income: 1890, expense: 4800 },
+    { name: 'Sab', income: 2390, expense: 3800 },
+    { name: 'Min', income: 3490, expense: 4300 },
   ];
   return (
     <div className="space-y-8 animate-fade-in-up">
       <div>
         <h1 className="text-3xl font-display font-bold">Assalamu’alaikum, {userName || 'Admin'}</h1>
-        <p className="text-muted-foreground">Welcome back to {tenantName || 'your mosque'}’s command center.</p>
+        <p className="text-muted-foreground">Selamat datang kembali di pusat komando {tenantName || 'masjid Anda'}.</p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Current Balance" value={`Rp ${(totals.income - totals.expense).toLocaleString()}`} icon={<Wallet className="h-5 w-5" />} trend="+12%" />
-        <StatCard title="Inventory Assets" value={inventory.length.toString()} icon={<Package className="h-5 w-5" />} trend="All good" />
-        <StatCard title="Upcoming Events" value="3" icon={<Calendar className="h-5 w-5" />} />
-        <StatCard title="Active Members" value="124" icon={<Users className="h-5 w-5" />} trend="+5 new" />
+        <StatCard title="Saldo Saat Ini" value={`Rp ${(totals.income - totals.expense).toLocaleString('id-ID')}`} icon={<Wallet className="h-5 w-5" />} trend="+12%" />
+        <StatCard title="Aset Inventaris" value={inventory.length.toString()} icon={<Package className="h-5 w-5" />} trend="Kondisi Baik" />
+        <StatCard title="Kegiatan Mendatang" value="3" icon={<Calendar className="h-5 w-5" />} />
+        <StatCard title="Anggota Aktif" value="124" icon={<Users className="h-5 w-5" />} trend="+5 baru" />
       </div>
       <div className="grid lg:grid-cols-3 gap-8">
         <Card className="lg:col-span-2 illustrative-card overflow-hidden">
           <CardHeader>
-            <CardTitle>Infaq & Expense Trend</CardTitle>
+            <CardTitle>Tren Infaq & Pengeluaran</CardTitle>
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -69,32 +68,32 @@ export function OverviewPage() {
                 <XAxis dataKey="name" axisLine={false} tickLine={false} />
                 <YAxis axisLine={false} tickLine={false} />
                 <Tooltip />
-                <Area type="monotone" dataKey="income" stroke="#059669" fillOpacity={1} fill="url(#colorIncome)" strokeWidth={2} />
-                <Area type="monotone" dataKey="expense" stroke="#D97706" fillOpacity={1} fill="url(#colorExpense)" strokeWidth={2} />
+                <Area type="monotone" dataKey="income" stroke="#059669" fillOpacity={1} fill="url(#colorIncome)" strokeWidth={2} name="Pemasukan" />
+                <Area type="monotone" dataKey="expense" stroke="#D97706" fillOpacity={1} fill="url(#colorExpense)" strokeWidth={2} name="Pengeluaran" />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
         <Card className="illustrative-card">
           <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
+            <CardTitle>Aksi Cepat</CardTitle>
           </CardHeader>
           <CardContent className="grid grid-cols-2 gap-4">
             <Button variant="outline" className="h-24 flex-col gap-2 rounded-xl border-2 hover:border-primary/50 hover:bg-emerald-50/50 transition-colors">
               <Wallet className="h-6 w-6 text-primary" />
-              <span className="text-xs font-bold">New Infaq</span>
+              <span className="text-xs font-bold">Infaq Baru</span>
             </Button>
             <Button variant="outline" className="h-24 flex-col gap-2 rounded-xl border-2 hover:border-primary/50 hover:bg-emerald-50/50 transition-colors">
               <Package className="h-6 w-6 text-primary" />
-              <span className="text-xs font-bold">Add Asset</span>
+              <span className="text-xs font-bold">Tambah Aset</span>
             </Button>
             <Button variant="outline" className="h-24 flex-col gap-2 rounded-xl border-2 hover:border-primary/50 hover:bg-emerald-50/50 transition-colors">
               <Calendar className="h-6 w-6 text-primary" />
-              <span className="text-xs font-bold">New Event</span>
+              <span className="text-xs font-bold">Kegiatan Baru</span>
             </Button>
             <Button variant="outline" className="h-24 flex-col gap-2 rounded-xl border-2 hover:border-primary/50 hover:bg-emerald-50/50 transition-colors">
               <TrendingUp className="h-6 w-6 text-primary" />
-              <span className="text-xs font-bold">Report</span>
+              <span className="text-xs font-bold">Laporan</span>
             </Button>
           </CardContent>
         </Card>

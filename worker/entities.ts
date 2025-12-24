@@ -1,14 +1,5 @@
 import { IndexedEntity } from "./core-utils";
-import type { Transaction, InventoryItem } from "@shared/types";
-export interface Tenant {
-  id: string;
-  name: string;
-  slug: string;
-  ownerId: string;
-  createdAt: number;
-  address?: string;
-  bankInfo?: string;
-}
+import type { Transaction, InventoryItem, Event, EventRegistration, Tenant } from "@shared/types";
 export interface AppUser {
   id: string;
   name: string;
@@ -24,7 +15,10 @@ export class TenantEntity extends IndexedEntity<Tenant> {
     name: "",
     slug: "",
     ownerId: "",
-    createdAt: 0
+    createdAt: 0,
+    address: "",
+    bankInfo: "",
+    bio: ""
   };
   static seedData: Tenant[] = [
     {
@@ -32,7 +26,10 @@ export class TenantEntity extends IndexedEntity<Tenant> {
       name: "Masjid Al-Hikmah",
       slug: "al-hikmah",
       ownerId: "u1",
-      createdAt: Date.now()
+      createdAt: Date.now(),
+      address: "Jl. Sudirman No. 12, Jakarta",
+      bankInfo: "BSI 7123456789 a/n Masjid Al-Hikmah",
+      bio: "A community-focused mosque dedicated to religious education and social welfare."
     }
   ];
 }
@@ -102,6 +99,56 @@ export class InventoryItemEntity extends IndexedEntity<InventoryItem> {
       condition: "good",
       location: "Main Prayer Hall",
       lastMaintenance: Date.now()
+    }
+  ];
+}
+export class EventEntity extends IndexedEntity<Event> {
+  static readonly entityName = "event";
+  static readonly indexName = "events";
+  static readonly initialState: Event = {
+    id: "",
+    tenantId: "",
+    title: "",
+    description: "",
+    date: 0,
+    location: "",
+    capacity: 0,
+    currentRegistrations: 0
+  };
+  static seedData: Event[] = [
+    {
+      id: "e1",
+      tenantId: "t1",
+      title: "Ramadan Community Iftar",
+      description: "Join us for a community breaking of fast every Friday evening.",
+      date: Date.now() + 86400000 * 7,
+      location: "Social Hall",
+      capacity: 200,
+      currentRegistrations: 45
+    }
+  ];
+}
+export class EventRegistrationEntity extends IndexedEntity<EventRegistration> {
+  static readonly entityName = "event_registration";
+  static readonly indexName = "event_registrations";
+  static readonly initialState: EventRegistration = {
+    id: "",
+    eventId: "",
+    tenantId: "",
+    name: "",
+    email: "",
+    phone: "",
+    registeredAt: 0
+  };
+  static seedData: EventRegistration[] = [
+    {
+      id: "er1",
+      eventId: "e1",
+      tenantId: "t1",
+      name: "Ahmad Fikri",
+      email: "ahmad@example.com",
+      phone: "081234567890",
+      registeredAt: Date.now()
     }
   ];
 }

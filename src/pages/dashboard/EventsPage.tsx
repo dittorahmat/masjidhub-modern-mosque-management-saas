@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar as CalendarIcon, MapPin, Users, Plus, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
 import type { Event } from '@shared/types';
 export default function EventsPage() {
@@ -29,7 +28,7 @@ export default function EventsPage() {
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['events', slug] });
-      toast.success('Kegiatan berhasil dipublikasikan');
+      toast.success('Event created successfully');
       setIsDialogOpen(false);
     }
   });
@@ -47,50 +46,50 @@ export default function EventsPage() {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="py-8 md:py-10 lg:py-12 space-y-8 animate-fade-in-up">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-display font-bold">Manajemen Kegiatan</h1>
-            <p className="text-muted-foreground">Rencanakan kegiatan dan berinteraksi dengan jamaah.</p>
+            <h1 className="text-3xl font-display font-bold">Event Management</h1>
+            <p className="text-muted-foreground">Plan activities and engage with your congregation.</p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2">
             <Button variant="outline" className="gap-2" onClick={() => window.open(`/portal/${slug}`, '_blank')}>
-              <ExternalLink className="h-4 w-4" /> Lihat Portal Publik
+              <ExternalLink className="h-4 w-4" /> View Public Portal
             </Button>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
                 <Button className="gap-2">
-                  <Plus className="h-4 w-4" /> Buat Kegiatan
+                  <Plus className="h-4 w-4" /> Create Event
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader>
-                  <DialogTitle>Jadwalkan Kegiatan Baru</DialogTitle>
+                  <DialogTitle>Schedule New Activity</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleCreate} className="space-y-4 pt-4">
                   <div className="space-y-2">
-                    <Label>Judul Kegiatan</Label>
-                    <Input name="title" required placeholder="Mis: Buka Bersama Komunitas" />
+                    <Label>Event Title</Label>
+                    <Input name="title" required placeholder="e.g. Ramadan Iftar Dinner" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Deskripsi</Label>
-                    <Textarea name="description" required placeholder="Ceritakan tentang kegiatan ini..." />
+                    <Label>Description</Label>
+                    <Textarea name="description" required placeholder="Tell the community about this event..." />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Tanggal & Waktu</Label>
+                      <Label>Date & Time</Label>
                       <Input name="date" type="datetime-local" required />
                     </div>
                     <div className="space-y-2">
-                      <Label>Kapasitas</Label>
+                      <Label>Capacity</Label>
                       <Input name="capacity" type="number" required defaultValue="100" />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Lokasi</Label>
-                    <Input name="location" required placeholder="Mis: Ruang Utama Masjid" />
+                    <Label>Location</Label>
+                    <Input name="location" required placeholder="e.g. Mosque Main Hall" />
                   </div>
                   <Button type="submit" className="w-full h-12 text-lg" disabled={createMutation.isPending}>
-                    {createMutation.isPending ? 'Mempublikasikan...' : 'Publikasikan Kegiatan'}
+                    {createMutation.isPending ? 'Publishing...' : 'Publish Event'}
                   </Button>
                 </form>
               </DialogContent>
@@ -103,7 +102,7 @@ export default function EventsPage() {
           ) : events.length === 0 ? (
             <div className="col-span-full py-20 text-center illustrative-card">
               <CalendarIcon className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-20" />
-              <p className="text-muted-foreground">Belum ada kegiatan yang dijadwalkan.</p>
+              <p className="text-muted-foreground">No events scheduled yet.</p>
             </div>
           ) : (
             events.sort((a,b) => a.date - b.date).map((event) => {
@@ -113,10 +112,10 @@ export default function EventsPage() {
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start mb-2">
                       <Badge variant={isPast ? "secondary" : "default"} className={isPast ? "" : "bg-emerald-600"}>
-                        {isPast ? "Selesai" : "Mendatang"}
+                        {isPast ? "Past Event" : "Upcoming"}
                       </Badge>
                       <span className="text-xs text-muted-foreground font-mono">
-                        {event.currentRegistrations} / {event.capacity} Daftar
+                        {event.currentRegistrations} / {event.capacity} RSVPs
                       </span>
                     </div>
                     <CardTitle className="text-2xl font-display">{event.title}</CardTitle>
@@ -126,16 +125,16 @@ export default function EventsPage() {
                     <div className="space-y-2 text-sm text-foreground/80">
                       <div className="flex items-center gap-2">
                         <CalendarIcon className="h-4 w-4 text-primary" />
-                        {format(event.date, 'PPP p', { locale: id })}
+                        {format(event.date, 'PPP p')}
                       </div>
                       <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-primary" />
                         {event.location}
                       </div>
                     </div>
-                    <div className="pt-4 border-t flex flex-wrap justify-between gap-2">
-                      <Button variant="ghost" size="sm">Kelola Pendaftaran</Button>
-                      <Button variant="outline" size="sm">Ubah</Button>
+                    <div className="pt-4 border-t flex justify-between gap-2">
+                      <Button variant="ghost" size="sm">Manage Registrations</Button>
+                      <Button variant="outline" size="sm">Edit</Button>
                     </div>
                   </CardContent>
                 </Card>

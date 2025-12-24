@@ -17,9 +17,13 @@ import { DashboardLayout } from '@/pages/dashboard/DashboardLayout';
 import { OverviewPage } from '@/pages/dashboard/OverviewPage';
 import { Toaster } from '@/components/ui/sonner';
 import { Skeleton } from '@/components/ui/skeleton';
+import PublicPortalPage from '@/pages/PublicPortalPage';
 // Lazy load operational modules
 const FinancePage = lazy(() => import('@/pages/dashboard/FinancePage'));
 const InventoryPage = lazy(() => import('@/pages/dashboard/InventoryPage'));
+const EventsPage = lazy(() => import('@/pages/dashboard/EventsPage'));
+const MembersPage = lazy(() => import('@/pages/dashboard/MembersPage'));
+const SettingsPage = lazy(() => import('@/pages/dashboard/SettingsPage'));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -28,12 +32,14 @@ const queryClient = new QueryClient({
     },
   },
 });
-const LoadingFallback = () => (
-  <div className="p-8 space-y-4">
-    <Skeleton className="h-12 w-48" />
-    <Skeleton className="h-64 w-full" />
-  </div>
-);
+function LoadingFallback() {
+  return (
+    <div className="p-8 space-y-4">
+      <Skeleton className="h-12 w-48" />
+      <Skeleton className="h-64 w-full" />
+    </div>
+  );
+}
 const router = createBrowserRouter([
   {
     path: "/",
@@ -43,6 +49,11 @@ const router = createBrowserRouter([
   {
     path: "/register",
     element: <RegisterMosquePage />,
+    errorElement: <RouteErrorBoundary />,
+  },
+  {
+    path: "/portal/:slug",
+    element: <PublicPortalPage />,
     errorElement: <RouteErrorBoundary />,
   },
   {
@@ -69,17 +80,44 @@ const router = createBrowserRouter([
             <InventoryPage />
           </Suspense>
         ),
+      },
+      {
+        path: "events",
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <EventsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "members",
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <MembersPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "settings",
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <SettingsPage />
+          </Suspense>
+        ),
       }
     ]
   }
 ]);
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
-        <RouterProvider router={router} />
-        <Toaster richColors position="top-center" />
-      </ErrorBoundary>
-    </QueryClientProvider>
-  </StrictMode>,
-)
+export function AppRoot() {
+  return (
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
+          <RouterProvider router={router} />
+          <Toaster richColors position="top-center" />
+        </ErrorBoundary>
+      </QueryClientProvider>
+    </StrictMode>
+  );
+}
+createRoot(document.getElementById('root')!).render(<AppRoot />);

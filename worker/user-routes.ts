@@ -70,6 +70,19 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     });
     return ok(c, enriched);
   });
+  app.patch('/api/super/tenants/:id/status', async (c) => {
+    const id = c.req.param('id');
+    const { status } = await c.req.json();
+    const inst = new TenantEntity(c.env, id);
+    if (!(await inst.exists())) return notFound(c, 'Tenant not found');
+    await inst.patch({ status });
+    return ok(c, await inst.getState());
+  });
+  app.delete('/api/super/tenants/:id', async (c) => {
+    const id = c.req.param('id');
+    const okDel = await TenantEntity.delete(c.env, id);
+    return ok(c, { deleted: okDel });
+  });
   app.get('/api/super/users', async (c) => {
     const { items } = await UserEntity.list(c.env);
     return ok(c, items);

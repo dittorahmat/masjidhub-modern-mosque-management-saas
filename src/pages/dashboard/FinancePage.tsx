@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Wallet, ArrowUpCircle, ArrowDownCircle, Search } from 'lucide-react';
+import { PlusCircle, Wallet, ArrowUpCircle, ArrowDownCircle, Search, Download, FileSpreadsheet, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -54,6 +54,11 @@ export default function FinancePage() {
       date: Date.now(),
     });
   };
+  const handleExport = (type: string) => {
+    toast.info(`Mengekspor laporan sebagai ${type}...`, {
+      description: "Fitur ini akan segera tersedia secara penuh."
+    });
+  };
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <div className="py-8 md:py-10 lg:py-12 space-y-8 animate-fade-in-up">
@@ -62,47 +67,57 @@ export default function FinancePage() {
             <h1 className="text-3xl font-display font-bold">Manajemen Keuangan</h1>
             <p className="text-muted-foreground">Pantau arus kas dan kontribusi jamaah.</p>
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="gap-2">
-                <PlusCircle className="h-4 w-4" /> Catat Transaksi
+          <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-2 bg-stone-100 p-1 rounded-lg">
+              <Button variant="ghost" size="sm" onClick={() => handleExport('CSV')} className="h-8 gap-1">
+                <FileSpreadsheet className="h-3.5 w-3.5" /> CSV
               </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Transaksi Baru</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label>Tipe Transaksi</Label>
-                  <Select name="type" defaultValue="income">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Pilih tipe" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="income">Pemasukan (Infaq/Sadaqoh)</SelectItem>
-                      <SelectItem value="expense">Pengeluaran (Operasional)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Jumlah (Rp)</Label>
-                  <Input name="amount" type="number" required placeholder="0" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Kategori</Label>
-                  <Input name="category" required placeholder="Mis: Infaq Jumat, Listrik" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Deskripsi</Label>
-                  <Input name="description" placeholder="Detail opsional" />
-                </div>
-                <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? 'Menyimpan...' : 'Simpan Transaksi'}
+              <Button variant="ghost" size="sm" onClick={() => handleExport('PDF')} className="h-8 gap-1">
+                <FileText className="h-3.5 w-3.5" /> PDF
+              </Button>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="gap-2">
+                  <PlusCircle className="h-4 w-4" /> Catat Transaksi
                 </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Transaksi Baru</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleCreate} className="space-y-4 pt-4">
+                  <div className="space-y-2">
+                    <Label>Tipe Transaksi</Label>
+                    <Select name="type" defaultValue="income">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Pilih tipe" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="income">Pemasukan (Infaq/Sadaqoh)</SelectItem>
+                        <SelectItem value="expense">Pengeluaran (Operasional)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Jumlah (Rp)</Label>
+                    <Input name="amount" type="number" required placeholder="0" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Kategori</Label>
+                    <Input name="category" required placeholder="Mis: Infaq Jumat, Listrik" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Deskripsi</Label>
+                    <Input name="description" placeholder="Detail opsional" />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={createMutation.isPending}>
+                    {createMutation.isPending ? 'Menyimpan...' : 'Simpan Transaksi'}
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card className="illustrative-card">
@@ -145,34 +160,51 @@ export default function FinancePage() {
               />
             </div>
           </div>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Kategori</TableHead>
-                <TableHead>Deskripsi</TableHead>
-                <TableHead className="text-right">Jumlah</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-8">Memuat...</TableCell></TableRow>
-              ) : filtered.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground">Tidak ada transaksi ditemukan.</TableCell></TableRow>
-              ) : (
-                filtered.sort((a,b) => b.date - a.date).map((tx) => (
-                  <TableRow key={tx.id}>
-                    <TableCell>{format(tx.date, 'dd MMM yyyy', { locale: id })}</TableCell>
-                    <TableCell className="font-medium">{tx.category}</TableCell>
-                    <TableCell className="text-muted-foreground">{tx.description}</TableCell>
-                    <TableCell className={`text-right font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-amber-600'}`}>
-                      {tx.type === 'income' ? '+' : '-'} Rp {tx.amount.toLocaleString('id-ID')}
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tanggal</TableHead>
+                  <TableHead>Kategori</TableHead>
+                  <TableHead>Deskripsi</TableHead>
+                  <TableHead className="text-right">Jumlah</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  <TableRow><TableCell colSpan={4} className="text-center py-8">Memuat...</TableCell></TableRow>
+                ) : filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={4} className="text-center py-20">
+                      <div className="flex flex-col items-center gap-4 opacity-50">
+                        <Wallet className="h-12 w-12 text-muted-foreground" />
+                        <div className="text-lg font-display">Belum ada transaksi</div>
+                        <Button variant="outline" size="sm" onClick={() => setIsDialogOpen(true)}>
+                          Mulai Pencatatan Pertama
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
+                ) : (
+                  filtered.sort((a,b) => b.date - a.date).map((tx) => (
+                    <TableRow key={tx.id} className="hover:bg-stone-50/50 transition-colors">
+                      <TableCell>{format(tx.date, 'dd MMM yyyy', { locale: id })}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-1 h-6 rounded-full ${tx.type === 'income' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                          <span className="font-medium">{tx.category}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{tx.description}</TableCell>
+                      <TableCell className={`text-right font-bold ${tx.type === 'income' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {tx.type === 'income' ? '+' : '-'} Rp {tx.amount.toLocaleString('id-ID')}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </Card>
       </div>
     </div>

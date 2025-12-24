@@ -11,7 +11,8 @@ export class TenantEntity extends IndexedEntity<Tenant> {
     createdAt: 0,
     address: "",
     bankInfo: "",
-    bio: ""
+    bio: "",
+    status: 'active'
   };
   static seedData: Tenant[] = [
     {
@@ -22,7 +23,8 @@ export class TenantEntity extends IndexedEntity<Tenant> {
       createdAt: Date.now(),
       address: "Jl. Sudirman No. 12, Jakarta",
       bankInfo: "BSI 7123456789 a/n Masjid Al-Hikmah",
-      bio: "A community-focused mosque dedicated to religious education and social welfare."
+      bio: "A community-focused mosque dedicated to religious education and social welfare.",
+      status: 'active'
     }
   ];
 }

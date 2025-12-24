@@ -1,23 +1,44 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Building2, MoreVertical, ExternalLink } from 'lucide-react';
+import { Search, Building2, MoreVertical, ExternalLink, Power, Trash2 } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import type { TenantWithStats } from '@shared/types';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 export default function SuperTenantsPage() {
   const [search, setSearch] = useState('');
+  const queryClient = useQueryClient();
   const { data: tenants = [], isLoading } = useQuery({
     queryKey: ['super', 'tenants'],
     queryFn: () => api<TenantWithStats[]>('/api/super/tenants')
   });
-  const filtered = tenants.filter(t => 
-    t.name.toLowerCase().includes(search.toLowerCase()) || 
+  const statusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string, status: string }) => 
+      api(`/api/super/tenants/${id}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status })
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['super', 'tenants'] });
+      toast.success('Tenant status updated');
+    }
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api(`/api/super/tenants/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['super', 'tenants'] });
+      toast.success('Tenant permanently removed');
+    }
+  });
+  const filtered = tenants.filter(t =>
+    t.name.toLowerCase().includes(search.toLowerCase()) ||
     t.slug.toLowerCase().includes(search.toLowerCase())
   );
   return (
@@ -83,12 +104,40 @@ export default function SuperTenantsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
-                          <a href={`/app/${tenant.slug}/dashboard`} target="_blank" rel="noreferrer" className="flex items-center">
+                          <a href={`/app/${tenant.slug}/dashboard`} target="_blank" rel="noreferrer" className="flex items-center cursor-pointer">
                             <ExternalLink className="h-4 w-4 mr-2" /> Impersonate
                           </a>
                         </DropdownMenuItem>
-                        <DropdownMenuItem>Suspend Mosque</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">Delete Permanently</DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => statusMutation.mutate({ id: tenant.id, status: tenant.status === 'active' ? 'suspended' : 'active' })}
+                          className="cursor-pointer"
+                        >
+                          <Power className="h-4 w-4 mr-2" /> {tenant.status === 'active' ? 'Suspend' : 'Activate'}
+                        </DropdownMenuItem>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive cursor-pointer">
+                              <Trash2 className="h-4 w-4 mr-2" /> Delete Permanently
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete the mosque <strong>{tenant.name}</strong> and all associated records. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => deleteMutation.mutate(tenant.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete Mosque
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

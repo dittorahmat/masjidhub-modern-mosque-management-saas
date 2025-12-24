@@ -27,7 +27,7 @@ export default function InventoryPage() {
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventory', slug] });
-      toast.success('Aset berhasil ditambahkan');
+      toast.success('Asset added successfully');
       setIsDialogOpen(false);
     }
   });
@@ -43,10 +43,10 @@ export default function InventoryPage() {
   };
   const getConditionBadge = (condition: string) => {
     switch (condition) {
-      case 'new': return <Badge className="bg-emerald-500 hover:bg-emerald-600">Baru</Badge>;
-      case 'good': return <Badge className="bg-blue-500 hover:bg-blue-600">Bagus</Badge>;
-      case 'fair': return <Badge className="bg-amber-500 hover:bg-amber-600">Cukup</Badge>;
-      case 'poor': return <Badge variant="destructive">Rusak</Badge>;
+      case 'new': return <Badge className="bg-emerald-500 hover:bg-emerald-600">New</Badge>;
+      case 'good': return <Badge className="bg-blue-500 hover:bg-blue-600">Good</Badge>;
+      case 'fair': return <Badge className="bg-amber-500 hover:bg-amber-600">Fair</Badge>;
+      case 'poor': return <Badge variant="destructive">Poor</Badge>;
       default: return <Badge variant="outline">{condition}</Badge>;
     }
   };
@@ -55,50 +55,50 @@ export default function InventoryPage() {
       <div className="py-8 md:py-10 lg:py-12 space-y-8 animate-fade-in-up">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-display font-bold">Inventaris & Aset</h1>
-            <p className="text-muted-foreground">Pantau peralatan masjid dan kebutuhan pemeliharaan.</p>
+            <h1 className="text-3xl font-display font-bold">Inventory & Assets</h1>
+            <p className="text-muted-foreground">Keep track of mosque equipment and maintenance needs.</p>
           </div>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="gap-2">
-                <Plus className="h-4 w-4" /> Tambah Aset
+                <Plus className="h-4 w-4" /> Add Asset
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Tambah Aset Baru</DialogTitle>
+                <DialogTitle>Add New Asset</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleCreate} className="space-y-4 pt-4">
                 <div className="space-y-2">
-                  <Label>Nama Aset</Label>
-                  <Input name="name" required placeholder="Mis: Mikrofon Nirkabel" />
+                  <Label>Asset Name</Label>
+                  <Input name="name" required placeholder="e.g. Wireless Microphone" />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Jumlah</Label>
+                    <Label>Quantity</Label>
                     <Input name="quantity" type="number" required defaultValue="1" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Kondisi</Label>
+                    <Label>Condition</Label>
                     <Select name="condition" defaultValue="good">
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="new">Baru</SelectItem>
-                        <SelectItem value="good">Bagus</SelectItem>
-                        <SelectItem value="fair">Cukup</SelectItem>
-                        <SelectItem value="poor">Rusak</SelectItem>
+                        <SelectItem value="new">New</SelectItem>
+                        <SelectItem value="good">Good</SelectItem>
+                        <SelectItem value="fair">Fair</SelectItem>
+                        <SelectItem value="poor">Poor</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Lokasi</Label>
-                  <Input name="location" required placeholder="Mis: Ruang Penyimpanan A" />
+                  <Label>Location</Label>
+                  <Input name="location" required placeholder="e.g. Storage Room A" />
                 </div>
                 <Button type="submit" className="w-full" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? 'Menambahkan...' : 'Tambah ke Inventaris'}
+                  {createMutation.isPending ? 'Adding...' : 'Add to Inventory'}
                 </Button>
               </form>
             </DialogContent>
@@ -110,7 +110,7 @@ export default function InventoryPage() {
           ) : inventory.length === 0 ? (
             <div className="col-span-full py-20 text-center illustrative-card">
               <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-20" />
-              <p className="text-muted-foreground">Tidak ada aset ditemukan.</p>
+              <p className="text-muted-foreground">No assets found in your inventory.</p>
             </div>
           ) : (
             inventory.map((item) => (
@@ -130,13 +130,13 @@ export default function InventoryPage() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <ClipboardList className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Jumlah: {item.quantity}</span>
+                      <span className="text-sm font-medium">Qty: {item.quantity}</span>
                     </div>
                     {getConditionBadge(item.condition)}
                   </div>
                   <div className="pt-2 border-t flex justify-end gap-2">
-                    <Button variant="ghost" size="sm">Riwayat</Button>
-                    <Button variant="outline" size="sm">Ubah</Button>
+                    <Button variant="ghost" size="sm">History</Button>
+                    <Button variant="outline" size="sm">Edit</Button>
                   </div>
                 </CardContent>
               </Card>

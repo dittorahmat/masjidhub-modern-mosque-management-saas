@@ -1,7 +1,7 @@
 import '@/lib/errorReporter';
 import { enableMapSet } from "immer";
 enableMapSet();
-import { StrictMode } from 'react'
+import { StrictMode, lazy, Suspense } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   createBrowserRouter,
@@ -16,7 +16,24 @@ import { RegisterMosquePage } from '@/pages/auth/RegisterMosquePage';
 import { DashboardLayout } from '@/pages/dashboard/DashboardLayout';
 import { OverviewPage } from '@/pages/dashboard/OverviewPage';
 import { Toaster } from '@/components/ui/sonner';
-const queryClient = new QueryClient();
+import { Skeleton } from '@/components/ui/skeleton';
+// Lazy load operational modules
+const FinancePage = lazy(() => import('@/pages/dashboard/FinancePage'));
+const InventoryPage = lazy(() => import('@/pages/dashboard/InventoryPage'));
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+const LoadingFallback = () => (
+  <div className="p-8 space-y-4">
+    <Skeleton className="h-12 w-48" />
+    <Skeleton className="h-64 w-full" />
+  </div>
+);
 const router = createBrowserRouter([
   {
     path: "/",
@@ -36,6 +53,22 @@ const router = createBrowserRouter([
       {
         path: "dashboard",
         element: <OverviewPage />,
+      },
+      {
+        path: "finance",
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <FinancePage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "inventory",
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <InventoryPage />
+          </Suspense>
+        ),
       }
     ]
   }

@@ -41,7 +41,7 @@ export default function SuperUsersPage() {
               placeholder="Search by name or email..."
               className="pl-10"
               value={search}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
             />
           </div>
         </div>
@@ -90,8 +90,4 @@ export default function SuperUsersPage() {
       </Card>
     </div>
   );
-}
-// Fixed variable name error for search filter
-function setSearchTerm(val: string) {
-  // Mock function for local scoping in static file gen
 }

@@ -1,13 +1,15 @@
 import React from 'react';
 import { Navigate, Outlet, Link, useLocation } from 'react-router-dom';
-import { useUser, useAppActions } from '@/lib/store';
+import { useUserId, useUserRole, useAppActions } from '@/lib/store';
 import { SidebarProvider, SidebarInset, SidebarTrigger, Sidebar, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from "@/components/ui/sidebar";
 import { LayoutDashboard, Building2, Users, LogOut, ShieldCheck, ArrowLeft } from 'lucide-react';
 export default function SuperAdminLayout() {
-  const user = useUser();
-  const { logout } = useAppActions();
+  const userId = useUserId();
+  const userRole = useUserRole();
+  const actions = useAppActions();
+  const logout = actions.logout;
   const location = useLocation();
-  if (!user || user.role !== 'superadmin_platform') {
+  if (!userId || userRole !== 'superadmin_platform') {
     return <Navigate to="/" replace />;
   }
   const navItems = [

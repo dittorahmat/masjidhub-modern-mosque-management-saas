@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
-import { useAppStore } from '@/lib/store';
+import { useUserName, useTenantName } from '@/lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Wallet, Users, Calendar, TrendingUp, Package, Sparkles, ArrowUpRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,8 @@ import { motion } from 'framer-motion';
 import type { Transaction, InventoryItem } from '@shared/types';
 export function OverviewPage() {
   const { slug } = useParams();
-  const userName = useAppStore(s => s.user?.name);
-  const tenantName = useAppStore(s => s.currentTenant?.name);
+  const userName = useUserName();
+  const tenantName = useTenantName();
   const { data: transactions = [] } = useQuery({
     queryKey: ['finance', slug],
     queryFn: () => api<Transaction[]>(`/api/${slug}/finance`)
@@ -37,7 +37,7 @@ export function OverviewPage() {
   ];
   return (
     <div className="space-y-8">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col md:flex-row md:items-end justify-between gap-4"
@@ -58,10 +58,10 @@ export function OverviewPage() {
         </div>
       </motion.div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Saldo Saat Ini" value={`Rp ${(totals.income - totals.expense).toLocaleString('id-ID')}`} icon={<Wallet className="h-5 w-5" />} trend="+12% bulan ini" />
-        <StatCard title="Aset Inventaris" value={inventory.length.toString()} icon={<Package className="h-5 w-5" />} trend="Kondisi Terpantau" />
-        <StatCard title="Kegiatan Baru" value="3" icon={<Calendar className="h-5 w-5" />} trend="Minggu ini" />
-        <StatCard title="Anggota Aktif" value="124" icon={<Users className="h-5 w-5" />} trend="+5 jamaah baru" />
+        <StatCard title="Saldo Saat Ini" value={`Rp ${(totals.income - totals.expense).toLocaleString('id-ID')}`} icon={<Wallet className="h-5 w-5" />} trend="+12% bulan ini" delay={0.1} />
+        <StatCard title="Aset Inventaris" value={inventory.length.toString()} icon={<Package className="h-5 w-5" />} trend="Kondisi Terpantau" delay={0.2} />
+        <StatCard title="Kegiatan Baru" value="3" icon={<Calendar className="h-5 w-5" />} trend="Minggu ini" delay={0.3} />
+        <StatCard title="Anggota Aktif" value="124" icon={<Users className="h-5 w-5" />} trend="+5 jamaah baru" delay={0.4} />
       </div>
       <div className="grid lg:grid-cols-3 gap-8">
         <Card className="lg:col-span-2 illustrative-card overflow-hidden">
@@ -87,7 +87,7 @@ export function OverviewPage() {
                 <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#E5E7EB" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#6B7280', fontSize: 12 }} />
-                <Tooltip 
+                <Tooltip
                   contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                 />
                 <Area type="monotone" dataKey="income" stroke="#059669" fillOpacity={1} fill="url(#colorIncome)" strokeWidth={3} name="Infaq" />
@@ -116,30 +116,36 @@ export function OverviewPage() {
     </div>
   );
 }
-function StatCard({ title, value, icon, trend }: { title: string, value: string, icon: React.ReactNode, trend?: string }) {
+function StatCard({ title, value, icon, trend, delay = 0 }: { title: string, value: string, icon: React.ReactNode, trend?: string, delay?: number }) {
   return (
-    <Card className="illustrative-card group hover:-translate-y-1 transition-transform">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600 group-hover:scale-110 transition-transform">
-          {icon}
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold font-display">{value}</div>
-        {trend && (
-          <p className="text-xs text-emerald-600 mt-1 font-medium">
-            {trend}
-          </p>
-        )}
-      </CardContent>
-    </Card>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay }}
+    >
+      <Card className="illustrative-card group hover:-translate-y-1 transition-transform">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
+          <div className="p-2 bg-emerald-50 rounded-xl text-emerald-600 group-hover:scale-110 transition-transform">
+            {icon}
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl font-bold font-display">{value}</div>
+          {trend && (
+            <p className="text-xs text-emerald-600 mt-1 font-medium">
+              {trend}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }
 function QuickActionButton({ icon, label }: { icon: React.ReactNode, label: string }) {
   return (
-    <Button 
-      variant="outline" 
+    <Button
+      variant="outline"
       className="h-24 flex-col gap-2 rounded-xl border-2 hover:border-primary/50 hover:bg-emerald-50/50 hover:scale-[1.02] transition-all"
     >
       <div className="text-primary">{icon}</div>

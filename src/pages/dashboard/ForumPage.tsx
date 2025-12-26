@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
-import { useUser } from '@/lib/store';
+import { useUserId, useUserName } from '@/lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { MessageSquare, Plus, Search, Tag, Pin } from 'lucide-react';
@@ -19,7 +19,8 @@ import { formatDistanceToNow } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
 export default function ForumPage() {
   const { slug } = useParams();
-  const user = useUser();
+  const userId = useUserId();
+  const userName = useUserName();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -40,17 +41,17 @@ export default function ForumPage() {
   });
   const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!user) return toast.error('Anda harus login untuk memposting');
+    if (!userId || !userName) return toast.error('Anda harus login untuk memposting');
     const formData = new FormData(e.currentTarget);
     createMutation.mutate({
       title: formData.get('title') as string,
       content: formData.get('content') as string,
       category: formData.get('category') as any,
-      authorId: user.id,
-      authorName: user.name,
+      authorId: userId,
+      authorName: userName,
     });
   };
-  const filtered = posts.filter(p => 
+  const filtered = posts.filter(p =>
     p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.content.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -122,9 +123,9 @@ export default function ForumPage() {
         <div className="lg:col-span-3 space-y-6">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input 
-              placeholder="Cari topik diskusi..." 
-              className="pl-11 h-12 rounded-xl bg-stone-50 border-2" 
+            <Input
+              placeholder="Cari topik diskusi..."
+              className="pl-11 h-12 rounded-xl bg-stone-50 border-2"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -172,9 +173,9 @@ function ForumPostCard({ post }: { post: ForumPost }) {
         <div className="flex justify-between items-center pt-4 border-t border-stone-100">
           <div className="flex items-center gap-2">
             <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center text-[10px] font-bold text-emerald-700">
-              {post.authorName[0]}
+              {post.authorName ? post.authorName[0] : '?'}
             </div>
-            <span className="text-xs font-bold">{post.authorName}</span>
+            <span className="text-xs font-bold">{post.authorName || 'Anonim'}</span>
           </div>
           <Button variant="ghost" size="sm" className="gap-2">
             <MessageSquare className="h-4 w-4" /> Balas

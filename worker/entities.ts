@@ -1,5 +1,5 @@
 import { IndexedEntity } from "./core-utils";
-import type { Transaction, InventoryItem, Event, EventRegistration, Tenant, AppUser } from "@shared/types";
+import type { Transaction, InventoryItem, Event, EventRegistration, Tenant, AppUser, ForumPost, ZisTransaction } from "@shared/types";
 export class TenantEntity extends IndexedEntity<Tenant> {
   static readonly entityName = "tenant";
   static readonly indexName = "tenants";
@@ -43,7 +43,7 @@ export class UserEntity extends IndexedEntity<AppUser> {
       id: "u1",
       name: "Admin Utama",
       email: "admin@masjidhub.com",
-      role: "superadmin",
+      role: "superadmin_platform",
       tenantIds: ["t1"]
     }
   ];
@@ -99,5 +99,32 @@ export class EventRegistrationEntity extends IndexedEntity<EventRegistration> {
     email: "",
     phone: "",
     registeredAt: 0
+  };
+}
+export class ForumPostEntity extends IndexedEntity<ForumPost> {
+  static readonly entityName = "forum_post";
+  static readonly indexName = "forum_posts";
+  static readonly initialState: ForumPost = {
+    id: "",
+    tenantId: "",
+    authorId: "",
+    authorName: "",
+    category: 'diskusi',
+    title: "",
+    content: "",
+    createdAt: 0
+  };
+}
+export class ZisTransactionEntity extends IndexedEntity<ZisTransaction> {
+  static readonly entityName = "zis_transaction";
+  static readonly indexName = "zis_transactions";
+  static readonly initialState: ZisTransaction = {
+    id: "",
+    tenantId: "",
+    type: 'infaq_shadaqah',
+    flow: 'in',
+    amount: 0,
+    description: "",
+    date: 0
   };
 }

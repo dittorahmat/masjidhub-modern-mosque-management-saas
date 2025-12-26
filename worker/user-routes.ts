@@ -1,10 +1,19 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { UserEntity, TenantEntity, TransactionEntity, InventoryItemEntity, EventEntity, EventRegistrationEntity } from "./entities";
+import { 
+  UserEntity, 
+  TenantEntity, 
+  TransactionEntity, 
+  InventoryItemEntity, 
+  EventEntity, 
+  ForumPostEntity,
+  ZisTransactionEntity 
+} from "./entities";
 import { ok, bad, notFound } from './core-utils';
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   const getTenantBySlug = async (env: Env, slug: string) => {
-    await TenantEntity.ensureSeed(env); await UserEntity.ensureSeed(env);
+    await TenantEntity.ensureSeed(env); 
+    await UserEntity.ensureSeed(env);
     const { items } = await TenantEntity.list(env);
     return items.find(t => t.slug === slug);
   };
@@ -20,7 +29,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
       slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, ''),
       ownerId: userId,
       createdAt: Date.now(),
-      status: 'pending' // New requirement: starts as pending
+      status: 'pending'
     });
     const user = await UserEntity.create(c.env, {
       id: userId,
@@ -36,7 +45,6 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const { items } = await UserEntity.list(c.env);
     let user = items.find(u => u.email === email);
     if (!user) {
-        // Mock login for demo
         user = {
             id: crypto.randomUUID(),
             name: "Demo User",
@@ -73,6 +81,10 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }));
     return ok(c, enriched);
   });
+  app.get('/api/super/users', async (c) => {
+    const { items: users } = await UserEntity.list(c.env);
+    return ok(c, users);
+  });
   app.post('/api/super/tenants/:id/approve', async (c) => {
     const id = c.req.param('id');
     const inst = new TenantEntity(c.env, id);
@@ -99,17 +111,42 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const tx = await TransactionEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id });
     return ok(c, tx);
   });
-  app.get('/api/:slug/inventory', async (c) => {
-    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await InventoryItemEntity.list(c.env);
-    return ok(c, items.filter(i => i.tenantId === tenant.id));
-  });
-  // Forum routes
+  // --- FORUM ROUTES ---
   app.get('/api/:slug/forum', async (c) => {
     const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
     if (!tenant) return notFound(c, 'Tenant not found');
-    // For demo, return empty array as we haven't implemented ForumEntity yet
-    return ok(c, []);
+    const { items } = await ForumPostEntity.list(c.env);
+    return ok(c, items.filter(p => p.tenantId === tenant.id));
+  });
+  app.post('/api/:slug/forum', async (c) => {
+    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    const post = await ForumPostEntity.create(c.env, { 
+      ...body, 
+      id: crypto.randomUUID(), 
+      tenantId: tenant.id,
+      createdAt: Date.now()
+    });
+    return ok(c, post);
+  });
+  // --- ZIS ROUTES ---
+  app.get('/api/:slug/zis', async (c) => {
+    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await ZisTransactionEntity.list(c.env);
+    return ok(c, items.filter(t => t.tenantId === tenant.id));
+  });
+  app.post('/api/:slug/zis', async (c) => {
+    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    const tx = await ZisTransactionEntity.create(c.env, { 
+      ...body, 
+      id: crypto.randomUUID(), 
+      tenantId: tenant.id,
+      date: Date.now()
+    });
+    return ok(c, tx);
   });
 }

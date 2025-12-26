@@ -1,11 +1,11 @@
 import React, { useEffect } from 'react';
-import { useParams, Navigate, Outlet } from 'react-router-dom';
+import { useParams, Navigate, Outlet, Link } from 'react-router-dom';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useUser, useCurrentTenant, useAppActions } from '@/lib/store';
 import { api } from '@/lib/api-client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertCircle, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import type { Tenant } from '@shared/types';
 export function DashboardLayout() {
   const { slug } = useParams();
@@ -39,7 +39,7 @@ export function DashboardLayout() {
             Masjid <span className="font-bold text-foreground">{currentTenant.name}</span> sedang dalam proses verifikasi oleh Platform Admin. Mohon tunggu 1-2 hari kerja.
           </p>
           <div className="pt-4">
-            <Navigate to="/" className="text-primary font-bold hover:underline">Kembali ke Beranda</Navigate>
+            <Link to="/" className="text-primary font-bold hover:underline">Kembali ke Beranda</Link>
           </div>
         </div>
       </div>
@@ -65,7 +65,9 @@ export function DashboardLayout() {
           </div>
         </header>
         <main className="p-4 md:p-8">
-          <Outlet />
+          <div className="max-w-7xl mx-auto">
+            <Outlet />
+          </div>
         </main>
       </SidebarInset>
     </SidebarProvider>

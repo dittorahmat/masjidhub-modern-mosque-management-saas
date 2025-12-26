@@ -2,7 +2,7 @@ import '@/lib/errorReporter';
 import { enableMapSet } from "immer";
 enableMapSet();
 import React, { StrictMode, lazy, Suspense } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, type Root } from 'react-dom/client';
 import {
   createBrowserRouter,
   RouterProvider,
@@ -155,9 +155,14 @@ const router = createBrowserRouter([
     ]
   }
 ]);
+// Singleton pattern for React root to prevent duplicate createRoot warnings
+let root: Root | null = null;
 const rootElement = document.getElementById('root');
 if (rootElement) {
-  createRoot(rootElement).render(
+  if (!root) {
+    root = createRoot(rootElement);
+  }
+  root.render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <ErrorBoundary>

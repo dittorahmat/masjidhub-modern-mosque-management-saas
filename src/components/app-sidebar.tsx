@@ -11,14 +11,16 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { useUser, useCurrentTenant, useAppActions } from "@/lib/store";
+import { useAppStore, useUserRole, useUserName, useTenantName, useAppActions } from "@/lib/store";
 export function AppSidebar(): JSX.Element {
   const { slug } = useParams();
-  const currentTenant = useCurrentTenant();
-  const user = useUser();
-  const { logout } = useAppActions();
-  const isSuper = user?.role === 'superadmin_platform';
-  const isAdminOrAmil = user?.role === 'dkm_admin' || user?.role === 'amil_zakat' || isSuper;
+  const tenantName = useTenantName();
+  const userRole = useUserRole();
+  const userName = useUserName();
+  const actions = useAppStore(s => s.actions);
+  const logout = actions.logout;
+  const isSuper = userRole === 'superadmin_platform';
+  const isAdminOrAmil = userRole === 'dkm_admin' || userRole === 'amil_zakat' || isSuper;
   const navigation = [
     { name: "Dasbor", icon: LayoutDashboard, href: `/app/${slug}/dashboard`, show: true },
     { name: "Keuangan", icon: Wallet, href: `/app/${slug}/finance`, show: isAdminOrAmil },
@@ -37,10 +39,10 @@ export function AppSidebar(): JSX.Element {
           </div>
           <div className="flex flex-col">
             <span className="text-sm font-bold font-display truncate w-32">
-              {currentTenant?.name || "MasjidHub"}
+              {tenantName || "MasjidHub"}
             </span>
             <span className="text-[10px] text-muted-foreground capitalize">
-              {user?.role.replace('_', ' ') || "Admin"}
+              {userRole?.replace('_', ' ') || "Guest"}
             </span>
           </div>
         </div>
@@ -77,6 +79,10 @@ export function AppSidebar(): JSX.Element {
       </SidebarContent>
       <SidebarFooter className="p-4 border-t">
         <SidebarMenu>
+          <div className="px-2 pb-2 mb-2 border-b">
+            <p className="text-[10px] text-muted-foreground">Masuk sebagai</p>
+            <p className="text-xs font-bold truncate">{userName || "Anonim"}</p>
+          </div>
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <Link to={`/app/${slug}/settings`} className="flex items-center gap-3">

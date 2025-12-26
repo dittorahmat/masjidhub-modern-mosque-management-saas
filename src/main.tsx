@@ -10,6 +10,7 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
+import { GlobalLoading } from '@/components/GlobalLoading';
 import '@/index.css';
 // Core Pages
 import { LandingPage } from '@/pages/LandingPage';
@@ -19,7 +20,6 @@ import { OverviewPage } from '@/pages/dashboard/OverviewPage';
 import PublicPortalPage from '@/pages/PublicPortalPage';
 // UI
 import { Toaster } from '@/components/ui/sonner';
-import { Skeleton } from '@/components/ui/skeleton';
 // Lazy Components
 const FinancePage = lazy(() => import('@/pages/dashboard/FinancePage'));
 const InventoryPage = lazy(() => import('@/pages/dashboard/InventoryPage'));
@@ -42,15 +42,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-function GlobalLoading() {
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-8 space-y-4">
-      <Skeleton className="h-12 w-48" />
-      <Skeleton className="h-64 w-full max-w-4xl" />
-      <p className="text-sm text-muted-foreground animate-pulse text-center">Memuat Platform...</p>
-    </div>
-  );
-}
 const router = createBrowserRouter([
   {
     path: "/",
@@ -155,14 +146,18 @@ const router = createBrowserRouter([
     ]
   }
 ]);
-// Singleton pattern for React root to prevent duplicate createRoot warnings
-let root: Root | null = null;
+// Use a global to store the root to prevent double-initialization in HMR
+declare global {
+  interface Window {
+    __reactRoot?: Root;
+  }
+}
 const rootElement = document.getElementById('root');
 if (rootElement) {
-  if (!root) {
-    root = createRoot(rootElement);
+  if (!window.__reactRoot) {
+    window.__reactRoot = createRoot(rootElement);
   }
-  root.render(
+  window.__reactRoot.render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <ErrorBoundary>

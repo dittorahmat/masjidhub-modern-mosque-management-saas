@@ -4,6 +4,7 @@ import { useParams } from 'react-router-dom';
 import { api } from '@/lib/api-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { PlusCircle, History, HeartPulse, User, Wallet } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -103,23 +104,23 @@ export default function ZisPage() {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <ZisStatCard 
-          title="Zakat Fitrah" 
-          value={totals.zakat_fitrah || 0} 
-          icon={<HeartPulse className="text-emerald-600" />} 
-          color="bg-emerald-50 border-emerald-100" 
+        <ZisStatCard
+          title="Zakat Fitrah"
+          value={totals.zakat_fitrah || 0}
+          icon={<HeartPulse className="text-emerald-600" />}
+          color="bg-emerald-50 border-emerald-100"
         />
-        <ZisStatCard 
-          title="Zakat Maal" 
-          value={totals.zakat_maal || 0} 
-          icon={<Wallet className="text-amber-600" />} 
-          color="bg-amber-50 border-amber-100" 
+        <ZisStatCard
+          title="Zakat Maal"
+          value={totals.zakat_maal || 0}
+          icon={<Wallet className="text-amber-600" />}
+          color="bg-amber-50 border-amber-100"
         />
-        <ZisStatCard 
-          title="Infaq & Shadaqah" 
-          value={totals.infaq_shadaqah || 0} 
-          icon={<User className="text-blue-600" />} 
-          color="bg-blue-50 border-blue-100" 
+        <ZisStatCard
+          title="Infaq & Shadaqah"
+          value={totals.infaq_shadaqah || 0}
+          icon={<User className="text-blue-600" />}
+          color="bg-blue-50 border-blue-100"
         />
       </div>
       <Card className="illustrative-card overflow-hidden">

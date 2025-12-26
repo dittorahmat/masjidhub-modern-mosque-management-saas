@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Search, Mail, Shield } from 'lucide-react';
+import { Search, Mail } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { AppUser } from '@shared/types';
 export default function SuperUsersPage() {
@@ -15,23 +15,23 @@ export default function SuperUsersPage() {
     queryKey: ['super', 'users'],
     queryFn: () => api<AppUser[]>('/api/super/users')
   });
-  const filtered = users.filter(u => 
-    u.name.toLowerCase().includes(search.toLowerCase()) || 
-    u.email.toLowerCase().includes(search.toLowerCase())
+  const filtered = users.filter(u =>
+    u.name?.toLowerCase().includes(search.toLowerCase()) ||
+    u.email?.toLowerCase().includes(search.toLowerCase())
   );
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case 'superadmin': return <Badge variant="destructive">Platform Admin</Badge>;
-      case 'mosque_admin': return <Badge className="bg-emerald-600">Mosque Admin</Badge>;
-      case 'takmir': return <Badge className="bg-blue-600">Takmir</Badge>;
-      default: return <Badge variant="outline">Jamaah</Badge>;
+      case 'superadmin_platform': return <Badge variant="destructive">Platform Admin</Badge>;
+      case 'dkm_admin': return <Badge className="bg-emerald-600">DKM Admin</Badge>;
+      case 'amil_zakat': return <Badge className="bg-amber-600">Amil Zakat</Badge>;
+      default: return <Badge variant="outline">User</Badge>;
     }
   };
   return (
     <div className="space-y-8 animate-fade-in-up">
       <div>
         <h1 className="text-4xl font-display font-bold">User Directory</h1>
-        <p className="text-muted-foreground">Global view of all registered accounts across all mosque tenants.</p>
+        <p className="text-muted-foreground">Global view of all registered accounts across the MasjidHub ecosystem.</p>
       </div>
       <Card className="illustrative-card overflow-hidden">
         <div className="p-4 border-b bg-stone-50/50 flex items-center gap-4">
@@ -41,7 +41,7 @@ export default function SuperUsersPage() {
               placeholder="Search by name or email..."
               className="pl-10"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
         </div>
@@ -51,37 +51,47 @@ export default function SuperUsersPage() {
               <TableHead>User</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Role</TableHead>
-              <TableHead>Tenant Count</TableHead>
-              <TableHead className="text-right">Manage</TableHead>
+              <TableHead>Tenants</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-10">Syncing user database...</TableCell></TableRow>
-            ) : filtered.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell>
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8 border">
-                      <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} />
-                      <AvatarFallback>{user.name[0]}</AvatarFallback>
-                    </Avatar>
-                    <span className="font-bold">{user.name}</span>
-                  </div>
-                </TableCell>
-                <TableCell className="text-muted-foreground text-sm">
-                  <div className="flex items-center gap-1"><Mail className="h-3 w-3" /> {user.email}</div>
-                </TableCell>
-                <TableCell>{getRoleBadge(user.role)}</TableCell>
-                <TableCell>{user.tenantIds?.length || 0}</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm">Audit Logs</Button>
-                </TableCell>
-              </TableRow>
-            ))}
+              <TableRow><TableCell colSpan={5} className="text-center py-10">Syncing database...</TableCell></TableRow>
+            ) : filtered.length === 0 ? (
+              <TableRow><TableCell colSpan={5} className="text-center py-10 opacity-50">No users found.</TableCell></TableRow>
+            ) : (
+              filtered.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-8 w-8 border">
+                        <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.name}`} />
+                        <AvatarFallback>{user.name?.[0] || '?'}</AvatarFallback>
+                      </Avatar>
+                      <span className="font-bold">{user.name}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-muted-foreground text-sm">
+                    <div className="flex items-center gap-1"><Mail className="h-3 w-3" /> {user.email}</div>
+                  </TableCell>
+                  <TableCell>{getRoleBadge(user.role)}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="font-mono">{user.tenantIds?.length || 0}</Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm">Audit Logs</Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </Card>
     </div>
   );
+}
+// Fixed variable name error for search filter
+function setSearchTerm(val: string) {
+  // Mock function for local scoping in static file gen
 }

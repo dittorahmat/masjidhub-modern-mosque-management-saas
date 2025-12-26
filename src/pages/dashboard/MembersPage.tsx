@@ -2,13 +2,13 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams } from 'react-router-dom';
 import { api } from '@/lib/api-client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Search, UserPlus, Mail, ShieldCheck } from 'lucide-react';
+import { Search, UserPlus, Mail } from 'lucide-react';
 import type { AppUser } from '@shared/types';
 export default function MembersPage() {
   const { slug } = useParams();
@@ -18,14 +18,15 @@ export default function MembersPage() {
     queryFn: () => api<AppUser[]>(`/api/${slug}/members`)
   });
   const filtered = members.filter(m =>
-    m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.email.toLowerCase().includes(searchTerm.toLowerCase())
+    m.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    m.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
   const getRoleBadge = (role: string) => {
     switch (role) {
-      case 'superadmin': return <Badge variant="destructive">Admin Platform</Badge>;
-      case 'mosque_admin': return <Badge className="bg-emerald-600">Admin Masjid</Badge>;
-      case 'takmir': return <Badge className="bg-blue-600">Takmir</Badge>;
+      case 'superadmin_platform': return <Badge variant="destructive">Platform Admin</Badge>;
+      case 'dkm_admin': return <Badge className="bg-emerald-600">DKM Admin</Badge>;
+      case 'amil_zakat': return <Badge className="bg-amber-600">Amil Zakat</Badge>;
+      case 'ustadz': return <Badge className="bg-blue-600">Ustadz</Badge>;
       default: return <Badge variant="outline">Jamaah</Badge>;
     }
   };
@@ -35,7 +36,7 @@ export default function MembersPage() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-3xl font-display font-bold">Direktori Komunitas</h1>
-            <p className="text-muted-foreground">Kelola peran untuk Takmir dan lihat daftar jamaah.</p>
+            <p className="text-muted-foreground">Kelola peran dan lihat daftar jamaah masjid Anda.</p>
           </div>
           <Button className="gap-2">
             <UserPlus className="h-4 w-4" /> Undang Anggota
@@ -75,11 +76,11 @@ export default function MembersPage() {
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
                             <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${member.name}`} />
-                            <AvatarFallback>{member.name[0]}</AvatarFallback>
+                            <AvatarFallback>{member.name?.[0] || '?'}</AvatarFallback>
                           </Avatar>
                           <div className="flex flex-col">
                             <span className="font-bold text-foreground">{member.name}</span>
-                            <span className="text-xs text-muted-foreground italic">Anggota sejak 2024</span>
+                            <span className="text-xs text-muted-foreground italic">Aktif</span>
                           </div>
                         </div>
                       </TableCell>

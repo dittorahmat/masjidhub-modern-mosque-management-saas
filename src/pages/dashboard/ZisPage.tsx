@@ -15,7 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { ZisTransaction } from '@shared/types';
 import { format } from 'date-fns';
-import { id as localeId } from 'date-fns/locale';
+import { id as localeId } from 'date-fns/locale/id';
 export default function ZisPage() {
   const { slug } = useParams();
   const queryClient = useQueryClient();

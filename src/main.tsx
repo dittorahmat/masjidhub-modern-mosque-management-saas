@@ -2,7 +2,7 @@ import '@/lib/errorReporter';
 import { enableMapSet } from "immer";
 enableMapSet();
 import React, { StrictMode, lazy, Suspense } from 'react';
-import { createRoot, type Root } from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import {
   createBrowserRouter,
   RouterProvider,
@@ -148,12 +148,6 @@ const router = createBrowserRouter([
 ]);
 const rootElement = document.getElementById('root');
 if (rootElement) {
-  // Clean up existing root for HMR (React Refresh safe)
-  const existingRoot = (rootElement as any)._reactRootContainer?._internalRoot;
-  if (existingRoot) {
-    existingRoot.unmount();
-  }
-  
   const root = createRoot(rootElement);
   root.render(
     <StrictMode>

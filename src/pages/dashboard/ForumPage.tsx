@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { ForumPost } from '@shared/types';
 import { formatDistanceToNow } from 'date-fns';
-import { id as localeId } from 'date-fns/locale';
+import { id as localeId } from 'date-fns/locale/id';
 export default function ForumPage() {
   const { slug } = useParams();
   const userId = useUserId();
@@ -153,9 +153,9 @@ export default function ForumPage() {
               </div>
             ) : (
               filtered.sort((a,b) => b.createdAt - a.createdAt).map((post) => (
-                <ForumPostCard 
-                  key={post.id} 
-                  post={post} 
+                <ForumPostCard
+                  key={post.id}
+                  post={post}
                   onDelete={() => {
                     if (window.confirm('Yakin ingin menghapus kiriman ini?')) {
                       deleteMutation.mutate(post.id);
@@ -189,9 +189,9 @@ function ForumPostCard({ post, onDelete, canDelete }: { post: ForumPost; onDelet
               {formatDistanceToNow(post.createdAt, { addSuffix: true, locale: localeId })}
             </span>
             {canDelete && (
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="h-6 w-6 text-muted-foreground hover:text-destructive transition-colors"
                 onClick={onDelete}
               >

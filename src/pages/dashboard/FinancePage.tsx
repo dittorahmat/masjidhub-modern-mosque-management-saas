@@ -9,9 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Wallet, ArrowUpCircle, ArrowDownCircle, Search, Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { PlusCircle, Wallet, ArrowUpCircle, ArrowDownCircle, Search, FileSpreadsheet, FileText } from 'lucide-react';
 import { format } from 'date-fns';
-import { id } from 'date-fns/locale';
+import { id } from 'date-fns/locale/id';
 import { toast } from 'sonner';
 import type { Transaction } from '@shared/types';
 export default function FinancePage() {

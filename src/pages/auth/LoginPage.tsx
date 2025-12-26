@@ -5,12 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api-client';
-import { useAppStore } from '@/lib/store';
+import { useAppActions } from '@/lib/store';
 import { toast } from 'sonner';
 import { Landmark, ShieldAlert } from 'lucide-react';
 export default function LoginPage() {
   const navigate = useNavigate();
-  const setUser = useAppStore(s => s.setUser);
+  const { setUser } = useAppActions();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('admin@masjidhub.com');
   const handleLogin = async (e: React.FormEvent) => {
@@ -23,9 +23,10 @@ export default function LoginPage() {
       });
       setUser(user);
       toast.success('Selamat datang kembali!');
-      if (user.role === 'superadmin') {
+      if (user.role === 'superadmin_platform') {
         navigate('/super-admin/dashboard');
       } else {
+        // Fallback to al-hikmah for demo, real app would use tenant list
         navigate('/app/al-hikmah/dashboard');
       }
     } catch (err: any) {
@@ -43,7 +44,7 @@ export default function LoginPage() {
               <Landmark className="h-8 w-8 text-primary" />
             </div>
             <h1 className="text-3xl font-display font-bold">Masuk ke Portal</h1>
-            <p className="text-muted-foreground">Kelola masjid Anda dengan transparansi digital.</p>
+            <p className="text-muted-foreground text-sm">Kelola masjid Anda dengan transparansi digital.</p>
           </div>
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
@@ -56,7 +57,7 @@ export default function LoginPage() {
                 className="bg-stone-50"
                 placeholder="admin@masjid.org"
               />
-              <p className="text-[10px] text-muted-foreground italic">Use admin@masjidhub.com (Super Admin demo email)</p>
+              <p className="text-[10px] text-muted-foreground italic">Gunakan admin@masjidhub.com untuk Platform Admin.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Kata Sandi</Label>
@@ -75,8 +76,8 @@ export default function LoginPage() {
           <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 flex gap-3">
             <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0" />
             <div className="text-xs text-amber-800 space-y-1">
-              <p className="font-bold">Demo Mode Active</p>
-              <p>Type any email to login as regular admin, or use the default for Super Admin access.</p>
+              <p className="font-bold">Mode Demo Aktif</p>
+              <p>Masukkan email apa saja untuk login sebagai admin reguler.</p>
             </div>
           </div>
           <div className="text-center">

@@ -1,13 +1,14 @@
 import { create } from 'zustand';
 import type { AppUser, Tenant } from '@shared/types';
+interface AppActions {
+  setUser: (user: AppUser | null) => void;
+  setCurrentTenant: (tenant: Tenant | null) => void;
+  logout: () => void;
+}
 interface AppState {
   user: AppUser | null;
   currentTenant: Tenant | null;
-  actions: {
-    setUser: (user: AppUser | null) => void;
-    setCurrentTenant: (tenant: Tenant | null) => void;
-    logout: () => void;
-  };
+  actions: AppActions;
 }
 export const useAppStore = create<AppState>((set) => ({
   user: null,

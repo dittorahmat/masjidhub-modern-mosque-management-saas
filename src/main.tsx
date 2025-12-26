@@ -27,6 +27,8 @@ const EventsPage = lazy(() => import('@/pages/dashboard/EventsPage'));
 const MembersPage = lazy(() => import('@/pages/dashboard/MembersPage'));
 const SettingsPage = lazy(() => import('@/pages/dashboard/SettingsPage'));
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
+const ZisPage = lazy(() => import('@/pages/dashboard/ZisPage'));
+const ForumPage = lazy(() => import('@/pages/dashboard/ForumPage'));
 // Super Admin
 const SuperAdminLayout = lazy(() => import('@/pages/super-admin/SuperAdminLayout'));
 const SuperAdminDashboard = lazy(() => import('@/pages/super-admin/SuperAdminDashboard'));
@@ -40,12 +42,12 @@ const queryClient = new QueryClient({
     },
   },
 });
-function LoadingFallback() {
+function GlobalLoading() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-8 space-y-4">
       <Skeleton className="h-12 w-48" />
       <Skeleton className="h-64 w-full max-w-4xl" />
-      <p className="text-sm text-muted-foreground animate-pulse text-center">Memuat...</p>
+      <p className="text-sm text-muted-foreground animate-pulse text-center">Memuat Platform...</p>
     </div>
   );
 }
@@ -58,7 +60,7 @@ const router = createBrowserRouter([
   {
     path: "/login",
     element: (
-      <Suspense fallback={<LoadingFallback />}>
+      <Suspense fallback={<GlobalLoading />}>
         <LoginPage />
       </Suspense>
     ),
@@ -77,7 +79,7 @@ const router = createBrowserRouter([
   {
     path: "/super-admin",
     element: (
-      <Suspense fallback={<LoadingFallback />}>
+      <Suspense fallback={<GlobalLoading />}>
         <SuperAdminLayout />
       </Suspense>
     ),
@@ -93,22 +95,35 @@ const router = createBrowserRouter([
     element: <DashboardLayout />,
     errorElement: <RouteErrorBoundary />,
     children: [
-      {
-        path: "dashboard",
-        element: <OverviewPage />,
-      },
+      { path: "dashboard", element: <OverviewPage /> },
       {
         path: "finance",
         element: (
-          <Suspense fallback={<LoadingFallback />}>
+          <Suspense fallback={<GlobalLoading />}>
             <FinancePage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "zis",
+        element: (
+          <Suspense fallback={<GlobalLoading />}>
+            <ZisPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "forum",
+        element: (
+          <Suspense fallback={<GlobalLoading />}>
+            <ForumPage />
           </Suspense>
         ),
       },
       {
         path: "inventory",
         element: (
-          <Suspense fallback={<LoadingFallback />}>
+          <Suspense fallback={<GlobalLoading />}>
             <InventoryPage />
           </Suspense>
         ),
@@ -116,7 +131,7 @@ const router = createBrowserRouter([
       {
         path: "events",
         element: (
-          <Suspense fallback={<LoadingFallback />}>
+          <Suspense fallback={<GlobalLoading />}>
             <EventsPage />
           </Suspense>
         ),
@@ -124,7 +139,7 @@ const router = createBrowserRouter([
       {
         path: "members",
         element: (
-          <Suspense fallback={<LoadingFallback />}>
+          <Suspense fallback={<GlobalLoading />}>
             <MembersPage />
           </Suspense>
         ),
@@ -132,7 +147,7 @@ const router = createBrowserRouter([
       {
         path: "settings",
         element: (
-          <Suspense fallback={<LoadingFallback />}>
+          <Suspense fallback={<GlobalLoading />}>
             <SettingsPage />
           </Suspense>
         ),

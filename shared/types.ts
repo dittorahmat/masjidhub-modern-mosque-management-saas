@@ -3,7 +3,7 @@ export interface ApiResponse<T = unknown> {
   data?: T;
   error?: string;
 }
-export type UserRole = 'superadmin' | 'mosque_admin' | 'takmir' | 'jamaah';
+export type UserRole = 'superadmin_platform' | 'dkm_admin' | 'amil_zakat' | 'ustadz' | 'jamaah';
 export interface AppUser {
   id: string;
   name: string;
@@ -15,7 +15,6 @@ export interface User {
   id: string;
   name: string;
 }
-// Restoring types for TemplateDemo.tsx
 export interface Chat {
   id: string;
   title: string;
@@ -36,6 +35,28 @@ export interface Transaction {
   description: string;
   date: number;
   createdBy: string;
+}
+export interface ZisTransaction {
+  id: string;
+  tenantId: string;
+  type: 'zakat_fitrah' | 'zakat_maal' | 'fidyah' | 'infaq_shadaqah';
+  flow: 'in' | 'out';
+  amount: number;
+  muzakki_name?: string;
+  mustahik_id?: string;
+  description: string;
+  date: number;
+}
+export interface ForumPost {
+  id: string;
+  tenantId: string;
+  authorId: string;
+  authorName: string;
+  category: 'kajian' | 'pengumuman' | 'diskusi';
+  title: string;
+  content: string;
+  createdAt: number;
+  isPinned?: boolean;
 }
 export interface InventoryItem {
   id: string;
@@ -77,12 +98,12 @@ export interface Tenant {
   bio?: string;
   status: 'active' | 'pending' | 'suspended';
 }
-// Super Admin Specific Types
 export interface GlobalStats {
   totalTenants: number;
   totalUsers: number;
   totalBalance: number;
   activeEvents: number;
+  pendingApprovals: number;
 }
 export interface TenantWithStats extends Tenant {
   memberCount: number;

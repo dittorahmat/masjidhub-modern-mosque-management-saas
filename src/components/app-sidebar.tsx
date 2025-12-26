@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutDashboard, Wallet, Package, Calendar, Settings, Users, LogOut, ShieldCheck } from "lucide-react";
+import { LayoutDashboard, Wallet, Package, Calendar, Settings, Users, LogOut, ShieldCheck, HeartPulse, MessageSquare } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import {
   Sidebar,
@@ -11,20 +11,23 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
 } from "@/components/ui/sidebar";
-import { useAppStore } from "@/lib/store";
+import { useUser, useCurrentTenant, useAppActions } from "@/lib/store";
 export function AppSidebar(): JSX.Element {
   const { slug } = useParams();
-  const currentTenant = useAppStore(s => s.currentTenant);
-  const user = useAppStore(s => s.user);
-  const logout = useAppStore(s => s.logout);
+  const currentTenant = useCurrentTenant();
+  const user = useUser();
+  const { logout } = useAppActions();
+  const isSuper = user?.role === 'superadmin_platform';
+  const isAdminOrAmil = user?.role === 'dkm_admin' || user?.role === 'amil_zakat' || isSuper;
   const navigation = [
-    { name: "Dasbor", icon: LayoutDashboard, href: `/app/${slug}/dashboard` },
-    { name: "Keuangan", icon: Wallet, href: `/app/${slug}/finance` },
-    { name: "Inventaris", icon: Package, href: `/app/${slug}/inventory` },
-    { name: "Kegiatan", icon: Calendar, href: `/app/${slug}/events` },
-    { name: "Anggota", icon: Users, href: `/app/${slug}/members` },
+    { name: "Dasbor", icon: LayoutDashboard, href: `/app/${slug}/dashboard`, show: true },
+    { name: "Keuangan", icon: Wallet, href: `/app/${slug}/finance`, show: isAdminOrAmil },
+    { name: "ZIS Module", icon: HeartPulse, href: `/app/${slug}/zis`, show: isAdminOrAmil },
+    { name: "Inventaris", icon: Package, href: `/app/${slug}/inventory`, show: isAdminOrAmil },
+    { name: "Kegiatan", icon: Calendar, href: `/app/${slug}/events`, show: true },
+    { name: "Forum Ummat", icon: MessageSquare, href: `/app/${slug}/forum`, show: true },
+    { name: "Anggota", icon: Users, href: `/app/${slug}/members`, show: isAdminOrAmil },
   ];
-  const isSuper = user?.role === 'superadmin';
   return (
     <Sidebar className="border-r">
       <SidebarHeader className="h-16 flex items-center px-4 border-b">
@@ -36,7 +39,7 @@ export function AppSidebar(): JSX.Element {
             <span className="text-sm font-bold font-display truncate w-32">
               {currentTenant?.name || "MasjidHub"}
             </span>
-            <span className="text-xs text-muted-foreground capitalize">
+            <span className="text-[10px] text-muted-foreground capitalize">
               {user?.role.replace('_', ' ') || "Admin"}
             </span>
           </div>
@@ -59,7 +62,7 @@ export function AppSidebar(): JSX.Element {
         )}
         <SidebarGroup>
           <SidebarMenu>
-            {navigation.map((item) => (
+            {navigation.filter(i => i.show).map((item) => (
               <SidebarMenuItem key={item.name}>
                 <SidebarMenuButton asChild tooltip={item.name}>
                   <Link to={item.href} className="flex items-center gap-3">

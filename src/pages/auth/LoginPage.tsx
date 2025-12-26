@@ -8,16 +8,18 @@ import { api } from '@/lib/api-client';
 import { useAppActions } from '@/lib/store';
 import { toast } from 'sonner';
 import { Landmark, ShieldAlert } from 'lucide-react';
+import type { AppUser, Tenant } from '@shared/types';
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { setUser } = useAppActions();
+  const actions = useAppActions();
+  const setUser = actions.setUser;
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('admin@masjidhub.com');
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { user } = await api<any>('/api/auth/login', {
+      const { user } = await api<{ user: AppUser }>('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email })
       });
@@ -25,9 +27,21 @@ export default function LoginPage() {
       toast.success('Selamat datang kembali!');
       if (user.role === 'superadmin_platform') {
         navigate('/super-admin/dashboard');
+      } else if (user.tenantIds.length > 0) {
+        try {
+          // Attempt to find the first tenant slug for redirection
+          const { items } = await api<{ items: Tenant[] }>('/api/super/tenants');
+          const myTenant = items.find(t => user.tenantIds.includes(t.id));
+          if (myTenant) {
+            navigate(`/app/${myTenant.slug}/dashboard`);
+          } else {
+            navigate('/app/al-hikmah/dashboard');
+          }
+        } catch {
+          navigate('/app/al-hikmah/dashboard');
+        }
       } else {
-        // Fallback to al-hikmah for demo, real app would use tenant list
-        navigate('/app/al-hikmah/dashboard');
+        navigate('/');
       }
     } catch (err: any) {
       toast.error(err.message || 'Login gagal');

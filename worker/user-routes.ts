@@ -1,18 +1,19 @@
 import { Hono } from "hono";
 import type { Env } from './core-utils';
-import { 
-  UserEntity, 
-  TenantEntity, 
-  TransactionEntity, 
-  InventoryItemEntity, 
-  EventEntity, 
+import {
+  UserEntity,
+  TenantEntity,
+  TransactionEntity,
+  InventoryItemEntity,
+  EventEntity,
+  EventRegistrationEntity,
   ForumPostEntity,
-  ZisTransactionEntity 
+  ZisTransactionEntity
 } from "./entities";
 import { ok, bad, notFound } from './core-utils';
 export function userRoutes(app: Hono<{ Bindings: Env }>) {
   const getTenantBySlug = async (env: Env, slug: string) => {
-    await TenantEntity.ensureSeed(env); 
+    await TenantEntity.ensureSeed(env);
     await UserEntity.ensureSeed(env);
     const { items } = await TenantEntity.list(env);
     return items.find(t => t.slug === slug);
@@ -55,7 +56,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     }
     return ok(c, { user });
   });
-  // --- SUPER ADMIN ROUTES ---
+  // --- SUPER ADMIN ---
   app.get('/api/super/summary', async (c) => {
     const { items: tenants } = await TenantEntity.list(c.env);
     const { items: users } = await UserEntity.list(c.env);
@@ -92,12 +93,21 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     await inst.patch({ status: 'active' });
     return ok(c, { success: true });
   });
-  // --- TENANT ROUTES (ENFORCED ISOLATION) ---
+  // --- TENANT CONTEXT ROUTES ---
   app.get('/api/tenants/:slug', async (c) => {
     const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
     if (!tenant) return notFound(c, 'Mosque not found');
     return ok(c, tenant);
   });
+  app.put('/api/:slug/settings', async (c) => {
+    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    const inst = new TenantEntity(c.env, tenant.id);
+    await inst.patch(body);
+    return ok(c, await inst.getState());
+  });
+  // Finance
   app.get('/api/:slug/finance', async (c) => {
     const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
     if (!tenant) return notFound(c, 'Tenant not found');
@@ -111,26 +121,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const tx = await TransactionEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id });
     return ok(c, tx);
   });
-  // --- FORUM ROUTES ---
-  app.get('/api/:slug/forum', async (c) => {
-    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await ForumPostEntity.list(c.env);
-    return ok(c, items.filter(p => p.tenantId === tenant.id));
-  });
-  app.post('/api/:slug/forum', async (c) => {
-    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const body = await c.req.json();
-    const post = await ForumPostEntity.create(c.env, { 
-      ...body, 
-      id: crypto.randomUUID(), 
-      tenantId: tenant.id,
-      createdAt: Date.now()
-    });
-    return ok(c, post);
-  });
-  // --- ZIS ROUTES ---
+  // ZIS
   app.get('/api/:slug/zis', async (c) => {
     const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
     if (!tenant) return notFound(c, 'Tenant not found');
@@ -141,12 +132,93 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
     if (!tenant) return notFound(c, 'Tenant not found');
     const body = await c.req.json();
-    const tx = await ZisTransactionEntity.create(c.env, { 
-      ...body, 
-      id: crypto.randomUUID(), 
+    const tx = await ZisTransactionEntity.create(c.env, {
+      ...body,
+      id: crypto.randomUUID(),
       tenantId: tenant.id,
       date: Date.now()
     });
     return ok(c, tx);
+  });
+  // Inventory
+  app.get('/api/:slug/inventory', async (c) => {
+    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await InventoryItemEntity.list(c.env);
+    return ok(c, items.filter(i => i.tenantId === tenant.id));
+  });
+  app.post('/api/:slug/inventory', async (c) => {
+    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    const item = await InventoryItemEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id });
+    return ok(c, item);
+  });
+  // Events
+  app.get('/api/:slug/events', async (c) => {
+    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await EventEntity.list(c.env);
+    return ok(c, items.filter(e => e.tenantId === tenant.id));
+  });
+  app.post('/api/:slug/events', async (c) => {
+    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    const event = await EventEntity.create(c.env, { 
+      ...body, 
+      id: crypto.randomUUID(), 
+      tenantId: tenant.id,
+      currentRegistrations: 0 
+    });
+    return ok(c, event);
+  });
+  app.post('/api/:slug/events/:id/register', async (c) => {
+    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const eventId = c.req.param('id');
+    const body = await c.req.json();
+    const eventInst = new EventEntity(c.env, eventId);
+    if (!(await eventInst.exists())) return notFound(c, 'Event not found');
+    const reg = await EventRegistrationEntity.create(c.env, {
+      id: crypto.randomUUID(),
+      eventId,
+      tenantId: tenant.id,
+      name: body.name,
+      email: body.email,
+      phone: body.phone,
+      registeredAt: Date.now()
+    });
+    await eventInst.mutate(s => ({
+      ...s,
+      currentRegistrations: s.currentRegistrations + 1
+    }));
+    return ok(c, reg);
+  });
+  // Members
+  app.get('/api/:slug/members', async (c) => {
+    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await UserEntity.list(c.env);
+    return ok(c, items.filter(u => u.tenantIds.includes(tenant.id)));
+  });
+  // Forum
+  app.get('/api/:slug/forum', async (c) => {
+    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await ForumPostEntity.list(c.env);
+    return ok(c, items.filter(p => p.tenantId === tenant.id));
+  });
+  app.post('/api/:slug/forum', async (c) => {
+    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    const post = await ForumPostEntity.create(c.env, {
+      ...body,
+      id: crypto.randomUUID(),
+      tenantId: tenant.id,
+      createdAt: Date.now()
+    });
+    return ok(c, post);
   });
 }

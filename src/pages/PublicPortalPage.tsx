@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Landmark, Calendar, MapPin, Wallet, ArrowRight, LayoutDashboard, Copy, Check } from 'lucide-react';
+import { Landmark, Calendar, MapPin, Wallet, ArrowRight, LayoutDashboard, Copy, Check, Home } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -35,20 +35,30 @@ export default function PublicPortalPage() {
     }
   };
   if (loadingTenant) return <div className="h-screen flex items-center justify-center">Memuat portal...</div>;
-  if (!tenant) return <div className="h-screen flex items-center justify-center text-center p-4">Portal tidak ditemukan.</div>;
+  if (!tenant) return <div className="h-screen flex flex-col items-center justify-center text-center p-4 space-y-4">
+    <p className="text-xl font-display font-bold">Portal tidak ditemukan.</p>
+    <Link to="/"><Button variant="outline">Kembali ke Beranda</Button></Link>
+  </div>;
   return (
     <div className="min-h-screen bg-background">
-      {/* Admin Quick Switch */}
-      {user && user.tenantIds.includes(tenant.id) && (
-        <div className="bg-primary/5 border-b py-2 px-4 flex justify-between items-center text-xs">
-          <span className="text-primary font-bold">Anda adalah pengurus masjid ini.</span>
-          <Link to={`/app/${slug}/dashboard`}>
-            <Button variant="link" size="sm" className="h-auto p-0 gap-1">
-              <LayoutDashboard className="h-3 w-3" /> Kembali ke Dasbor
-            </Button>
+      {/* Top Navigation Bar */}
+      <div className="bg-white/80 backdrop-blur-md border-b sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 h-12 flex justify-between items-center text-xs">
+          <Link to="/" className="flex items-center gap-1 text-muted-foreground hover:text-primary font-medium">
+            <Home className="h-3.5 w-3.5" /> MasjidHub Home
           </Link>
+          {user && user.tenantIds.includes(tenant.id) && (
+            <div className="flex items-center gap-4">
+              <span className="text-primary font-bold hidden sm:inline">Portal Pengurus</span>
+              <Link to={`/app/${slug}/dashboard`}>
+                <Button variant="link" size="sm" className="h-auto p-0 gap-1 font-bold">
+                  <LayoutDashboard className="h-3 w-3" /> Dashboard
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
-      )}
+      </div>
       {/* Hero Header */}
       <header className="bg-primary text-white py-16 px-4 md:py-24 overflow-hidden relative">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-32 -mt-32" />
@@ -68,12 +78,12 @@ export default function PublicPortalPage() {
         <div className="grid md:grid-cols-2 gap-8">
           <Card className="illustrative-card p-8 group hover:shadow-xl transition-all">
             <h2 className="text-2xl font-display font-bold mb-4 flex items-center gap-2">
-              <MapPin className="h-6 w-6 text-primary group-hover:bounce" /> Lokasi
+              <MapPin className="h-6 w-6 text-primary" /> Lokasi
             </h2>
             <p className="text-muted-foreground leading-relaxed whitespace-pre-line text-lg">
               {tenant.address || "Hubungi pengurus masjid untuk detail lokasi."}
             </p>
-            <Button variant="link" className="p-0 mt-4 text-primary font-bold">Lihat di Google Maps</Button>
+            <Button variant="link" className="p-0 mt-4 text-primary font-bold">Buka Google Maps ���</Button>
           </Card>
           <Card className="illustrative-card p-8 group hover:shadow-xl transition-all">
             <h2 className="text-2xl font-display font-bold mb-4 flex items-center gap-2">
@@ -86,9 +96,9 @@ export default function PublicPortalPage() {
               <code className="text-sm text-emerald-800 break-words whitespace-pre-line block pr-10 font-mono">
                 {tenant.bankInfo || "Informasi rekening segera hadir."}
               </code>
-              <Button 
-                variant="ghost" 
-                size="icon" 
+              <Button
+                variant="ghost"
+                size="icon"
                 className="absolute top-4 right-4 text-primary hover:bg-primary/10"
                 onClick={handleCopyBank}
               >
@@ -101,12 +111,12 @@ export default function PublicPortalPage() {
         <section className="space-y-10 py-12 md:py-20">
           <div className="text-center space-y-4">
             <h2 className="text-5xl font-display font-bold">Kegiatan Mendatang</h2>
-            <p className="text-muted-foreground text-xl max-w-2xl mx-auto">Bergabunglah dalam program kami dan jadilah bagian aktif dari komunitas.</p>
+            <p className="text-muted-foreground text-xl max-w-2xl mx-auto">Mari bergabung dalam syiar dakwah dan kegiatan sosial kami.</p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {events.filter(e => e.date > Date.now()).length === 0 ? (
               <div className="col-span-full py-24 text-center text-muted-foreground italic illustrative-card bg-stone-50">
-                Belum ada kegiatan mendatang saat ini. Sering-sering cek kembali ya!
+                Belum ada kegiatan mendatang saat ini. Jazakallah Khairan atas kunjungannya.
               </div>
             ) : (
               events.filter(e => e.date > Date.now()).map((event) => (
@@ -120,7 +130,7 @@ export default function PublicPortalPage() {
         <div className="max-w-7xl mx-auto px-4 text-center">
           <Landmark className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
           <p className="font-display font-bold text-xl text-foreground mb-2">{tenant.name}</p>
-          <p className="text-muted-foreground mb-8">Rumah Ibadah Anda, Digital & Transparan.</p>
+          <p className="text-muted-foreground mb-8">Digitalisasi Masjid untuk Kemaslahatan Ummat.</p>
           <div className="h-px w-24 bg-stone-300 mx-auto mb-8" />
           <p className="text-sm text-muted-foreground">© 2024 Ditenagai oleh <span className="text-primary font-bold">MasjidHub</span></p>
         </div>
@@ -138,7 +148,7 @@ function EventPublicCard({ event, slug }: { event: Event, slug: string }) {
     onSuccess: () => {
       setOpen(false);
       toast.success('Pendaftaran Berhasil!', {
-        description: `Anda telah terdaftar untuk ${event.title}. Jazakallah Khairan.`
+        description: `Konfirmasi pendaftaran untuk "${event.title}" telah diterima. Sampai jumpa di kegiatan!`
       });
     }
   });
@@ -164,7 +174,7 @@ function EventPublicCard({ event, slug }: { event: Event, slug: string }) {
       </CardHeader>
       <CardContent className="p-8 flex-1 flex flex-col justify-between space-y-6">
         <div className="space-y-6">
-          <p className="text-muted-foreground leading-relaxed">{event.description}</p>
+          <p className="text-muted-foreground leading-relaxed line-clamp-3">{event.description}</p>
           <div className="space-y-3 text-foreground/80">
             <div className="flex items-center gap-3"><Calendar className="h-5 w-5 text-primary" /> {format(event.date, 'PPP p', { locale: id })}</div>
             <div className="flex items-center gap-3"><MapPin className="h-5 w-5 text-primary" /> {event.location}</div>
@@ -173,28 +183,28 @@ function EventPublicCard({ event, slug }: { event: Event, slug: string }) {
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button className="w-full h-14 text-lg rounded-2xl mt-4 shadow-lg group-hover:scale-[1.02] transition-all" disabled={isFull}>
-              {isFull ? 'Kuota Penuh' : 'Daftar Gratis'} <ArrowRight className="ml-2 h-5 w-5" />
+              {isFull ? 'Kuota Penuh' : 'Daftar Sekarang'} <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
           </DialogTrigger>
           <DialogContent className="rounded-3xl">
             <DialogHeader>
-              <DialogTitle className="text-2xl font-display">Daftar untuk {event.title}</DialogTitle>
+              <DialogTitle className="text-2xl font-display">Formulir Pendaftaran</DialogTitle>
             </DialogHeader>
             <form onSubmit={handleRegister} className="space-y-6 pt-6">
               <div className="space-y-2">
                 <Label>Nama Lengkap</Label>
-                <Input name="name" required placeholder="Ahmad Fikri" className="h-12" />
+                <Input name="name" required placeholder="Contoh: Ahmad Abdullah" className="h-12" />
               </div>
               <div className="space-y-2">
                 <Label>Alamat Email</Label>
                 <Input name="email" type="email" required placeholder="ahmad@email.com" className="h-12" />
               </div>
               <div className="space-y-2">
-                <Label>Nomor Telepon (WhatsApp)</Label>
+                <Label>Nomor WhatsApp</Label>
                 <Input name="phone" required placeholder="0812..." className="h-12" />
               </div>
               <Button type="submit" className="w-full h-14 text-lg rounded-2xl" disabled={mutation.isPending}>
-                {mutation.isPending ? 'Memproses...' : 'Konfirmasi Pendaftaran'}
+                {mutation.isPending ? 'Mendaftarkan...' : 'Konfirmasi Pendaftaran'}
               </Button>
             </form>
           </DialogContent>

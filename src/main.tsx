@@ -146,18 +146,16 @@ const router = createBrowserRouter([
     ]
   }
 ]);
-// Use a global to store the root to prevent double-initialization in HMR
-declare global {
-  interface Window {
-    __reactRoot?: Root;
-  }
-}
 const rootElement = document.getElementById('root');
 if (rootElement) {
-  if (!window.__reactRoot) {
-    window.__reactRoot = createRoot(rootElement);
+  // Clean up existing root for HMR (React Refresh safe)
+  const existingRoot = (rootElement as any)._reactRootContainer?._internalRoot;
+  if (existingRoot) {
+    existingRoot.unmount();
   }
-  window.__reactRoot.render(
+  
+  const root = createRoot(rootElement);
+  root.render(
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <ErrorBoundary>

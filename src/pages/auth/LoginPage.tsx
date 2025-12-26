@@ -39,14 +39,16 @@ export default function LoginPage() {
         navigate('/super-admin/dashboard');
       } else if (user.tenantIds.length > 0) {
         try {
-          const { items } = await api<{ items: Tenant[] }>('/api/super/tenants');
-          const myTenant = items.find(t => user.tenantIds.includes(t.id));
+          // Fix: Backend returns Tenant[] array directly for /api/super/tenants
+          const tenants = await api<Tenant[]>('/api/super/tenants');
+          const myTenant = tenants.find(t => user.tenantIds.includes(t.id));
           if (myTenant) {
             navigate(`/app/${myTenant.slug}/dashboard`);
           } else {
             navigate('/app/al-hikmah/dashboard');
           }
-        } catch {
+        } catch (error) {
+          console.error("Login redirect failed", error);
           navigate('/app/al-hikmah/dashboard');
         }
       } else {

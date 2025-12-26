@@ -132,11 +132,11 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
     if (!tenant) return notFound(c, 'Tenant not found');
     const body = await c.req.json();
-    const tx = await ZisTransactionEntity.create(c.env, {
-      ...body,
-      id: crypto.randomUUID(),
-      tenantId: tenant.id,
-      date: Date.now()
+    const tx = await ZisTransactionEntity.create(c.env, { 
+      ...body, 
+      id: crypto.randomUUID(), 
+      tenantId: tenant.id, 
+      date: Date.now() 
     });
     return ok(c, tx);
   });
@@ -168,7 +168,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const event = await EventEntity.create(c.env, { 
       ...body, 
       id: crypto.randomUUID(), 
-      tenantId: tenant.id,
+      tenantId: tenant.id, 
       currentRegistrations: 0 
     });
     return ok(c, event);
@@ -213,12 +213,21 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
     if (!tenant) return notFound(c, 'Tenant not found');
     const body = await c.req.json();
-    const post = await ForumPostEntity.create(c.env, {
-      ...body,
-      id: crypto.randomUUID(),
-      tenantId: tenant.id,
-      createdAt: Date.now()
+    const post = await ForumPostEntity.create(c.env, { 
+      ...body, 
+      id: crypto.randomUUID(), 
+      tenantId: tenant.id, 
+      createdAt: Date.now() 
     });
     return ok(c, post);
+  });
+  app.delete('/api/:slug/forum/:id', async (c) => {
+    const tenant = await getTenantBySlug(c.env, c.req.param('slug'));
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    const inst = new ForumPostEntity(c.env, id);
+    if (!(await inst.exists())) return notFound(c, 'Post not found');
+    await ForumPostEntity.delete(c.env, id);
+    return ok(c, { success: true });
   });
 }

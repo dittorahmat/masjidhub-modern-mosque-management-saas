@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
-import { useUserId, useUserName } from '@/lib/store';
+import { useUserId, useUserName, useUserRole } from '@/lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Plus, Search, Tag, Pin } from 'lucide-react';
+import { MessageSquare, Plus, Search, Tag, Pin, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -21,6 +21,7 @@ export default function ForumPage() {
   const { slug } = useParams();
   const userId = useUserId();
   const userName = useUserName();
+  const userRole = useUserRole();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -37,6 +38,18 @@ export default function ForumPage() {
       queryClient.invalidateQueries({ queryKey: ['forum', slug] });
       toast.success('Kiriman berhasil dipublikasikan');
       setIsDialogOpen(false);
+    }
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (postId: string) => api(`/api/${slug}/forum/${postId}`, {
+      method: 'DELETE'
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forum', slug] });
+      toast.success('Kiriman berhasil dihapus');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal menghapus kiriman');
     }
   });
   const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
@@ -140,7 +153,16 @@ export default function ForumPage() {
               </div>
             ) : (
               filtered.sort((a,b) => b.createdAt - a.createdAt).map((post) => (
-                <ForumPostCard key={post.id} post={post} />
+                <ForumPostCard 
+                  key={post.id} 
+                  post={post} 
+                  onDelete={() => {
+                    if (window.confirm('Yakin ingin menghapus kiriman ini?')) {
+                      deleteMutation.mutate(post.id);
+                    }
+                  }}
+                  canDelete={userId === post.authorId || userRole === 'superadmin_platform' || userRole === 'dkm_admin'}
+                />
               ))
             )}
           </div>
@@ -149,7 +171,7 @@ export default function ForumPage() {
     </div>
   );
 }
-function ForumPostCard({ post }: { post: ForumPost }) {
+function ForumPostCard({ post, onDelete, canDelete }: { post: ForumPost; onDelete: () => void; canDelete: boolean }) {
   return (
     <Card className="illustrative-card hover:border-primary/50 transition-colors group">
       <CardContent className="p-6 space-y-4">
@@ -162,9 +184,21 @@ function ForumPostCard({ post }: { post: ForumPost }) {
               </Badge>
             )}
           </div>
-          <span className="text-xs text-muted-foreground">
-            {formatDistanceToNow(post.createdAt, { addSuffix: true, locale: localeId })}
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground">
+              {formatDistanceToNow(post.createdAt, { addSuffix: true, locale: localeId })}
+            </span>
+            {canDelete && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 text-muted-foreground hover:text-destructive transition-colors"
+                onClick={onDelete}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
         <div>
           <h3 className="text-xl font-display font-bold group-hover:text-primary transition-colors">{post.title}</h3>

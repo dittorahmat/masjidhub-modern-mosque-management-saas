@@ -1,11 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, Navigate, Outlet, Link } from 'react-router-dom';
 import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAppStore, useTenantStatus, useTenantName, useUserId, useUserTenantIds } from '@/lib/store';
 import { api } from '@/lib/api-client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Clock, ShieldAlert } from 'lucide-react';
+import { Clock, ShieldAlert, SearchX } from 'lucide-react';
 import type { Tenant } from '@shared/types';
 export function DashboardLayout() {
   const { slug } = useParams();
@@ -16,16 +16,21 @@ export function DashboardLayout() {
   const currentTenantId = useAppStore(s => s.currentTenant?.id);
   const actions = useAppStore(s => s.actions);
   const setCurrentTenant = actions.setCurrentTenant;
+  const [isError, setIsError] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   useEffect(() => {
     async function loadTenant() {
       if (!slug) return;
-      // Reset current tenant to show loading state on slug change
-      setCurrentTenant(null);
+      setIsFetching(true);
+      setIsError(false);
       try {
         const tenant = await api<Tenant>(`/api/tenants/${slug}`);
         setCurrentTenant(tenant);
       } catch (err) {
         console.error(`Failed to load tenant ${slug}`, err);
+        setIsError(true);
+      } finally {
+        setIsFetching(false);
       }
     }
     loadTenant();
@@ -33,6 +38,38 @@ export function DashboardLayout() {
   // Auth Guard
   if (!userId && slug !== 'al-hikmah') {
     return <Navigate to="/login" replace />;
+  }
+  // 404 Guard
+  if (isError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-6 text-center">
+        <div className="max-w-md w-full space-y-6 illustrative-card p-10">
+          <SearchX className="h-16 w-16 text-muted-foreground mx-auto" />
+          <h1 className="text-2xl font-display font-bold">Masjid Tidak Ditemukan</h1>
+          <p className="text-muted-foreground">Slug portal "{slug}" tidak terdaftar dalam sistem kami.</p>
+          <div className="pt-4">
+            <Link to="/" className="text-primary font-bold hover:underline">Kembali ke Beranda</Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  // Loading state
+  if (isFetching && !tenantName) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center p-8 space-y-6">
+        <div className="space-y-2 text-center">
+          <Skeleton className="h-10 w-64 mx-auto" />
+          <Skeleton className="h-4 w-48 mx-auto" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl">
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+          <Skeleton className="h-32 rounded-2xl" />
+        </div>
+        <Skeleton className="h-[400px] w-full max-w-5xl rounded-2xl" />
+      </div>
+    );
   }
   // Tenant Access Guard (Skip for Public/Demo slug)
   const hasAccess = slug === 'al-hikmah' || (currentTenantId && userTenantIds.includes(currentTenantId));
@@ -65,22 +102,6 @@ export function DashboardLayout() {
             <Link to="/" className="text-primary font-bold hover:underline">Kembali ke Beranda</Link>
           </div>
         </div>
-      </div>
-    );
-  }
-  if (!tenantName && slug) {
-    return (
-      <div className="h-screen flex flex-col items-center justify-center p-8 space-y-6">
-        <div className="space-y-2 text-center">
-          <Skeleton className="h-10 w-64 mx-auto" />
-          <Skeleton className="h-4 w-48 mx-auto" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl">
-          <Skeleton className="h-32 rounded-2xl" />
-          <Skeleton className="h-32 rounded-2xl" />
-          <Skeleton className="h-32 rounded-2xl" />
-        </div>
-        <Skeleton className="h-[400px] w-full max-w-5xl rounded-2xl" />
       </div>
     );
   }

@@ -5,9 +5,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useNavigate } from 'react-router-dom';
 import { api } from '@/lib/api-client';
+import { useAppActions } from '@/lib/store';
 import { toast } from 'sonner';
+import type { AppUser, Tenant } from '@shared/types';
 export function RegisterMosquePage() {
   const navigate = useNavigate();
+  const actions = useAppActions();
+  const setUser = actions.setUser;
+  const setCurrentTenant = actions.setCurrentTenant;
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -19,10 +24,13 @@ export function RegisterMosquePage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await api('/api/auth/register', {
+      const response = await api<{ user: AppUser; tenant: Tenant }>('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(form)
       });
+      // Ensure user session is active before navigation to avoid access guard triggers
+      setUser(response.user);
+      setCurrentTenant(response.tenant);
       toast.success('Masjid berhasil didaftarkan!');
       navigate(`/app/${form.slug.toLowerCase()}/dashboard`);
     } catch (err: any) {

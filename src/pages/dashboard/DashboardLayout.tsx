@@ -13,6 +13,7 @@ export function DashboardLayout() {
   const userTenantIds = useUserTenantIds();
   const tenantStatus = useTenantStatus();
   const tenantName = useTenantName();
+  const currentTenantId = useAppStore(s => s.currentTenant?.id);
   const actions = useAppStore(s => s.actions);
   const setCurrentTenant = actions.setCurrentTenant;
   useEffect(() => {
@@ -34,7 +35,6 @@ export function DashboardLayout() {
     return <Navigate to="/login" replace />;
   }
   // Tenant Access Guard (Skip for Public/Demo slug)
-  const currentTenantId = useAppStore(s => s.currentTenant?.id);
   const hasAccess = slug === 'al-hikmah' || (currentTenantId && userTenantIds.includes(currentTenantId));
   if (currentTenantId && !hasAccess) {
     return (

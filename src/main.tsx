@@ -28,7 +28,14 @@ const MembersPage = lazy(() => import('@/pages/dashboard/MembersPage'));
 const SettingsPage = lazy(() => import('@/pages/dashboard/SettingsPage'));
 const LoginPage = lazy(() => import('@/pages/auth/LoginPage'));
 const ZisPage = lazy(() => import('@/pages/dashboard/ZisPage'));
+const ZisReportPage = lazy(() => import('@/pages/dashboard/ZisReportPage'));
+const ZisPaymentPage = lazy(() => import('@/pages/dashboard/ZisPaymentPage'));
 const ForumPage = lazy(() => import('@/pages/dashboard/ForumPage'));
+const PrayerSchedulePage = lazy(() => import('@/pages/dashboard/PrayerSchedulePage'));
+const NotificationPage = lazy(() => import('@/pages/dashboard/NotificationPage'));
+const ChatUstadzPage = lazy(() => import('@/pages/dashboard/ChatUstadzPage'));
+const SearchPage = lazy(() => import('@/pages/dashboard/SearchPage'));
+const QrCodePage = lazy(() => import('@/pages/dashboard/QrCodePage'));
 // Super Admin
 const SuperAdminLayout = lazy(() => import('@/pages/super-admin/SuperAdminLayout'));
 const SuperAdminDashboard = lazy(() => import('@/pages/super-admin/SuperAdminDashboard'));
@@ -104,6 +111,22 @@ const router = createBrowserRouter([
         ),
       },
       {
+        path: "zis/report",
+        element: (
+          <Suspense fallback={<GlobalLoading />}>
+            <ZisReportPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "zis/payment",
+        element: (
+          <Suspense fallback={<GlobalLoading />}>
+            <ZisPaymentPage />
+          </Suspense>
+        ),
+      },
+      {
         path: "forum",
         element: (
           <Suspense fallback={<GlobalLoading />}>
@@ -140,6 +163,46 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<GlobalLoading />}>
             <SettingsPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "jadwal-sholat",
+        element: (
+          <Suspense fallback={<GlobalLoading />}>
+            <PrayerSchedulePage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "notifikasi",
+        element: (
+          <Suspense fallback={<GlobalLoading />}>
+            <NotificationPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "chat-ustadz",
+        element: (
+          <Suspense fallback={<GlobalLoading />}>
+            <ChatUstadzPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "search",
+        element: (
+          <Suspense fallback={<GlobalLoading />}>
+            <SearchPage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "qr-code",
+        element: (
+          <Suspense fallback={<GlobalLoading />}>
+            <QrCodePage />
           </Suspense>
         ),
       }

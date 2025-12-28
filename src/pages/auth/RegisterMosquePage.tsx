@@ -18,10 +18,39 @@ export function RegisterMosquePage() {
     name: '',
     email: '',
     mosqueName: '',
-    slug: ''
+    slug: '',
+    address: '',
+    legalDocUrl: ''
   });
+  const [slugAvailable, setSlugAvailable] = useState<boolean | null>(null);
+  const [checkingSlug, setCheckingSlug] = useState(false);
+  const checkSlugAvailability = async (slug: string) => {
+    if (!slug) {
+      setSlugAvailable(null);
+      return;
+    }
+
+    setCheckingSlug(true);
+    try {
+      const response = await api<{ available: boolean; slug: string }>(`/api/check-subdomain/${slug}`);
+      setSlugAvailable(response.available);
+    } catch (err) {
+      setSlugAvailable(null);
+      console.error('Error checking slug availability:', err);
+    } finally {
+      setCheckingSlug(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Check slug availability before submitting
+    if (slugAvailable === false) {
+      toast.error('Slug sudah digunakan. Silakan pilih slug lain.');
+      return;
+    }
+
     setLoading(true);
     try {
       const response = await api<{ user: AppUser; tenant: Tenant }>('/api/auth/register', {
@@ -65,10 +94,33 @@ export function RegisterMosquePage() {
               <div className="flex flex-col gap-1">
                 <div className="flex items-center gap-2">
                   <span className="text-muted-foreground text-xs hidden sm:inline">masjidhub.com/app/</span>
-                  <Input id="slug" required placeholder="al-noor" value={form.slug} onChange={e => setForm({...form, slug: e.target.value.toLowerCase().replace(/\s/g, '-')})} />
+                  <Input
+                    id="slug"
+                    required
+                    placeholder="al-noor"
+                    value={form.slug}
+                    onChange={e => {
+                      const newSlug = e.target.value.toLowerCase().replace(/\s/g, '-');
+                      setForm({...form, slug: newSlug});
+                      checkSlugAvailability(newSlug);
+                    }}
+                    className={slugAvailable === false ? 'border-red-500' : slugAvailable === true ? 'border-green-500' : ''}
+                  />
                 </div>
+                {checkingSlug && <p className="text-[10px] text-muted-foreground">Memeriksa ketersediaan...</p>}
+                {slugAvailable === false && <p className="text-[10px] text-red-500">Slug sudah digunakan. Silakan pilih slug lain.</p>}
+                {slugAvailable === true && <p className="text-[10px] text-green-500">Slug tersedia!</p>}
                 <p className="text-[10px] text-muted-foreground italic">Gunakan huruf kecil dan tanda hubung saja.</p>
               </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="address">Alamat Lengkap Masjid</Label>
+              <Input id="address" required placeholder="Jl. Raya No. 123, Kota, Provinsi" value={form.address} onChange={e => setForm({...form, address: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="legalDocUrl">Dokumen Legalitas (URL)</Label>
+              <Input id="legalDocUrl" type="url" placeholder="https://example.com/legal-doc.pdf" value={form.legalDocUrl} onChange={e => setForm({...form, legalDocUrl: e.target.value})} />
+              <p className="text-[10px] text-muted-foreground italic">Upload dokumen legalitas Anda dan masukkan URL-nya di sini.</p>
             </div>
             <Button type="submit" className="w-full h-12 text-lg" disabled={loading}>
               {loading ? 'Sedang Membuat...' : 'Luncurkan Portal Masjid'}

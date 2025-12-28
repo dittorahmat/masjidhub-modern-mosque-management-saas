@@ -10,6 +10,9 @@ export class TenantEntity extends IndexedEntity<Tenant> {
     ownerId: "",
     createdAt: 0,
     address: "",
+    logoUrl: "",
+    bannerUrl: "",
+    runningText: "",
     bankInfo: "",
     bio: "",
     status: 'active'
@@ -22,6 +25,9 @@ export class TenantEntity extends IndexedEntity<Tenant> {
       ownerId: "u1",
       createdAt: Date.now(),
       address: "Jl. Sudirman No. 12, Jakarta",
+      logoUrl: "https://placehold.co/100x100?text=MH",
+      bannerUrl: "https://placehold.co/800x200?text=Masjid+Al-Hikmah",
+      runningText: "Selamat datang di Portal Masjid Al-Hikmah",
       bankInfo: "BSI 7123456789 a/n Masjid Al-Hikmah",
       bio: "A community-focused mosque dedicated to religious education and social welfare.",
       status: 'active'
@@ -36,7 +42,8 @@ export class UserEntity extends IndexedEntity<AppUser> {
     name: "",
     email: "",
     role: "jamaah",
-    tenantIds: []
+    tenantIds: [],
+    isBanned: false
   };
   static seedData: AppUser[] = [
     {
@@ -44,7 +51,8 @@ export class UserEntity extends IndexedEntity<AppUser> {
       name: "Admin Utama",
       email: "admin@masjidhub.com",
       role: "superadmin_platform",
-      tenantIds: ["t1"]
+      tenantIds: ["t1"],
+      isBanned: false
     }
   ];
 }
@@ -85,7 +93,9 @@ export class EventEntity extends IndexedEntity<Event> {
     date: 0,
     location: "",
     capacity: 0,
-    currentRegistrations: 0
+    currentRegistrations: 0,
+    speaker: "",
+    minDonation: 0
   };
 }
 export class EventRegistrationEntity extends IndexedEntity<EventRegistration> {
@@ -125,6 +135,87 @@ export class ZisTransactionEntity extends IndexedEntity<ZisTransaction> {
     flow: 'in',
     amount: 0,
     description: "",
-    date: 0
+    date: 0,
+    payment_method: 'cash',
+    payment_status: 'pending'
+  };
+}
+
+export class PrayerScheduleEntity extends IndexedEntity<PrayerSchedule> {
+  static readonly entityName = "prayer_schedule";
+  static readonly indexName = "prayer_schedules";
+  static readonly initialState: PrayerSchedule = {
+    id: "",
+    tenantId: "",
+    day: 'sunday',
+    prayerTime: 'fajr',
+    time: "05:00",
+    imamName: "",
+    khatibName: ""
+  };
+}
+
+export class NotificationEntity extends IndexedEntity<Notification> {
+  static readonly entityName = "notification";
+  static readonly indexName = "notifications";
+  static readonly initialState: Notification = {
+    id: "",
+    tenantId: "",
+    title: "",
+    message: "",
+    type: 'info',
+    createdAt: 0,
+    isBroadcast: false
+  };
+}
+
+export class ChatRoomEntity extends IndexedEntity<ChatRoom> {
+  static readonly entityName = "chat_room";
+  static readonly indexName = "chat_rooms";
+  static readonly initialState: ChatRoom = {
+    id: "",
+    tenantId: "",
+    name: "",
+    participants: [],
+    createdAt: 0
+  };
+}
+
+export class ChatMessageEntity extends IndexedEntity<ChatMessage> {
+  static readonly entityName = "chat_message";
+  static readonly indexName = "chat_messages";
+  static readonly initialState: ChatMessage = {
+    id: "",
+    chatRoomId: "",
+    senderId: "",
+    senderName: "",
+    message: "",
+    timestamp: 0
+  };
+}
+
+export class UstadzEntity extends IndexedEntity<Ustadz> {
+  static readonly entityName = "ustadz";
+  static readonly indexName = "ustadz";
+  static readonly initialState: Ustadz = {
+    id: "",
+    tenantId: "",
+    name: "",
+    specialization: "",
+    isActive: true,
+    createdAt: 0
+  };
+}
+
+export class MustahikEntity extends IndexedEntity<Mustahik> {
+  static readonly entityName = "mustahik";
+  static readonly indexName = "mustahik";
+  static readonly initialState: Mustahik = {
+    id: "",
+    tenantId: "",
+    name: "",
+    category: 'miskin',
+    status: 'active',
+    registrationDate: Date.now()
   };
 }

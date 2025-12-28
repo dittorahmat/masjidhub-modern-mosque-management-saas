@@ -66,6 +66,21 @@ export default function SettingsPage() {
                     <Textarea id="bio" name="bio" defaultValue={tenant?.bio} placeholder="Deskripsi singkat masjid Anda..." className="h-32" />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="logoUrl">Logo Masjid (URL)</Label>
+                    <Input id="logoUrl" name="logoUrl" type="url" defaultValue={tenant?.logoUrl} placeholder="https://example.com/logo.png" />
+                    <p className="text-[10px] text-muted-foreground italic">Gunakan URL gambar logo masjid Anda (format: PNG, JPG, SVG)</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="bannerUrl">Banner Utama (URL)</Label>
+                    <Input id="bannerUrl" name="bannerUrl" type="url" defaultValue={tenant?.bannerUrl} placeholder="https://example.com/banner.jpg" />
+                    <p className="text-[10px] text-muted-foreground italic">Gambar banner untuk tampilan utama portal (format: JPG, PNG)</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="runningText">Teks Berjalan</Label>
+                    <Input id="runningText" name="runningText" defaultValue={tenant?.runningText} placeholder="Selamat datang di Portal Masjid..." />
+                    <p className="text-[10px] text-muted-foreground italic">Teks yang akan muncul di bagian atas portal sebagai pengumuman</p>
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="slug">Slug Unik (URL)</Label>
                     <Input id="slug" value={`masjidhub.com/portal/${tenant?.slug}`} disabled className="bg-stone-50" />
                   </div>

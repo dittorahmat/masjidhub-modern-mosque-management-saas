@@ -5,7 +5,7 @@ import { api } from '@/lib/api-client';
 import { useUserId, useUserName, useUserRole } from '@/lib/store';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MessageSquare, Plus, Search, Tag, Pin, Trash2 } from 'lucide-react';
+import { MessageSquare, Plus, Search, Tag, Pin, Trash2, UserX, UserCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { ForumPost } from '@shared/types';
+import type { ForumPost, AppUser } from '@shared/types';
 import { formatDistanceToNow } from 'date-fns';
 import { id as localeId } from 'date-fns/locale/id';
 export default function ForumPage() {
@@ -29,6 +29,12 @@ export default function ForumPage() {
     queryKey: ['forum', slug],
     queryFn: () => api<ForumPost[]>(`/api/${slug}/forum`)
   });
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['users', slug],
+    queryFn: () => api<AppUser[]>(`/api/${slug}/users`)
+  });
+
   const createMutation = useMutation({
     mutationFn: (newPost: Partial<ForumPost>) => api(`/api/${slug}/forum`, {
       method: 'POST',
@@ -52,6 +58,61 @@ export default function ForumPage() {
       toast.error(err.message || 'Gagal menghapus kiriman');
     }
   });
+
+  const pinMutation = useMutation({
+    mutationFn: (postId: string) => api(`/api/${slug}/forum/${postId}/pin`, {
+      method: 'POST'
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forum', slug] });
+      toast.success('Kiriman berhasil dipin');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal memin kiriman');
+    }
+  });
+
+  const unpinMutation = useMutation({
+    mutationFn: (postId: string) => api(`/api/${slug}/forum/${postId}/unpin`, {
+      method: 'POST'
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forum', slug] });
+      toast.success('Kiriman berhasil diunpin');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal mengunpin kiriman');
+    }
+  });
+
+  const banUserMutation = useMutation({
+    mutationFn: (userIdToBan: string) => api(`/api/${slug}/users/${userIdToBan}/ban`, {
+      method: 'POST'
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users', slug] });
+      queryClient.invalidateQueries({ queryKey: ['forum', slug] });
+      toast.success('Pengguna berhasil diblokir');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal memblokir pengguna');
+    }
+  });
+
+  const unbanUserMutation = useMutation({
+    mutationFn: (userIdToUnban: string) => api(`/api/${slug}/users/${userIdToUnban}/unban`, {
+      method: 'POST'
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users', slug] });
+      queryClient.invalidateQueries({ queryKey: ['forum', slug] });
+      toast.success('Pemblokiran pengguna berhasil dibatalkan');
+    },
+    onError: (err: any) => {
+      toast.error(err.message || 'Gagal membatalkan pemblokiran pengguna');
+    }
+  });
+
   const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!userId || !userName) return toast.error('Anda harus login untuk memposting');
@@ -64,10 +125,26 @@ export default function ForumPage() {
       authorName: userName,
     });
   };
+
+  const handleBanUser = (authorId: string) => {
+    if (window.confirm('Yakin ingin memblokir pengguna ini?')) {
+      banUserMutation.mutate(authorId);
+    }
+  };
+
+  const handleUnbanUser = (authorId: string) => {
+    if (window.confirm('Yakin ingin membatalkan pemblokiran pengguna ini?')) {
+      unbanUserMutation.mutate(authorId);
+    }
+  };
+
   const filtered = posts.filter(p =>
     p.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     p.content.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const getUserById = (id: string) => users.find(u => u.id === id);
+
   return (
     <div className="space-y-8 animate-fade-in-up">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -132,6 +209,48 @@ export default function ForumPage() {
               </Button>
             </CardContent>
           </Card>
+
+          <Card className="illustrative-card">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Daftar Pengguna</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 max-h-96 overflow-y-auto">
+              {users.map(user => (
+                <div key={user.id} className="flex items-center justify-between p-2 hover:bg-stone-50 rounded">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-emerald-100 flex items-center justify-center text-xs font-bold text-emerald-700">
+                      {user.name[0]}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{user.name}</p>
+                      <p className="text-xs text-muted-foreground">{user.role.replace('_', ' ')}</p>
+                    </div>
+                  </div>
+                  {user.isBanned ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleUnbanUser(user.id)}
+                      className="h-8 px-2 gap-1"
+                    >
+                      <UserCheck className="h-3 w-3" />
+                      Batal
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleBanUser(user.id)}
+                      className="h-8 px-2 gap-1 text-destructive border-destructive hover:bg-destructive/10"
+                    >
+                      <UserX className="h-3 w-3" />
+                      Blokir
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
         <div className="lg:col-span-3 space-y-6">
           <div className="relative">
@@ -152,7 +271,7 @@ export default function ForumPage() {
                 <p className="text-muted-foreground">Belum ada diskusi. Jadilah yang pertama!</p>
               </div>
             ) : (
-              filtered.sort((a,b) => b.createdAt - a.createdAt).map((post) => (
+              filtered.sort((a,b) => (b.isPinned ? 1 : 0) - (a.isPinned ? 1 : 0) || b.createdAt - a.createdAt).map((post) => (
                 <ForumPostCard
                   key={post.id}
                   post={post}
@@ -161,7 +280,17 @@ export default function ForumPage() {
                       deleteMutation.mutate(post.id);
                     }
                   }}
+                  onPin={() => {
+                    pinMutation.mutate(post.id);
+                  }}
+                  onUnpin={() => {
+                    unpinMutation.mutate(post.id);
+                  }}
                   canDelete={userId === post.authorId || userRole === 'superadmin_platform' || userRole === 'dkm_admin'}
+                  canPin={userRole === 'superadmin_platform' || userRole === 'dkm_admin'}
+                  canBan={userRole === 'superadmin_platform' || userRole === 'dkm_admin'}
+                  onBanUser={() => handleBanUser(post.authorId)}
+                  getUserById={getUserById}
                 />
               ))
             )}
@@ -171,9 +300,32 @@ export default function ForumPage() {
     </div>
   );
 }
-function ForumPostCard({ post, onDelete, canDelete }: { post: ForumPost; onDelete: () => void; canDelete: boolean }) {
+function ForumPostCard({
+  post,
+  onDelete,
+  canDelete,
+  onPin,
+  onUnpin,
+  canPin,
+  canBan,
+  onBanUser,
+  getUserById
+}: {
+  post: ForumPost;
+  onDelete: () => void;
+  canDelete: boolean;
+  onPin: () => void;
+  onUnpin: () => void;
+  canPin: boolean;
+  canBan: boolean;
+  onBanUser: () => void;
+  getUserById: (id: string) => any;
+}) {
+  const user = getUserById(post.authorId);
+  const isBanned = user?.isBanned;
+
   return (
-    <Card className="illustrative-card hover:border-primary/50 transition-colors group">
+    <Card className={`illustrative-card hover:border-primary/50 transition-colors group ${isBanned ? 'opacity-60' : ''}`}>
       <CardContent className="p-6 space-y-4">
         <div className="flex justify-between items-start">
           <div className="flex items-center gap-2">
@@ -183,11 +335,27 @@ function ForumPostCard({ post, onDelete, canDelete }: { post: ForumPost; onDelet
                 <Pin className="h-3 w-3" /> Dipin
               </Badge>
             )}
+            {isBanned && (
+              <Badge variant="destructive" className="gap-1">
+                <UserX className="h-3 w-3" /> Diblokir
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <span className="text-xs text-muted-foreground">
               {formatDistanceToNow(post.createdAt, { addSuffix: true, locale: localeId })}
             </span>
+            {canPin && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-primary transition-colors"
+                onClick={post.isPinned ? onUnpin : onPin}
+                title={post.isPinned ? 'Lepas pin' : 'Pin kiriman'}
+              >
+                <Pin className={`h-4 w-4 ${post.isPinned ? 'fill-current text-amber-500' : ''}`} />
+              </Button>
+            )}
             {canDelete && (
               <Button
                 variant="ghost"
@@ -196,6 +364,17 @@ function ForumPostCard({ post, onDelete, canDelete }: { post: ForumPost; onDelet
                 onClick={onDelete}
               >
                 <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+            {canBan && !isBanned && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 text-muted-foreground hover:text-destructive transition-colors"
+                onClick={onBanUser}
+                title="Blokir pengguna"
+              >
+                <UserX className="h-4 w-4" />
               </Button>
             )}
           </div>
@@ -210,6 +389,11 @@ function ForumPostCard({ post, onDelete, canDelete }: { post: ForumPost; onDelet
               {post.authorName ? post.authorName[0] : '?'}
             </div>
             <span className="text-xs font-bold">{post.authorName || 'Anonim'}</span>
+            {isBanned && (
+              <Badge variant="destructive" className="text-[10px] h-5">
+                Diblokir
+              </Badge>
+            )}
           </div>
           <Button variant="ghost" size="sm" className="gap-2">
             <MessageSquare className="h-4 w-4" /> Balas

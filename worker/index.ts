@@ -61,9 +61,47 @@ app.onError((err, c) => { console.error(`[ERROR] ${err}`); return c.json({ succe
 
 console.log(`Server is running`)
 
+// Middleware to extract tenant from subdomain
+app.use('/api/*', async (c, next) => {
+  const url = new URL(c.req.url);
+  const host = url.host;
+  const hostname = host.split(':')[0]; // Remove port if present
+
+  // Extract subdomain from hostname
+  // Assuming format: subdomain.domain.com
+  const parts = hostname.split('.');
+  let subdomain = null;
+
+  // For development, we might have localhost:port
+  if (parts.length >= 3) {
+    subdomain = parts[0];
+  }
+
+  // Store subdomain in context for later use
+  c.set('subdomain', subdomain);
+
+  await next();
+});
+
 export default {
   async fetch(request, env, ctx) {
-    const pathname = new URL(request.url).pathname;
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+    const host = url.host;
+    const hostname = host.split(':')[0]; // Remove port if present
+
+    // Extract subdomain from hostname
+    // Assuming format: subdomain.domain.com
+    const parts = hostname.split('.');
+    let subdomain = null;
+
+    // For development, we might have localhost:port
+    if (parts.length >= 3) {
+      subdomain = parts[0];
+    }
+
+    // If this is an API request with a subdomain, we'll handle it in the routes by checking for subdomain in context
+    // The middleware will extract the subdomain and make it available to the routes
 
     if (pathname.startsWith('/api/') && pathname !== '/api/health' && pathname !== '/api/client-errors') {
       await safeLoadUserRoutes(app);

@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Landmark, Calendar, MapPin, Wallet, ArrowRight, LayoutDashboard, Copy, Check, Home } from 'lucide-react';
+import { Landmark, Calendar, MapPin, Wallet, ArrowRight, LayoutDashboard, Copy, Check, Home, User } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -178,6 +178,12 @@ function EventPublicCard({ event, slug }: { event: Event, slug: string }) {
           <div className="space-y-3 text-foreground/80">
             <div className="flex items-center gap-3"><Calendar className="h-5 w-5 text-primary" /> {format(event.date, 'PPP p', { locale: id })}</div>
             <div className="flex items-center gap-3"><MapPin className="h-5 w-5 text-primary" /> {event.location}</div>
+            {event.speaker && (
+              <div className="flex items-center gap-3"><User className="h-5 w-5 text-primary" /> {event.speaker}</div>
+            )}
+            {event.minDonation !== undefined && event.minDonation > 0 && (
+              <div className="flex items-center gap-3"><Wallet className="h-5 w-5 text-primary" /> {`Rp ${event.minDonation.toLocaleString('id-ID')}`}</div>
+            )}
           </div>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>

@@ -10,6 +10,7 @@ export interface AppUser {
   email: string;
   role: UserRole;
   tenantIds: string[];
+  isBanned?: boolean; // For user banning functionality
 }
 export interface User {
   id: string;
@@ -43,9 +44,16 @@ export interface ZisTransaction {
   flow: 'in' | 'out';
   amount: number;
   muzakki_name?: string;
+  muzakki_email?: string;
+  muzakki_phone?: string;
   mustahik_id?: string;
   description: string;
   date: number;
+  payment_method?: 'cash' | 'bank_transfer' | 'mobile_payment' | 'credit_card';
+  payment_status?: 'pending' | 'completed' | 'failed' | 'refunded';
+  payment_reference?: string; // Transaction ID from payment gateway
+  payment_gateway?: string; // Name of the payment gateway used
+  payment_date?: number; // When the payment was processed
 }
 export interface ForumPost {
   id: string;
@@ -57,6 +65,7 @@ export interface ForumPost {
   content: string;
   createdAt: number;
   isPinned?: boolean;
+  isBanned?: boolean; // For post banning functionality
 }
 export interface InventoryItem {
   id: string;
@@ -76,6 +85,8 @@ export interface Event {
   location: string;
   capacity: number;
   currentRegistrations: number;
+  speaker?: string;        // Speaker/preacher for the event
+  minDonation?: number;    // Minimum donation required for the event (0 for free events)
   imageUrl?: string;
 }
 export interface EventRegistration {
@@ -87,6 +98,16 @@ export interface EventRegistration {
   phone: string;
   registeredAt: number;
 }
+export interface PrayerSchedule {
+  id: string;
+  tenantId: string;
+  day: 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
+  prayerTime: 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
+  time: string; // in HH:MM format
+  imamName?: string;
+  khatibName?: string; // for Friday prayers
+}
+
 export interface Tenant {
   id: string;
   name: string;
@@ -94,10 +115,70 @@ export interface Tenant {
   ownerId: string;
   createdAt: number;
   address?: string;
+  legalDocUrl?: string;  // URL to legal document
+  logoUrl?: string;      // URL to mosque logo
+  bannerUrl?: string;    // URL to banner image
+  runningText?: string;  // Running text for announcements
   bankInfo?: string;
   bio?: string;
   status: 'active' | 'pending' | 'suspended';
 }
+export interface ChatRoom {
+  id: string;
+  tenantId: string;
+  name: string; // Name of the chat room (e.g. "Konsultasi dengan Ustadz Ahmad")
+  participants: string[]; // User IDs participating in the chat
+  createdAt: number;
+  lastMessageAt?: number;
+  lastMessage?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  chatRoomId: string;
+  senderId: string;
+  senderName: string;
+  message: string;
+  timestamp: number;
+  readBy?: string[]; // User IDs who have read the message
+}
+
+export interface Ustadz {
+  id: string;
+  tenantId: string;
+  name: string;
+  specialization: string; // e.g. "Fikih", "Tafsir", "Sirah"
+  bio?: string;
+  isActive: boolean;
+  createdAt: number;
+}
+
+export interface Mustahik {
+  id: string;
+  tenantId: string;
+  name: string;
+  nik?: string; // Nomor Induk Kependudukan
+  phone?: string;
+  address?: string;
+  category: 'fakir' | 'miskin' | 'amil' | 'mualaf' | 'gharim' | 'riqab' | 'musafir' | 'other'; // Categories of recipients
+  status: 'active' | 'inactive' | 'completed'; // Status of assistance
+  registrationDate: number;
+  lastAssistanceDate?: number;
+  notes?: string;
+}
+
+export interface Notification {
+  id: string;
+  tenantId: string;
+  userId?: string; // If null/undefined, it's a broadcast notification to all users in tenant
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'alert' | 'announcement';
+  createdAt: number;
+  readAt?: number;
+  isBroadcast: boolean;
+}
+
 export interface GlobalStats {
   totalTenants: number;
   totalUsers: number;

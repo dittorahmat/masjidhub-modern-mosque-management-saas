@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutDashboard, Wallet, Package, Calendar, Settings, Users, LogOut, ShieldCheck, HeartPulse, MessageSquare } from "lucide-react";
+import { LayoutDashboard, Wallet, Package, Calendar, Settings, Users, LogOut, ShieldCheck, HeartPulse, MessageSquare, Search, QrCode } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import {
   Sidebar,
@@ -25,7 +25,14 @@ export function AppSidebar(): JSX.Element {
     { name: "Dasbor", icon: LayoutDashboard, href: `/app/${slug}/dashboard`, show: true },
     { name: "Keuangan", icon: Wallet, href: `/app/${slug}/finance`, show: isAdminOrAmil },
     { name: "ZIS Module", icon: HeartPulse, href: `/app/${slug}/zis`, show: isAdminOrAmil },
+    { name: "Laporan ZIS", icon: FileText, href: `/app/${slug}/zis/report`, show: isAdminOrAmil },
+    { name: "Pembayaran ZIS", icon: CreditCard, href: `/app/${slug}/zis/payment`, show: true },
     { name: "Inventaris", icon: Package, href: `/app/${slug}/inventory`, show: isAdminOrAmil },
+    { name: "Jadwal Sholat", icon: Calendar, href: `/app/${slug}/jadwal-sholat`, show: isAdminOrAmil },
+    { name: "Pengumuman", icon: MessageSquare, href: `/app/${slug}/notifikasi`, show: isAdminOrAmil },
+    { name: "Konsultasi Ustadz", icon: MessageSquare, href: `/app/${slug}/chat-ustadz`, show: true },
+    { name: "Pencarian", icon: Search, href: `/app/${slug}/search`, show: true },
+    { name: "QR Code", icon: QrCode, href: `/app/${slug}/qr-code`, show: isAdminOrAmil },
     { name: "Kegiatan", icon: Calendar, href: `/app/${slug}/events`, show: true },
     { name: "Forum Ummat", icon: MessageSquare, href: `/app/${slug}/forum`, show: true },
     { name: "Anggota", icon: Users, href: `/app/${slug}/members`, show: isAdminOrAmil },

@@ -20,10 +20,10 @@ export function LandingPage() {
               <Zap className="h-4 w-4 fill-emerald-600 animate-pulse" /> Platform SaaS Multi-Tenant untuk Masjid
             </div>
             <h1 className="text-5xl md:text-7xl font-display font-bold leading-tight">
-              Data Terisolasi, <span className="text-primary italic">Subdomain</span> Sendiri.
+              Digitalisasi Masjid untuk <span className="text-primary italic">Kemaslahatan</span> Ummat.
             </h1>
             <p className="text-xl text-muted-foreground leading-relaxed max-w-xl">
-              Modernisasi tata kelola masjid dengan teknologi Cloudflare. Setiap masjid memiliki portal unik yang aman, transparan, dan terhubung langsung dengan jamaah.
+              Modernisasi tata kelola masjid untuk kemaslahatan ummat. Setiap masjid memiliki portal unik yang aman, transparan, dan terhubung langsung dengan jamaah.
             </p>
             <div className="flex flex-wrap gap-4">
               <Link to="/register">
@@ -70,7 +70,7 @@ export function LandingPage() {
             <StatItem value="150+" label="Masjid Terdaftar" />
             <StatItem value="12k+" label="Jamaah Aktif" />
             <StatItem value="Rp 2.4M" label="Total Transaksi" />
-            <StatItem value="100%" label="Isolasi Data" />
+            <StatItem value="100%" label="Keamanan Data" />
           </div>
         </div>
       </section>
@@ -80,7 +80,7 @@ export function LandingPage() {
           <div className="text-center mb-24 space-y-4">
             <h2 className="text-5xl font-display font-bold">Ekosistem Digital Masjid Terlengkap</h2>
             <p className="text-muted-foreground text-xl max-w-2xl mx-auto">
-              Satu platform, ribuan masjid. Setiap tenant mendapatkan keamanan tingkat enterprise.
+              Satu platform, ribuan masjid. Setiap masjid mendapatkan keamanan dan kenyamanan dalam mengelola kegiatan dan keuangan.
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-12">
@@ -111,8 +111,8 @@ export function LandingPage() {
             />
             <FeatureCard
               icon={<Database className="h-10 w-10 text-emerald-600" />}
-              title="Multi-Tenant Isolation"
-              description="Setiap data masjid terisolasi secara kriptografis. Privasi jamaah dan keuangan terjaga sempurna."
+              title="Keamanan Data Terjamin"
+              description="Setiap data masjid terjaga secara kriptografis. Privasi jamaah dan keuangan terlindungi sempurna."
             />
           </div>
         </div>

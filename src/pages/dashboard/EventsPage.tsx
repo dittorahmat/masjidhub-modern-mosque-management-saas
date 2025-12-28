@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar as CalendarIcon, MapPin, Users, Plus, ExternalLink } from 'lucide-react';
+import { Calendar as CalendarIcon, MapPin, Users, Plus, ExternalLink, User, Coins } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -42,6 +42,8 @@ export default function EventsPage() {
       date: new Date(formData.get('date') as string).getTime(),
       location: formData.get('location') as string,
       capacity: Number(formData.get('capacity')),
+      speaker: formData.get('speaker') as string,
+      minDonation: Number(formData.get('minDonation')),
     });
   };
   return (
@@ -86,8 +88,18 @@ export default function EventsPage() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Lokasi</Label>
-                    <Input name="location" required placeholder="Mis: Ruang Utama Masjid" />
+                    <Label>Pembicara / Penceramah / Khatib</Label>
+                    <Input name="speaker" required placeholder="Nama pembicara utama" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Minimal Infak (Rp)</Label>
+                      <Input name="minDonation" type="number" defaultValue="0" min="0" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Lokasi</Label>
+                      <Input name="location" required placeholder="Mis: Ruang Utama Masjid" />
+                    </div>
                   </div>
                   <Button type="submit" className="w-full h-12 text-lg" disabled={createMutation.isPending}>
                     {createMutation.isPending ? 'Mempublikasikan...' : 'Publikasikan Kegiatan'}
@@ -132,6 +144,18 @@ export default function EventsPage() {
                         <MapPin className="h-4 w-4 text-primary" />
                         {event.location}
                       </div>
+                      {event.speaker && (
+                        <div className="flex items-center gap-2">
+                          <User className="h-4 w-4 text-primary" />
+                          {event.speaker}
+                        </div>
+                      )}
+                      {event.minDonation !== undefined && event.minDonation > 0 && (
+                        <div className="flex items-center gap-2">
+                          <Coins className="h-4 w-4 text-primary" />
+                          {`Rp ${event.minDonation.toLocaleString('id-ID')}`}
+                        </div>
+                      )}
                     </div>
                     <div className="pt-4 border-t flex flex-wrap justify-between gap-2">
                       <Button variant="ghost" size="sm">Kelola Pendaftaran</Button>

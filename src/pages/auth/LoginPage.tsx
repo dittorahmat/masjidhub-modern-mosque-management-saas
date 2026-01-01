@@ -4,11 +4,12 @@ import { MarketingLayout } from '@/components/layout/MarketingLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { api } from '@/lib/api-client';
 import { useAppActions } from '@/lib/store';
 import { toast } from 'sonner';
 import { Landmark, ShieldAlert, Sparkles } from 'lucide-react';
-import type { AppUser, Tenant } from '@shared/types';
+import type { AppUser, Tenant, UserRole } from '@shared/types';
 export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -16,15 +17,33 @@ export default function LoginPage() {
   const setUser = actions.setUser;
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('admin@masjidhub.com');
+  const [selectedRole, setSelectedRole] = useState<UserRole>('dkm_admin');
   const isDemoMode = searchParams.get('demo') === 'true';
+
+  // Demo email mapping based on selected role
+  const demoEmails: Record<UserRole, string> = {
+    'superadmin_platform': 'admin@masjidhub.com',
+    'dkm_admin': 'demo-dkm@masjid.org',
+    'amil_zakat': 'demo-amil@masjid.org',
+    'ustadz': 'demo-ustadz@masjid.org',
+    'jamaah': 'demo-jamaah@masjid.org'
+  };
+
   useEffect(() => {
     if (isDemoMode) {
-      setEmail('demo@masjid.org');
+      setEmail(demoEmails[selectedRole]);
       toast.info('Selamat datang di Mode Demo!', {
         description: 'Gunakan akun demo untuk mengeksplorasi fitur platform.'
       });
     }
-  }, [isDemoMode]);
+  }, [isDemoMode, selectedRole, demoEmails]);
+
+  // Update email when role changes in demo mode
+  useEffect(() => {
+    if (isDemoMode) {
+      setEmail(demoEmails[selectedRole]);
+    }
+  }, [selectedRole, isDemoMode, demoEmails]);
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -77,6 +96,26 @@ export default function LoginPage() {
             <p className="text-muted-foreground text-sm">Akses manajemen masjid Anda yang aman.</p>
           </div>
           <form onSubmit={handleLogin} className="space-y-6">
+            {isDemoMode && (
+              <div className="space-y-2">
+                <Label htmlFor="role">Pilih Peran Demo</Label>
+                <Select value={selectedRole} onValueChange={(value: UserRole) => setSelectedRole(value)}>
+                  <SelectTrigger className="bg-stone-50 h-12">
+                    <SelectValue placeholder="Pilih peran demo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="superadmin_platform">Super Admin Platform</SelectItem>
+                    <SelectItem value="dkm_admin">Admin DKM</SelectItem>
+                    <SelectItem value="amil_zakat">Amil Zakat</SelectItem>
+                    <SelectItem value="ustadz">Ustadz</SelectItem>
+                    <SelectItem value="jamaah">Jamaah</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[10px] text-muted-foreground italic">
+                  Pilih peran untuk mencoba fitur-fitur berdasarkan hak akses
+                </p>
+              </div>
+            )}
             <div className="space-y-2">
               <Label htmlFor="email">Alamat Email</Label>
               <Input
@@ -109,7 +148,7 @@ export default function LoginPage() {
             <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0" />
             <div className="text-xs text-amber-800 space-y-1">
               <p className="font-bold">Keamanan Platform</p>
-              <p>Platform admin: admin@masjidhub.com. Demo admin: demo@masjid.org.</p>
+              <p>Platform admin: admin@masjidhub.com. Demo accounts: demo-dkm@masjid.org, demo-amil@masjid.org, demo-ustadz@masjid.org, demo-jamaah@masjid.org.</p>
             </div>
           </div>
           <div className="text-center">

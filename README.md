@@ -5,6 +5,19 @@ MasjidHub is a comprehensive, multi-tenant SaaS platform designed to modernize m
 2.  **Install dependencies**: `bun install`
 3.  **Run development server**: `bun run dev`
 4.  **Deploy to Cloudflare**: `bun run deploy`
+
+## Demo Login System
+The platform includes a comprehensive demo login system that allows you to test the application with different user roles:
+
+- **Super Admin Platform**: `admin@masjidhub.com`
+- **DKM Admin**: `demo-dkm@masjid.org`
+- **Amil Zakat**: `demo-amil@masjid.org`
+- **Ustadz**: `demo-ustadz@masjid.org`
+- **Jamaah**: `demo-jamaah@masjid.org`
+
+To access the demo mode, visit the login page with the `demo=true` parameter: `http://localhost:5173/login?demo=true`
+
+In demo mode, you'll see a dropdown to select the role you want to test, and the email field will automatically populate with the appropriate demo email for the selected role.
 ## Code Structure
 Below is an overview of the core project structure:
 ```text

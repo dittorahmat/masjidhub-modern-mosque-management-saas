@@ -162,4 +162,8 @@ The application includes PWA capabilities:
 ## Recent Updates
 
 ### Latest Fixes
-- **Fixed missing MustahikEntity import**: Resolved 500 Internal Server Error in login API endpoint by adding the missing MustahikEntity import to user-routes.ts
+- **Fixed Login 500 Error**: Refactored `worker/index.ts` to use static imports, resolving the dynamic import failure on Cloudflare Workers/Wrangler that was causing "No such module" errors.
+- **Fixed Client-Side Crash**: Resolved `ReferenceError: FileText is not defined` on the dashboard by importing missing icons (`FileText`, `CreditCard`) in `src/components/app-sidebar.tsx`.
+
+### Known Issues
+- No major critical issues currently known.

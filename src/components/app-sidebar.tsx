@@ -1,5 +1,5 @@
 import React from "react";
-import { LayoutDashboard, Wallet, Package, Calendar, Settings, Users, LogOut, ShieldCheck, HeartPulse, MessageSquare, Search, QrCode } from "lucide-react";
+import { LayoutDashboard, Wallet, Package, Calendar, Settings, Users, LogOut, ShieldCheck, HeartPulse, MessageSquare, Search, QrCode, FileText, CreditCard } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import {
   Sidebar,

@@ -28,6 +28,10 @@ Create a comprehensive QWEN.md documentation file for the MasjidHub modern mosqu
 - Added PUT endpoint for updating events
 - Updated UI components to display speaker and minimum donation information
 - Clarified that PrayerSchedule and Event features serve different purposes and both are needed
+- Implemented comprehensive demo login system with role selection for all user types
+- Created DEMO_TESTING.md documentation for demo login system
+- Fixed 500 Internal Server Error in login API by refactoring `worker/index.ts` to use static imports, resolving the "No such module" error
+- Fixed `ReferenceError: FileText is not defined` client-side error by adding missing `FileText` and `CreditCard` imports to `src/components/app-sidebar.tsx`
 
 ## Current Plan
 - [DONE] Analyze project structure and key files
@@ -39,8 +43,10 @@ Create a comprehensive QWEN.md documentation file for the MasjidHub modern mosqu
 - [DONE] Implement ZIS reporting functionality
 - [DONE] Implement user banning functionality in forum
 - [DONE] Implement ZIS payment functionality
+- [DONE] Fix login 500 error (Static imports in worker)
+- [DONE] Fix `FileText is not defined` client-side error
 
 ---
 
 ## Summary Metadata
-**Update time**: 2025-12-27T02:54:00.000Z 
+**Update time**: 2026-01-01T14:15:00.000Z

@@ -100,6 +100,7 @@ export default function ZisPaymentPage() {
     
     createTransactionMutation.mutate({
       ...paymentForm,
+      mustahik_id: paymentForm.mustahik_id === 'all' ? '' : paymentForm.mustahik_id,
       amount: amount,
       flow: 'in',
       payment_method: paymentMethod,
@@ -242,14 +243,14 @@ export default function ZisPaymentPage() {
                       <Label htmlFor="mustahik_id">Pilih Mustahik</Label>
                       <Select 
                         name="mustahik_id" 
-                        value={paymentForm.mustahik_id} 
+                        value={paymentForm.mustahik_id || 'all'} 
                         onValueChange={(value) => handleSelectChange('mustahik_id', value)}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Pilih penerima ZIS" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Semua Mustahik</SelectItem>
+                          <SelectItem value="all">Semua Mustahik</SelectItem>
                           {mustahikList.map(mustahik => (
                             <SelectItem key={mustahik.id} value={mustahik.id}>
                               {mustahik.name} - {mustahik.category}

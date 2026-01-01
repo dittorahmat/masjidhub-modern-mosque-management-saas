@@ -4,36 +4,8 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { Env } from './core-utils';
+import { userRoutes } from './user-routes';
 export * from './core-utils';
-
-type UserRoutesModule = { userRoutes: (app: Hono<{ Bindings: Env }>) => void };
-
-const USER_ROUTES_MODULE = './user-routes';
-const RETRY_MS = 750;
-let nextRetryAt = 0;
-let userRoutesLoaded = false;
-let userRoutesLoadError: string | null = null;
-
-const safeLoadUserRoutes = async (app: Hono<{ Bindings: Env }>) => {
-  if (userRoutesLoaded) return;
-
-  const now = Date.now();
-  const shouldRetry = userRoutesLoadError !== null;
-  if (shouldRetry && now < nextRetryAt) return;
-  nextRetryAt = now + RETRY_MS;
-
-  const bust = shouldRetry && import.meta.env?.DEV ? `?t=${now}` : '';
-  const spec = `${USER_ROUTES_MODULE}${bust}`;
-
-  try {
-    const mod = (await import(/* @vite-ignore */ spec)) as UserRoutesModule;
-    mod.userRoutes(app);
-    userRoutesLoaded = true;
-    userRoutesLoadError = null;
-  } catch (e) {
-    userRoutesLoadError = e instanceof Error ? e.message : String(e);
-  }
-};
 
 export type ClientErrorReport = { message: string; url: string; timestamp: string } & Record<string, unknown>;
 
@@ -83,40 +55,11 @@ app.use('/api/*', async (c, next) => {
   await next();
 });
 
+// Register user routes statically
+userRoutes(app);
+
 export default {
   async fetch(request, env, ctx) {
-    const url = new URL(request.url);
-    const pathname = url.pathname;
-    const host = url.host;
-    const hostname = host.split(':')[0]; // Remove port if present
-
-    // Extract subdomain from hostname
-    // Assuming format: subdomain.domain.com
-    const parts = hostname.split('.');
-    let subdomain = null;
-
-    // For development, we might have localhost:port
-    if (parts.length >= 3) {
-      subdomain = parts[0];
-    }
-
-    // If this is an API request with a subdomain, we'll handle it in the routes by checking for subdomain in context
-    // The middleware will extract the subdomain and make it available to the routes
-
-    if (pathname.startsWith('/api/') && pathname !== '/api/health' && pathname !== '/api/client-errors') {
-      await safeLoadUserRoutes(app);
-      if (userRoutesLoadError) {
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Worker routes failed to load',
-            detail: userRoutesLoadError,
-          }),
-          { status: 500, headers: { 'content-type': 'application/json' } },
-        );
-      }
-    }
-
     return app.fetch(request, env, ctx);
   },
 } satisfies ExportedHandler<Env>;

@@ -16,10 +16,11 @@ import {
   UstadzEntity,
   MustahikEntity
 } from "./entities";
+import type { UserRole } from "@shared/types";
 import { ok, bad, notFound } from './core-utils';
 
 // Mock payment processing function - in a real implementation, this would connect to actual payment gateways
-async function processZisPayment(transaction: ZisTransaction, paymentMethod: string, amount: number) {
+async function processZisPayment(transaction: any, paymentMethod: string, amount: number) {
   // In a real implementation, this would connect to actual payment gateways
   // like Midtrans, Xendit, or other Indonesian payment providers
   console.log(`Processing payment for transaction ${transaction.id} using ${paymentMethod}`);
@@ -100,11 +101,20 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
     const { items } = await UserEntity.list(c.env);
     let user = items.find(u => u.email === email);
     if (!user) {
+        // Define role based on email
+        const role: UserRole =
+            email === 'admin@masjidhub.com' ? 'superadmin_platform' :
+            email === 'demo-dkm@masjid.org' ? 'dkm_admin' :
+            email === 'demo-amil@masjid.org' ? 'amil_zakat' :
+            email === 'demo-ustadz@masjid.org' ? 'ustadz' :
+            email === 'demo-jamaah@masjid.org' ? 'jamaah' :
+            'dkm_admin'; // Default role for other emails
+
         user = {
             id: crypto.randomUUID(),
             name: "Demo User",
             email: email,
-            role: email === 'admin@masjidhub.com' ? 'superadmin_platform' : 'dkm_admin',
+            role: role,
             tenantIds: ['t1']
         };
     }

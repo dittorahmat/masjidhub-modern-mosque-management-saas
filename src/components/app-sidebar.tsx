@@ -33,6 +33,7 @@ export function AppSidebar(): JSX.Element {
     { name: "Konsultasi Ustadz", icon: MessageSquare, href: `/app/${slug}/chat-ustadz`, show: true },
     { name: "Pencarian", icon: Search, href: `/app/${slug}/search`, show: true },
     { name: "QR Code", icon: QrCode, href: `/app/${slug}/qr-code`, show: isAdminOrAmil },
+    { name: "Struktur Organisasi", icon: Users, href: `/app/${slug}/organization`, show: isAdminOrAmil },
     { name: "Kegiatan", icon: Calendar, href: `/app/${slug}/events`, show: true },
     { name: "Forum Ummat", icon: MessageSquare, href: `/app/${slug}/forum`, show: true },
     { name: "Anggota", icon: Users, href: `/app/${slug}/members`, show: isAdminOrAmil },

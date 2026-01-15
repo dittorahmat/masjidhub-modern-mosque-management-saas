@@ -36,6 +36,9 @@ const NotificationPage = lazy(() => import('@/pages/dashboard/NotificationPage')
 const ChatUstadzPage = lazy(() => import('@/pages/dashboard/ChatUstadzPage'));
 const SearchPage = lazy(() => import('@/pages/dashboard/SearchPage'));
 const QrCodePage = lazy(() => import('@/pages/dashboard/QrCodePage'));
+const KioskPage = lazy(() => import('@/pages/dashboard/KioskPage'));
+const OrganizationPage = lazy(() => import('@/pages/dashboard/OrganizationPage'));
+
 // Super Admin
 const SuperAdminLayout = lazy(() => import('@/pages/super-admin/SuperAdminLayout'));
 const SuperAdminDashboard = lazy(() => import('@/pages/super-admin/SuperAdminDashboard'));
@@ -72,6 +75,15 @@ const router = createBrowserRouter([
   {
     path: "/portal/:slug",
     element: <PublicPortalPage />,
+    errorElement: <RouteErrorBoundary />,
+  },
+  {
+    path: "/kiosk/:slug",
+    element: (
+      <Suspense fallback={<GlobalLoading />}>
+        <KioskPage />
+      </Suspense>
+    ),
     errorElement: <RouteErrorBoundary />,
   },
   {
@@ -203,6 +215,14 @@ const router = createBrowserRouter([
         element: (
           <Suspense fallback={<GlobalLoading />}>
             <QrCodePage />
+          </Suspense>
+        ),
+      },
+      {
+        path: "organization",
+        element: (
+          <Suspense fallback={<GlobalLoading />}>
+            <OrganizationPage />
           </Suspense>
         ),
       }

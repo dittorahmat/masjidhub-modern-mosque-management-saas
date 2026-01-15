@@ -55,18 +55,6 @@ export interface ZisTransaction {
   payment_gateway?: string; // Name of the payment gateway used
   payment_date?: number; // When the payment was processed
 }
-export interface ForumPost {
-  id: string;
-  tenantId: string;
-  authorId: string;
-  authorName: string;
-  category: 'kajian' | 'pengumuman' | 'diskusi';
-  title: string;
-  content: string;
-  createdAt: number;
-  isPinned?: boolean;
-  isBanned?: boolean; // For post banning functionality
-}
 export interface InventoryItem {
   id: string;
   tenantId: string;
@@ -75,6 +63,8 @@ export interface InventoryItem {
   condition: 'new' | 'good' | 'fair' | 'poor';
   location: string;
   lastMaintenance?: number;
+  maintenanceIntervalDays?: number; // Days between maintenance
+  nextMaintenanceDate?: number;    // Calculated next maintenance date
 }
 export interface Event {
   id: string;
@@ -88,6 +78,9 @@ export interface Event {
   speaker?: string;        // Speaker/preacher for the event
   minDonation?: number;    // Minimum donation required for the event (0 for free events)
   imageUrl?: string;
+  isFundraising?: boolean; // If true, this event is specifically for fundraising
+  targetAmount?: number;   // Target amount if it's a fundraising event
+  collectedAmount?: number; // Total amount collected for this event
 }
 export interface EventRegistration {
   id: string;
@@ -98,6 +91,20 @@ export interface EventRegistration {
   phone: string;
   registeredAt: number;
 }
+export interface ForumPost {
+  id: string;
+  tenantId: string;
+  authorId: string;
+  authorName: string;
+  category: 'kajian' | 'pengumuman' | 'diskusi';
+  title: string;
+  content: string;
+  createdAt: number;
+  isPinned?: boolean;
+  isBanned?: boolean; // For post banning functionality
+  likeCount?: number;
+  commentCount?: number;
+}
 export interface PrayerSchedule {
   id: string;
   tenantId: string;
@@ -106,6 +113,8 @@ export interface PrayerSchedule {
   time: string; // in HH:MM format
   imamName?: string;
   khatibName?: string; // for Friday prayers
+  khutbahTopic?: string;
+  khutbahFileUrl?: string; // URL to khutbah material (PDF/Audio)
 }
 
 export interface Tenant {
@@ -151,6 +160,20 @@ export interface Ustadz {
   bio?: string;
   isActive: boolean;
   createdAt: number;
+}
+
+export interface OrganizationMember {
+  id: string;
+  tenantId: string;
+  name: string;
+  role: string; // e.g. "Ketua DKM", "Bendahara", "Sekretaris"
+  imageUrl?: string;
+  order: number; // For sorting the hierarchy
+  bio?: string;
+  socialLinks?: {
+    instagram?: string;
+    whatsapp?: string;
+  };
 }
 
 export interface Mustahik {

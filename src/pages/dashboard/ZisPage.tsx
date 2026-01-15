@@ -2,335 +2,366 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '@/lib/api-client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, History, HeartPulse, User, Wallet, FileText, CreditCard, HandCoins } from 'lucide-react';
+import { 
+  PlusCircle, History, HeartPulse, User, Wallet, 
+  FileText, CreditCard, HandCoins, Users, 
+  ArrowUpRight, ArrowDownRight, Search, Filter, 
+  MoreVertical, CheckCircle2, AlertCircle
+} from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { ZisTransaction } from '@shared/types';
+import type { ZisTransaction, Mustahik } from '@shared/types';
 import { format } from 'date-fns';
 import { id as localeId } from 'date-fns/locale/id';
+
 export default function ZisPage() {
   const { slug } = useParams();
   const queryClient = useQueryClient();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [paymentDialogOpen, setPaymentDialogOpen] = useState(false);
-  const [selectedTransaction, setSelectedTransaction] = useState<ZisTransaction | null>(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
-  const { data: transactions = [], isLoading } = useQuery({
+  const { data: transactions = [], isLoading: loadingTx } = useQuery({
     queryKey: ['zis', slug],
     queryFn: () => api<ZisTransaction[]>(`/api/${slug}/zis`)
   });
 
-  const createMutation = useMutation({
-    mutationFn: (newTx: Partial<ZisTransaction>) => api(`/api/${slug}/zis`, {
-      method: 'POST',
-      body: JSON.stringify(newTx)
-    }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['zis', slug] });
-      toast.success('Penerimaan ZIS berhasil dicatat');
-      setIsDialogOpen(false);
-    }
+  const { data: mustahik = [], isLoading: loadingMustahik } = useQuery({
+    queryKey: ['mustahik', slug],
+    queryFn: () => api<Mustahik[]>(`/api/${slug}/mustahik`)
   });
-
-  const processPaymentMutation = useMutation({
-    mutationFn: ({ id, paymentData }: { id: string; paymentData: any }) =>
-      api(`/api/${slug}/zis/${id}/process-payment`, {
-        method: 'POST',
-        body: JSON.stringify(paymentData)
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['zis', slug] });
-      toast.success('Pembayaran ZIS berhasil diproses');
-      setPaymentDialogOpen(false);
-    },
-    onError: (error: any) => {
-      toast.error(error.message || 'Gagal memproses pembayaran');
-    }
-  });
-
-  const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    createMutation.mutate({
-      type: formData.get('type') as any,
-      amount: Number(formData.get('amount')),
-      muzakki_name: formData.get('muzakki_name') as string,
-      muzakki_email: formData.get('muzakki_email') as string,
-      muzakki_phone: formData.get('muzakki_phone') as string,
-      description: formData.get('description') as string,
-      flow: 'in',
-      payment_status: 'pending' // New transactions start as pending
-    });
-  };
-
-  const handleProcessPayment = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!selectedTransaction) return;
-
-    const formData = new FormData(e.currentTarget);
-    processPaymentMutation.mutate({
-      id: selectedTransaction.id,
-      paymentData: {
-        payment_method: formData.get('payment_method') as string,
-        amount: selectedTransaction.amount
-      }
-    });
-  };
 
   const totals = transactions.reduce((acc, tx) => {
-    if (tx.flow === 'in') acc[tx.type] = (acc[tx.type] || 0) + tx.amount;
+    if (tx.flow === 'in' && tx.payment_status === 'completed') {
+      acc.in[tx.type] = (acc.in[tx.type] || 0) + tx.amount;
+      acc.totalIn += tx.amount;
+    } else if (tx.flow === 'out') {
+      acc.totalOut += tx.amount;
+    }
     return acc;
-  }, {} as Record<string, number>);
-
-  const openPaymentDialog = (tx: ZisTransaction) => {
-    setSelectedTransaction(tx);
-    setPaymentDialogOpen(true);
-  };
+  }, { in: {} as Record<string, number>, totalIn: 0, totalOut: 0 });
 
   return (
-    <div className="space-y-8 animate-fade-in-up">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-display font-bold">Modul ZIS</h1>
-          <p className="text-muted-foreground">Pengelolaan Zakat, Infaq, dan Shadaqah yang amanah.</p>
+    <div className="space-y-10 pb-10">
+      {/* Header Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs uppercase tracking-widest">
+            <HandCoins className="h-4 w-4" />
+            <span>Amanah Zakat & Infaq</span>
+          </div>
+          <h1 className="text-4xl font-display font-black tracking-tight">Manajemen <span className="text-emerald-600">ZIS</span></h1>
+          <p className="text-muted-foreground text-lg font-medium">Pengelolaan dana ummat yang transparan dan tepat sasaran.</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Link to={`/app/${slug}/zis/payment`}>
-            <Button variant="default" className="gap-2 bg-emerald-600 hover:bg-emerald-700">
-              <HandCoins className="h-4 w-4" />
-              Bayar ZIS
-            </Button>
-          </Link>
-          <Link to={`/app/${slug}/zis/report`}>
-            <Button variant="outline" className="gap-2">
-              <FileText className="h-4 w-4" />
-              Laporan ZIS
-            </Button>
-          </Link>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <div className="flex gap-3">
+           <Dialog>
             <DialogTrigger asChild>
-              <Button className="gap-2 rounded-xl h-12 shadow-lg shadow-emerald-200">
-                <PlusCircle className="h-4 w-4" /> Penerimaan ZIS
+              <Button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl h-12 px-6 font-bold gap-2 shadow-xl shadow-emerald-200">
+                <PlusCircle className="h-4 w-4" /> Catat Penerimaan
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
-              <DialogHeader>
-                <DialogTitle>Catat Penerimaan ZIS</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-4 pt-4">
-                <div className="space-y-2">
-                  <Label>Tipe ZIS</Label>
-                  <Select name="type" defaultValue="zakat_fitrah">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="zakat_fitrah">Zakat Fitrah</SelectItem>
-                      <SelectItem value="zakat_maal">Zakat Maal</SelectItem>
-                      <SelectItem value="fidyah">Fidyah</SelectItem>
-                      <SelectItem value="infaq_shadaqah">Infaq & Shadaqah</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Nama Muzakki (Pemberi)</Label>
-                  <Input name="muzakki_name" required placeholder="Nama Lengkap" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Email Muzakki</Label>
-                  <Input name="muzakki_email" type="email" placeholder="email@contoh.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label>No. HP Muzakki</Label>
-                  <Input name="muzakki_phone" placeholder="081234567890" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Jumlah (Rp)</Label>
-                  <Input name="amount" type="number" required placeholder="0" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Keterangan</Label>
-                  <Input name="description" placeholder="Catatan tambahan" />
-                </div>
-                <Button type="submit" className="w-full h-12 text-lg" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? 'Menyimpan...' : 'Simpan Transaksi'}
-                </Button>
-              </form>
+            <DialogContent className="rounded-[2rem]">
+               <DialogHeader><DialogTitle>Penerimaan ZIS Baru</DialogTitle></DialogHeader>
+               <ZisEntryForm type="in" />
+            </DialogContent>
+          </Dialog>
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="rounded-2xl h-12 px-6 font-bold border-2 gap-2">
+                <ArrowDownRight className="h-4 w-4 text-red-500" /> Penyaluran Dana
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="rounded-[2rem]">
+               <DialogHeader><DialogTitle>Salurkan Dana ZIS</DialogTitle></DialogHeader>
+               <ZisEntryForm type="out" />
             </DialogContent>
           </Dialog>
         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <ZisStatCard
-          title="Zakat Fitrah"
-          value={totals.zakat_fitrah || 0}
-          icon={<HeartPulse className="text-emerald-600" />}
-          color="bg-emerald-50 border-emerald-100"
-        />
-        <ZisStatCard
-          title="Zakat Maal"
-          value={totals.zakat_maal || 0}
-          icon={<Wallet className="text-amber-600" />}
-          color="bg-amber-50 border-amber-100"
-        />
-        <ZisStatCard
-          title="Infaq & Shadaqah"
-          value={totals.infaq_shadaqah || 0}
-          icon={<User className="text-blue-600" />}
-          color="bg-blue-50 border-blue-100"
-        />
-      </div>
-      <Card className="illustrative-card overflow-hidden">
-        <CardHeader className="bg-stone-50/50 border-b">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <History className="h-5 w-5 text-primary" />
-            Riwayat Penerimaan Terkini
-          </CardTitle>
-        </CardHeader>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tanggal</TableHead>
-                <TableHead>Muzakki</TableHead>
-                <TableHead>Tipe</TableHead>
-                <TableHead>Status Pembayaran</TableHead>
-                <TableHead className="text-right">Jumlah</TableHead>
-                <TableHead className="text-center">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                Array(3).fill(0).map((_, i) => (
-                  <TableRow key={i}>
-                    <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
-                  </TableRow>
-                ))
-              ) : transactions.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-20 opacity-50 italic">
-                    Belum ada data transaksi ZIS.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                transactions.sort((a,b) => b.date - a.date).map((tx) => (
-                  <TableRow key={tx.id}>
-                    <TableCell>{format(tx.date, 'dd MMM yyyy', { locale: localeId })}</TableCell>
-                    <TableCell className="font-bold">{tx.muzakki_name || 'Hamba Allah'}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="capitalize">
-                        {tx.type.replace('_', ' ')}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={tx.payment_status === 'completed' ? 'default' :
-                                tx.payment_status === 'pending' ? 'secondary' :
-                                tx.payment_status === 'failed' ? 'destructive' : 'outline'}
-                      >
-                        {tx.payment_status === 'completed' ? 'Lunas' :
-                         tx.payment_status === 'pending' ? 'Pending' :
-                         tx.payment_status === 'failed' ? 'Gagal' :
-                         tx.payment_status === 'refunded' ? 'Dikembalikan' : tx.payment_status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-bold text-emerald-600">
-                      Rp {tx.amount.toLocaleString('id-ID')}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      {tx.payment_status === 'pending' && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => openPaymentDialog(tx)}
-                          className="gap-1"
-                        >
-                          <CreditCard className="h-3 w-3" />
-                          Proses
-                        </Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </Card>
 
-      {/* Payment Processing Dialog */}
-      <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Proses Pembayaran ZIS</DialogTitle>
-          </DialogHeader>
-          {selectedTransaction && (
-            <div className="space-y-4 pt-4">
-              <div className="p-4 bg-stone-50 rounded-lg">
-                <h3 className="font-bold">{selectedTransaction.muzakki_name || 'Anonim'}</h3>
-                <p className="text-sm text-muted-foreground">{selectedTransaction.description}</p>
-                <p className="font-bold text-lg mt-2">Rp {selectedTransaction.amount.toLocaleString('id-ID')}</p>
+      {/* Tabs System (The ATM Core) */}
+      <Tabs defaultValue="overview" className="space-y-8" onValueChange={setActiveTab}>
+        <TabsList className="bg-stone-100 p-1.5 rounded-2xl h-auto">
+          <TabsTrigger value="overview" className="rounded-xl px-6 py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Ringkasan</TabsTrigger>
+          <TabsTrigger value="transactions" className="rounded-xl px-6 py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Riwayat Transaksi</TabsTrigger>
+          <TabsTrigger value="mustahik" className="rounded-xl px-6 py-2.5 font-bold data-[state=active]:bg-white data-[state=active]:shadow-sm">Database Mustahik</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <ZisStatCard 
+              title="Zakat Terkumpul" 
+              value={totals.totalIn} 
+              icon={<ArrowUpRight className="text-emerald-500" />} 
+              sub="Total saldo masuk"
+              color="emerald"
+            />
+            <ZisStatCard 
+              title="Tersalurkan" 
+              value={totals.totalOut} 
+              icon={<ArrowDownRight className="text-red-500" />} 
+              sub={`${((totals.totalOut/totals.totalIn)*100 || 0).toFixed(1)}% dari total`}
+              color="amber"
+            />
+            <ZisStatCard 
+              title="Mustahik Terbantu" 
+              value={mustahik.filter(m => m.status === 'completed').length} 
+              icon={<Users className="text-blue-500" />} 
+              sub="Jiwa yang terbantu"
+              color="blue"
+            />
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-8">
+            <Card className="rounded-[2.5rem] border-none shadow-sm bg-white p-8">
+               <CardHeader className="p-0 mb-6 flex flex-row items-center justify-between">
+                 <div>
+                    <CardTitle className="text-2xl font-bold">Sebaran Asnaf</CardTitle>
+                    <CardDescription className="font-medium">Distribusi penerima berdasarkan kategori</CardDescription>
+                 </div>
+                 <PieChart className="h-6 w-6 text-muted-foreground opacity-20" />
+               </CardHeader>
+               <div className="space-y-4">
+                  {['fakir', 'miskin', 'amil', 'mualaf', 'gharim'].map((cat) => {
+                    const count = mustahik.filter(m => m.category === cat).length;
+                    const percent = (count / (mustahik.length || 1)) * 100;
+                    return (
+                      <div key={cat} className="space-y-2">
+                         <div className="flex justify-between text-sm font-bold capitalize">
+                            <span>{cat}</span>
+                            <span>{count} Orang</span>
+                         </div>
+                         <div className="h-2 w-full bg-stone-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 rounded-full" style={{ width: `${percent}%` }} />
+                         </div>
+                      </div>
+                    );
+                  })}
+               </div>
+            </Card>
+
+            <Card className="rounded-[2.5rem] border-none shadow-sm bg-slate-900 text-white p-8 flex flex-col justify-between">
+               <div className="space-y-4">
+                  <Badge className="bg-emerald-500 text-black font-black uppercase">Smart Insight</Badge>
+                  <h3 className="text-3xl font-bold leading-tight italic">Dana Zakat Maal Anda mencukupi untuk membantu 5 orang Gharim.</h3>
+                  <p className="text-slate-400 font-medium">Berdasarkan database mustahik, ada beberapa warga yang membutuhkan bantuan pelunasan utang darurat.</p>
+               </div>
+               <Button className="w-full rounded-2xl h-14 bg-white text-slate-900 hover:bg-slate-100 font-bold mt-8">
+                 Lihat Rekomendasi Penyaluran
+               </Button>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="transactions" className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+           <Card className="rounded-[2.5rem] border-none shadow-sm bg-white overflow-hidden">
+              <div className="p-8 border-b flex justify-between items-center">
+                 <h2 className="text-xl font-bold">Log Aktivitas ZIS</h2>
+                 <div className="flex gap-2">
+                    <Button variant="outline" size="sm" className="rounded-xl h-10 px-4 font-bold border-2"><Filter className="h-4 w-4 mr-2" /> Filter</Button>
+                    <Button variant="outline" size="sm" className="rounded-xl h-10 px-4 font-bold border-2"><FileText className="h-4 w-4 mr-2" /> Export</Button>
+                 </div>
               </div>
+              <Table>
+                 <TableHeader className="bg-stone-50">
+                    <TableRow className="border-none">
+                       <TableHead className="px-8 py-4 font-bold uppercase text-[10px] tracking-widest">Tanggal</TableHead>
+                       <TableHead className="py-4 font-bold uppercase text-[10px] tracking-widest">Muzakki / Mustahik</TableHead>
+                       <TableHead className="py-4 font-bold uppercase text-[10px] tracking-widest">Tipe & Arah</TableHead>
+                       <TableHead className="py-4 font-bold uppercase text-[10px] tracking-widest">Status</TableHead>
+                       <TableHead className="py-4 font-bold uppercase text-[10px] tracking-widest text-right px-8">Jumlah</TableHead>
+                    </TableRow>
+                 </TableHeader>
+                 <TableBody>
+                    {transactions.map(tx => (
+                      <TableRow key={tx.id} className="hover:bg-stone-50 border-stone-100">
+                         <TableCell className="px-8 font-medium text-muted-foreground">{format(tx.date, 'dd MMM yyyy')}</TableCell>
+                         <TableCell className="font-bold">{tx.muzakki_name || tx.mustahik_id || 'Ummat'}</TableCell>
+                         <TableCell>
+                            <div className="flex items-center gap-2">
+                               <Badge variant="outline" className="capitalize border-primary/20 text-primary">{tx.type.replace('_', ' ')}</Badge>
+                               {tx.flow === 'in' ? <ArrowUpRight className="h-3 w-3 text-emerald-500" /> : <ArrowDownRight className="h-3 w-3 text-red-500" />}
+                            </div>
+                         </TableCell>
+                         <TableCell>
+                            <Badge className={tx.payment_status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>
+                               {tx.payment_status === 'completed' ? 'Selesai' : 'Diproses'}
+                            </Badge>
+                         </TableCell>
+                         <TableCell className={`text-right px-8 font-black ${tx.flow === 'in' ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {tx.flow === 'in' ? '+' : '-'}Rp {tx.amount.toLocaleString('id-ID')}
+                         </TableCell>
+                      </TableRow>
+                    ))}
+                 </TableBody>
+              </Table>
+           </Card>
+        </TabsContent>
 
-              <form onSubmit={handleProcessPayment} className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Metode Pembayaran</Label>
-                  <Select name="payment_method" defaultValue="bank_transfer">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="cash">Tunai</SelectItem>
-                      <SelectItem value="bank_transfer">Transfer Bank</SelectItem>
-                      <SelectItem value="mobile_payment">Pembayaran Mobile</SelectItem>
-                      <SelectItem value="credit_card">Kartu Kredit</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+        <TabsContent value="mustahik" className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+           <div className="flex justify-between items-center">
+              <div className="relative w-72">
+                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                 <Input className="pl-10 rounded-2xl border-2 h-11" placeholder="Cari Mustahik..." />
+              </div>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="rounded-2xl h-11 px-6 font-bold shadow-lg shadow-emerald-100">Tambah Mustahik</Button>
+                </DialogTrigger>
+                <DialogContent className="rounded-[2rem]">
+                   <DialogHeader><DialogTitle>Data Mustahik Baru</DialogTitle></DialogHeader>
+                   <MustahikForm />
+                </DialogContent>
+              </Dialog>
+           </div>
 
-                <div className="flex justify-end gap-2 pt-4">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setPaymentDialogOpen(false)}
-                  >
-                    Batal
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={processPaymentMutation.isPending}
-                  >
-                    {processPaymentMutation.isPending ? 'Memproses...' : 'Proses Pembayaran'}
-                  </Button>
-                </div>
-              </form>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {mustahik.map(m => (
+                <Card key={m.id} className="rounded-[2rem] border-none shadow-sm bg-white p-6 hover:shadow-md transition-all group">
+                   <div className="flex justify-between items-start mb-4">
+                      <div className="p-4 bg-stone-100 rounded-2xl group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-all">
+                         <User className="h-6 w-6" />
+                      </div>
+                      <Badge className="bg-slate-900 text-white capitalize">{m.category}</Badge>
+                   </div>
+                   <h3 className="text-xl font-bold mb-1">{m.name}</h3>
+                   <p className="text-sm text-muted-foreground font-medium mb-4">{m.phone || 'No. HP tidak ada'}</p>
+                   <div className="pt-4 border-t flex justify-between items-center">
+                      <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
+                         <CheckCircle2 className={`h-4 w-4 ${m.status === 'completed' ? 'text-emerald-500' : 'text-stone-300'}`} />
+                         {m.status === 'completed' ? 'Sudah Dibantu' : 'Menunggu'}
+                      </div>
+                      <Button variant="ghost" size="icon" className="rounded-full"><MoreVertical className="h-4 w-4" /></Button>
+                   </div>
+                </Card>
+              ))}
+           </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
-function ZisStatCard({ title, value, icon, color }: any) {
+
+function ZisStatCard({ title, value, icon, sub, color }: any) {
+  const colors: any = {
+    emerald: "bg-emerald-50 text-emerald-700",
+    amber: "bg-amber-50 text-amber-700",
+    blue: "bg-blue-50 text-blue-700"
+  };
   return (
-    <Card className={`illustrative-card ${color}`}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-xs font-bold uppercase tracking-widest opacity-70 flex justify-between items-center">
-          {title}
-          {icon}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="text-3xl font-display font-bold">Rp {value.toLocaleString('id-ID')}</div>
-      </CardContent>
+    <Card className={`rounded-[2rem] border-none shadow-sm p-8 ${colors[color]}`}>
+       <div className="flex justify-between items-start mb-6">
+          <div className="p-3 bg-white/50 rounded-2xl">
+             {icon}
+          </div>
+          <p className="text-xs font-black uppercase tracking-widest opacity-60">{title}</p>
+       </div>
+       <div className="space-y-1">
+          <p className="text-3xl font-black tracking-tight">Rp {value.toLocaleString('id-ID')}</p>
+          <p className="text-xs font-bold opacity-70">{sub}</p>
+       </div>
     </Card>
+  );
+}
+
+function ZisEntryForm({ type }: { type: 'in' | 'out' }) {
+  return (
+    <form className="space-y-4 pt-4">
+      <div className="space-y-2">
+        <Label>Tipe ZIS</Label>
+        <Select name="type" defaultValue="zakat_fitrah">
+          <SelectTrigger className="h-12 rounded-xl border-2">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="zakat_fitrah">Zakat Fitrah</SelectItem>
+            <SelectItem value="zakat_maal">Zakat Maal</SelectItem>
+            <SelectItem value="fidyah">Fidyah</SelectItem>
+            <SelectItem value="infaq_shadaqah">Infaq & Shadaqah</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>{type === 'in' ? 'Nama Muzakki' : 'Pilih Mustahik'}</Label>
+        <Input name="name" required placeholder={type === 'in' ? "Hamba Allah" : "Pilih dari database"} className="h-12 rounded-xl border-2" />
+      </div>
+      <div className="space-y-2">
+        <Label>Jumlah (Rp)</Label>
+        <Input name="amount" type="number" required placeholder="0" className="h-12 rounded-xl border-2" />
+      </div>
+      <div className="space-y-2">
+        <Label>Keterangan</Label>
+        <Input name="description" placeholder="Contoh: Zakat Maal periode 2024" className="h-12 rounded-xl border-2" />
+      </div>
+      <Button type="submit" className="w-full h-14 text-lg rounded-2xl font-bold bg-emerald-600 hover:bg-emerald-700 mt-4">
+        Simpan Data
+      </Button>
+    </form>
+  );
+}
+
+function MustahikForm() {
+  return (
+    <form className="space-y-4 pt-4">
+      <div className="space-y-2">
+        <Label>Nama Lengkap</Label>
+        <Input name="name" required placeholder="Nama Mustahik" className="h-12 rounded-xl border-2" />
+      </div>
+      <div className="space-y-2">
+        <Label>Kategori Asnaf</Label>
+        <Select name="category" defaultValue="miskin">
+          <SelectTrigger className="h-12 rounded-xl border-2">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="fakir">Fakir</SelectItem>
+            <SelectItem value="miskin">Miskin</SelectItem>
+            <SelectItem value="amil">Amil</SelectItem>
+            <SelectItem value="mualaf">Mualaf</SelectItem>
+            <SelectItem value="gharim">Gharim</SelectItem>
+            <SelectItem value="fisabilillah">Fisabilillah</SelectItem>
+            <SelectItem value="ibnu_sabil">Ibnu Sabil</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Nomor WhatsApp</Label>
+        <Input name="phone" placeholder="0812..." className="h-12 rounded-xl border-2" />
+      </div>
+      <div className="space-y-2">
+        <Label>Alamat</Label>
+        <Input name="address" placeholder="Alamat lengkap" className="h-12 rounded-xl border-2" />
+      </div>
+      <Button type="submit" className="w-full h-14 text-lg rounded-2xl font-bold bg-primary mt-4">
+        Daftarkan Mustahik
+      </Button>
+    </form>
+  );
+}
+
+function PieChart(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M21.21 15.89A10 10 0 1 1 8 2.83" />
+      <path d="M22 12A10 10 0 0 0 12 2v10z" />
+    </svg>
   );
 }

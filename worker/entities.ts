@@ -79,7 +79,9 @@ export class InventoryItemEntity extends IndexedEntity<InventoryItem> {
     name: "",
     quantity: 0,
     condition: "good",
-    location: ""
+    location: "",
+    maintenanceIntervalDays: 0,
+    nextMaintenanceDate: 0
   };
 }
 export class EventEntity extends IndexedEntity<Event> {
@@ -95,7 +97,10 @@ export class EventEntity extends IndexedEntity<Event> {
     capacity: 0,
     currentRegistrations: 0,
     speaker: "",
-    minDonation: 0
+    minDonation: 0,
+    isFundraising: false,
+    targetAmount: 0,
+    collectedAmount: 0
   };
 }
 export class EventRegistrationEntity extends IndexedEntity<EventRegistration> {
@@ -122,7 +127,9 @@ export class ForumPostEntity extends IndexedEntity<ForumPost> {
     category: 'diskusi',
     title: "",
     content: "",
-    createdAt: 0
+    createdAt: 0,
+    likeCount: 0,
+    commentCount: 0
   };
 }
 export class ZisTransactionEntity extends IndexedEntity<ZisTransaction> {
@@ -151,7 +158,9 @@ export class PrayerScheduleEntity extends IndexedEntity<PrayerSchedule> {
     prayerTime: 'fajr',
     time: "05:00",
     imamName: "",
-    khatibName: ""
+    khatibName: "",
+    khutbahTopic: "",
+    khutbahFileUrl: ""
   };
 }
 
@@ -204,6 +213,19 @@ export class UstadzEntity extends IndexedEntity<Ustadz> {
     specialization: "",
     isActive: true,
     createdAt: 0
+  };
+}
+
+export class OrganizationMemberEntity extends IndexedEntity<OrganizationMember> {
+  static readonly entityName = "org_member";
+  static readonly indexName = "org_members";
+  static readonly initialState: OrganizationMember = {
+    id: "",
+    tenantId: "",
+    name: "",
+    role: "",
+    order: 0,
+    imageUrl: ""
   };
 }
 

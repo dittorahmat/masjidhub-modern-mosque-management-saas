@@ -9,7 +9,11 @@ export * from './core-utils';
 
 export type ClientErrorReport = { message: string; url: string; timestamp: string } & Record<string, unknown>;
 
-const app = new Hono<{ Bindings: Env }>();
+type Variables = {
+  subdomain: string | null;
+}
+
+const app = new Hono<{ Bindings: Env, Variables: Variables }>();
 
 app.use('*', logger());
 

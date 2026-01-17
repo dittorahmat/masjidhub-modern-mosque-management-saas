@@ -16,7 +16,7 @@ import {
   UstadzEntity,
   MustahikEntity
 } from "./entities";
-import type { UserRole } from "@shared/types";
+import type { UserRole, ZisTransaction } from "@shared/types";
 import { ok, bad, notFound } from './core-utils';
 
 // Mock payment processing function - in a real implementation, this would connect to actual payment gateways
@@ -39,7 +39,7 @@ async function processZisPayment(transaction: any, paymentMethod: string, amount
   };
 }
 
-export function userRoutes(app: Hono<{ Bindings: Env }>) {
+export function userRoutes(app: Hono<any>) {
   const getTenantBySlug = async (env: Env, slug: string) => {
     await TenantEntity.ensureSeed(env);
     await UserEntity.ensureSeed(env);
@@ -222,7 +222,7 @@ export function userRoutes(app: Hono<{ Bindings: Env }>) {
 
     await inst.patch({
       payment_method: body.payment_method,
-      payment_status: paymentResult.status,
+      payment_status: paymentResult.status as ZisTransaction['payment_status'],
       payment_reference: paymentResult.reference,
       payment_gateway: paymentResult.gateway,
       payment_date: Date.now()

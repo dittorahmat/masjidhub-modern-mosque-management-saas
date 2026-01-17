@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
-import type { Chat, ChatMessage, User } from '@shared/types'
+import type { ChatRoom, ChatMessage, AppUser } from '@shared/types'
 import { api } from '@/lib/api-client'
 
 export const HAS_TEMPLATE_DEMO = true
@@ -14,8 +14,8 @@ export const HAS_TEMPLATE_DEMO = true
 const glassCard = 'backdrop-blur-xl bg-white/10 dark:bg-black/20 border-white/20 shadow-2xl'
 
 export function TemplateDemo() {
-  const [users, setUsers] = useState<User[]>([])
-  const [chats, setChats] = useState<Chat[]>([])
+  const [users, setUsers] = useState<AppUser[]>([])
+  const [chats, setChats] = useState<ChatRoom[]>([])
   const [messages, setMessages] = useState<ChatMessage[]>([])
 
   const [selectedUserId, setSelectedUserId] = useState<string>('')
@@ -31,8 +31,8 @@ export function TemplateDemo() {
 
   const load = useCallback(async () => {
     const [uPage, cPage] = await Promise.all([
-      api<{ items: User[]; next: string | null }>('/api/users'),
-      api<{ items: Chat[]; next: string | null }>('/api/chats'),
+      api<{ items: AppUser[]; next: string | null }>('/api/users'),
+      api<{ items: ChatRoom[]; next: string | null }>('/api/chat-rooms'),
     ])
     setUsers(uPage.items)
     setChats(cPage.items)
@@ -44,7 +44,7 @@ export function TemplateDemo() {
   const loadMessages = useCallback(async (chatId: string) => {
     setLoadingMessages(true)
     try {
-      const list = await api<ChatMessage[]>(`/api/chats/${chatId}/messages`)
+      const list = await api<ChatMessage[]>(`/api/chat-rooms/${chatId}/messages`)
       setMessages(list)
     } finally {
       setLoadingMessages(false)
@@ -63,7 +63,7 @@ export function TemplateDemo() {
   const createUser = async () => {
     const name = newUserName.trim()
     if (!name) return
-    const u = await api<User>('/api/users', { method: 'POST', body: JSON.stringify({ name }) })
+    const u = await api<AppUser>('/api/users', { method: 'POST', body: JSON.stringify({ name, email: `${name.toLowerCase()}@example.com` }) })
     setUsers((prev) => [...prev, u])
     setNewUserName('')
     setSelectedUserId((prev) => prev || u.id)
@@ -72,7 +72,7 @@ export function TemplateDemo() {
   const createChat = async () => {
     const title = newChatTitle.trim()
     if (!title) return
-    const c = await api<Chat>('/api/chats', { method: 'POST', body: JSON.stringify({ title }) })
+    const c = await api<ChatRoom>('/api/chat-rooms', { method: 'POST', body: JSON.stringify({ name: title }) })
     setChats((prev) => [...prev, c])
     setNewChatTitle('')
     setSelectedChatId((prev) => prev || c.id)
@@ -82,9 +82,14 @@ export function TemplateDemo() {
     const msg = text.trim()
     if (!selectedUserId || !selectedChatId || !msg) return
 
-    const created = await api<ChatMessage>(`/api/chats/${selectedChatId}/messages`, {
+    const selectedUser = usersById.get(selectedUserId)
+    const created = await api<ChatMessage>(`/api/chat-rooms/${selectedChatId}/messages`, {
       method: 'POST',
-      body: JSON.stringify({ userId: selectedUserId, text: msg }),
+      body: JSON.stringify({ 
+        senderId: selectedUserId, 
+        senderName: selectedUser?.name || 'Unknown',
+        message: msg 
+      }),
     })
 
     setMessages((prev) => [...prev, created])
@@ -137,7 +142,7 @@ export function TemplateDemo() {
                   onClick={() => setSelectedChatId(c.id)}
                   className={`w-full text-left flex items-center justify-between border rounded px-3 py-2 transition-colors ${selectedChatId === c.id ? 'bg-white/10 dark:bg-white/5' : 'hover:bg-white/5 dark:hover:bg-white/5'}`}
                 >
-                  <span className="font-medium">{c.title}</span>
+                  <span className="font-medium">{c.name}</span>
                   <span className="text-xs text-muted-foreground">{c.id.slice(0, 6)}…</span>
                 </button>
               )) : (
@@ -174,7 +179,7 @@ export function TemplateDemo() {
               <SelectContent>
                 {chats.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
-                    {c.title}
+                    {c.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -189,11 +194,11 @@ export function TemplateDemo() {
                 {messages.map((m) => (
                   <div key={m.id} className="text-sm">
                     <span className="font-medium">
-                      {usersById.get(m.userId)?.name ?? 'Unknown'}:
+                      {usersById.get(m.senderId)?.name ?? 'Unknown'}:
                     </span>{' '}
-                    <span>{m.text}</span>
+                    <span>{m.message}</span>
                     <span className="ml-2 text-xs text-muted-foreground">
-                      {new Date(m.ts).toLocaleTimeString()}
+                      {new Date(m.timestamp).toLocaleTimeString()}
                     </span>
                   </div>
                 ))}

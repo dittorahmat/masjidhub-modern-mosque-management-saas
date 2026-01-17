@@ -12,12 +12,13 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { RouteErrorBoundary } from '@/components/RouteErrorBoundary';
 import { GlobalLoading } from '@/components/GlobalLoading';
 import '@/index.css';
-// Core Pages
-import { LandingPage } from '@/pages/LandingPage';
-import { RegisterMosquePage } from '@/pages/auth/RegisterMosquePage';
-import { DashboardLayout } from '@/pages/dashboard/DashboardLayout';
-import { OverviewPage } from '@/pages/dashboard/OverviewPage';
-import PublicPortalPage from '@/pages/PublicPortalPage';
+// Core Pages (Converted to Lazy)
+const LandingPage = lazy(() => import('@/pages/LandingPage').then(module => ({ default: module.LandingPage })));
+const RegisterMosquePage = lazy(() => import('@/pages/auth/RegisterMosquePage').then(module => ({ default: module.RegisterMosquePage })));
+const DashboardLayout = lazy(() => import('@/pages/dashboard/DashboardLayout').then(module => ({ default: module.DashboardLayout })));
+const OverviewPage = lazy(() => import('@/pages/dashboard/OverviewPage').then(module => ({ default: module.OverviewPage })));
+const PublicPortalPage = lazy(() => import('@/pages/PublicPortalPage'));
+
 // UI
 import { Toaster } from '@/components/ui/sonner';
 // Lazy Components
@@ -55,7 +56,11 @@ const queryClient = new QueryClient({
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <LandingPage />,
+    element: (
+      <Suspense fallback={<GlobalLoading />}>
+        <LandingPage />
+      </Suspense>
+    ),
     errorElement: <RouteErrorBoundary />,
   },
   {
@@ -69,12 +74,20 @@ const router = createBrowserRouter([
   },
   {
     path: "/register",
-    element: <RegisterMosquePage />,
+    element: (
+      <Suspense fallback={<GlobalLoading />}>
+        <RegisterMosquePage />
+      </Suspense>
+    ),
     errorElement: <RouteErrorBoundary />,
   },
   {
     path: "/portal/:slug",
-    element: <PublicPortalPage />,
+    element: (
+      <Suspense fallback={<GlobalLoading />}>
+        <PublicPortalPage />
+      </Suspense>
+    ),
     errorElement: <RouteErrorBoundary />,
   },
   {
@@ -102,10 +115,21 @@ const router = createBrowserRouter([
   },
   {
     path: "/app/:slug",
-    element: <DashboardLayout />,
+    element: (
+      <Suspense fallback={<GlobalLoading />}>
+        <DashboardLayout />
+      </Suspense>
+    ),
     errorElement: <RouteErrorBoundary />,
     children: [
-      { path: "dashboard", element: <OverviewPage /> },
+      { 
+        path: "dashboard", 
+        element: (
+          <Suspense fallback={<GlobalLoading />}>
+            <OverviewPage />
+          </Suspense>
+        ) 
+      },
       {
         path: "finance",
         element: (

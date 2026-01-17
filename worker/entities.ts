@@ -1,5 +1,8 @@
 import { IndexedEntity } from "./core-utils";
-import type { Transaction, InventoryItem, Event, EventRegistration, Tenant, AppUser, ForumPost, ZisTransaction } from "@shared/types";
+import type { 
+  Transaction, InventoryItem, Event, EventRegistration, Tenant, AppUser, ForumPost, ZisTransaction,
+  PrayerSchedule, Notification, ChatRoom, ChatMessage, Ustadz, OrganizationMember, Mustahik
+} from "@shared/types";
 export class TenantEntity extends IndexedEntity<Tenant> {
   static readonly entityName = "tenant";
   static readonly indexName = "tenants";

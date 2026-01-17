@@ -44,7 +44,7 @@ export default function ZisPaymentPage() {
   });
 
   const createTransactionMutation = useMutation({
-    mutationFn: (newTx: Partial<ZisTransaction>) => api(`/api/${slug}/zis`, {
+    mutationFn: (newTx: Partial<ZisTransaction>) => api<ZisTransaction>(`/api/${slug}/zis`, {
       method: 'POST',
       body: JSON.stringify(newTx)
     }),
@@ -100,11 +100,12 @@ export default function ZisPaymentPage() {
     
     createTransactionMutation.mutate({
       ...paymentForm,
+      type: paymentForm.type as ZisTransaction['type'],
       mustahik_id: paymentForm.mustahik_id === 'all' ? '' : paymentForm.mustahik_id,
       amount: amount,
       flow: 'in',
       payment_method: paymentMethod,
-      payment_status: paymentMethod === 'cash' ? 'completed' : 'pending'
+      payment_status: (paymentMethod === 'cash' ? 'completed' : 'pending') as ZisTransaction['payment_status']
     });
   };
 

@@ -12,21 +12,7 @@ export interface AppUser {
   tenantIds: string[];
   isBanned?: boolean; // For user banning functionality
 }
-export interface User {
-  id: string;
-  name: string;
-}
-export interface Chat {
-  id: string;
-  title: string;
-}
-export interface ChatMessage {
-  id: string;
-  chatId: string;
-  userId: string;
-  text: string;
-  ts: number;
-}
+// Removed redundant User, Chat, and ChatMessage interfaces
 export interface Transaction {
   id: string;
   tenantId: string;

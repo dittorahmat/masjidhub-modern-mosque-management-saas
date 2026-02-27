@@ -10,9 +10,8 @@ export interface AppUser {
   email: string;
   role: UserRole;
   tenantIds: string[];
-  isBanned?: boolean; // For user banning functionality
+  isBanned?: boolean;
 }
-// Removed redundant User, Chat, and ChatMessage interfaces
 export interface Transaction {
   id: string;
   tenantId: string;
@@ -37,9 +36,9 @@ export interface ZisTransaction {
   date: number;
   payment_method?: 'cash' | 'bank_transfer' | 'mobile_payment' | 'credit_card';
   payment_status?: 'pending' | 'completed' | 'failed' | 'refunded';
-  payment_reference?: string; // Transaction ID from payment gateway
-  payment_gateway?: string; // Name of the payment gateway used
-  payment_date?: number; // When the payment was processed
+  payment_reference?: string;
+  payment_gateway?: string;
+  payment_date?: number;
 }
 export interface InventoryItem {
   id: string;
@@ -49,8 +48,8 @@ export interface InventoryItem {
   condition: 'new' | 'good' | 'fair' | 'poor';
   location: string;
   lastMaintenance?: number;
-  maintenanceIntervalDays?: number; // Days between maintenance
-  nextMaintenanceDate?: number;    // Calculated next maintenance date
+  maintenanceIntervalDays?: number;
+  nextMaintenanceDate?: number;
 }
 export interface Event {
   id: string;
@@ -61,12 +60,12 @@ export interface Event {
   location: string;
   capacity: number;
   currentRegistrations: number;
-  speaker?: string;        // Speaker/preacher for the event
-  minDonation?: number;    // Minimum donation required for the event (0 for free events)
+  speaker?: string;
+  minDonation?: number;
   imageUrl?: string;
-  isFundraising?: boolean; // If true, this event is specifically for fundraising
-  targetAmount?: number;   // Target amount if it's a fundraising event
-  collectedAmount?: number; // Total amount collected for this event
+  isFundraising?: boolean;
+  targetAmount?: number;
+  collectedAmount?: number;
 }
 export interface EventRegistration {
   id: string;
@@ -87,7 +86,7 @@ export interface ForumPost {
   content: string;
   createdAt: number;
   isPinned?: boolean;
-  isBanned?: boolean; // For post banning functionality
+  isBanned?: boolean;
   likeCount?: number;
   commentCount?: number;
 }
@@ -96,11 +95,11 @@ export interface PrayerSchedule {
   tenantId: string;
   day: 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
   prayerTime: 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
-  time: string; // in HH:MM format
+  time: string;
   imamName?: string;
-  khatibName?: string; // for Friday prayers
+  khatibName?: string;
   khutbahTopic?: string;
-  khutbahFileUrl?: string; // URL to khutbah material (PDF/Audio)
+  khutbahFileUrl?: string;
 }
 
 export interface Tenant {
@@ -110,24 +109,27 @@ export interface Tenant {
   ownerId: string;
   createdAt: number;
   address?: string;
-  legalDocUrl?: string;  // URL to legal document
-  logoUrl?: string;      // URL to mosque logo
-  bannerUrl?: string;    // URL to banner image
-  runningText?: string;  // Running text for announcements
+  legalDocUrl?: string;
+  logoUrl?: string;
+  bannerUrl?: string;
+  runningText?: string;
   bankInfo?: string;
   bio?: string;
   status: 'active' | 'pending' | 'suspended';
+  aiEnabled?: boolean;
 }
+
 export interface ChatRoom {
   id: string;
   tenantId: string;
-  name: string; // Name of the chat room (e.g. "Konsultasi dengan Ustadz Ahmad")
-  participants: string[]; // User IDs participating in the chat
+  name: string;
+  participants: string[];
   createdAt: number;
   lastMessageAt?: number;
   lastMessage?: string;
 }
 
+// Legacy ChatMessage for ChatRoom
 export interface ChatMessage {
   id: string;
   chatRoomId: string;
@@ -135,14 +137,96 @@ export interface ChatMessage {
   senderName: string;
   message: string;
   timestamp: number;
-  readBy?: string[]; // User IDs who have read the message
+  readBy?: string[];
+}
+
+// New AI Engagement Types
+export interface ChatSession {
+  id: string;
+  tenantId: string;
+  userId: string | null;
+  isAnonymous: boolean;
+  sessionSalt: string;
+  status: 'active' | 'closed';
+  createdAt: number;
+  lastActivityAt: number;
+}
+
+export interface AIChatMessage {
+  id: string;
+  sessionId: string;
+  tenantId: string;
+  senderRole: 'user' | 'ai' | 'admin';
+  text: string;
+  timestamp: number;
+  metadata?: {
+    citations?: {
+      fileId: string;
+      fileName: string;
+      pageNumber: number;
+      snippet?: string;
+    }[];
+    interactiveCards?: {
+      type: 'donation' | 'event' | 'finance_summary' | 'link_preview';
+      data: {
+        id: string;
+        title: string;
+        value?: number;
+        current?: number;
+        url: string;
+      };
+    }[];
+  };
+}
+
+export interface BlogPost {
+  id: string;
+  tenantId: string;
+  slug: string;
+  title: string;
+  content: string;
+  authorId: string;
+  category: string;
+  status: 'draft' | 'published';
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface MediaItem {
+  id: string;
+  tenantId: string;
+  cloudinaryUrl: string;
+  fileName: string;
+  fileType: string;
+  eventTag: string | null;
+  isWatermarked: boolean;
+  createdAt: number;
+}
+
+export interface PageSection {
+  id: string;
+  tenantId: string;
+  type: string;
+  order: number;
+  config: Record<string, unknown>;
+  isVisible: boolean;
+  updatedAt: number;
+}
+
+export interface KnowledgeSnippet {
+  id: string;
+  tenantId: string;
+  content: string;
+  priority: number;
+  expirationDate: number | null;
+  createdAt: number;
 }
 
 export interface Ustadz {
   id: string;
   tenantId: string;
   name: string;
-  specialization: string; // e.g. "Fikih", "Tafsir", "Sirah"
+  specialization: string;
   bio?: string;
   isActive: boolean;
   createdAt: number;
@@ -152,9 +236,9 @@ export interface OrganizationMember {
   id: string;
   tenantId: string;
   name: string;
-  role: string; // e.g. "Ketua DKM", "Bendahara", "Sekretaris"
+  role: string;
   imageUrl?: string;
-  order: number; // For sorting the hierarchy
+  order: number;
   bio?: string;
   socialLinks?: {
     instagram?: string;
@@ -166,11 +250,11 @@ export interface Mustahik {
   id: string;
   tenantId: string;
   name: string;
-  nik?: string; // Nomor Induk Kependudukan
+  nik?: string;
   phone?: string;
   address?: string;
-  category: 'fakir' | 'miskin' | 'amil' | 'mualaf' | 'gharim' | 'riqab' | 'musafir' | 'other'; // Categories of recipients
-  status: 'active' | 'inactive' | 'completed'; // Status of assistance
+  category: 'fakir' | 'miskin' | 'amil' | 'mualaf' | 'gharim' | 'riqab' | 'musafir' | 'other';
+  status: 'active' | 'inactive' | 'completed';
   registrationDate: number;
   lastAssistanceDate?: number;
   notes?: string;
@@ -179,7 +263,7 @@ export interface Mustahik {
 export interface Notification {
   id: string;
   tenantId: string;
-  userId?: string; // If null/undefined, it's a broadcast notification to all users in tenant
+  userId?: string;
   title: string;
   message: string;
   type: 'info' | 'warning' | 'alert' | 'announcement';

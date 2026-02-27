@@ -2,7 +2,6 @@
 import { defineConfig, loadEnv } from "vite";
 import path from "path";
 import react from "@vitejs/plugin-react";
-import { exec } from "node:child_process";
 import pino from "pino";
 import { cloudflare } from "@cloudflare/vite-plugin";
 
@@ -34,101 +33,24 @@ const emitLog = (level: "info" | "warn" | "error", rawMessage: string) => {
   }
 };
 
-// 3. Create the custom logger for Vite
 const customLogger = {
   warnOnce: (msg: string) => emitLog("warn", msg),
-
-  // Use Pino's methods, passing the cleaned message
   info: (msg: string) => emitLog("info", msg),
   warn: (msg: string) => emitLog("warn", msg),
   error: (msg: string) => emitLog("error", msg),
   hasErrorLogged: () => false,
-
-  // Keep these as-is
   clearScreen: () => {},
   hasWarned: false,
 };
 
-function watchDependenciesPlugin() {
-  return {
-    name: "watch-dependencies",
-    configureServer(server: any) {
-      const filesToWatch = [
-        path.resolve("package.json"),
-        path.resolve("bun.lock"),
-      ];
-
-      server.watcher.add(filesToWatch);
-
-      server.watcher.on("change", (filePath: string) => {
-        if (filesToWatch.includes(filePath)) {
-          console.log(
-            `\n Dependency file changed: ${path.basename(
-              filePath
-            )}. Clearing caches...`
-          );
-
-          exec(
-            "rm -f .eslintcache tsconfig.tsbuildinfo",
-            (err, stdout, stderr) => {
-              if (err) {
-                console.error("Failed to clear caches:", stderr);
-                return;
-              }
-              console.log("Caches cleared successfully.\n");
-            }
-          );
-        }
-      });
-    },
-  };
-}
-
-function reloadTriggerPlugin() {
-  return {
-    name: "reload-trigger",
-    configureServer(server: any) {
-      const triggerFile = path.resolve(".reload-trigger");
-      server.watcher.add(triggerFile);
-
-      server.watcher.on("change", (filePath: string) => {
-        if (filePath === triggerFile || filePath.endsWith(".reload-trigger")) {
-          logger.info("Reload triggered via .reload-trigger");
-          server.ws.send({ type: "full-reload" });
-        }
-      });
-    },
-  };
-}
-
-// https://vite.dev/config/
 export default ({ mode }: { mode: string }) => {
   const env = loadEnv(mode, process.cwd());
   return defineConfig({
-    plugins: [react(), cloudflare(), watchDependenciesPlugin(), reloadTriggerPlugin()],
+    plugins: [react(), cloudflare()],
     build: {
       minify: true,
-      sourcemap: "inline", // Use inline source maps for better error reporting
-      rollupOptions: {
-        output: {
-          sourcemapExcludeSources: false, // Include original source in source maps
-        },
-      },
     },
     customLogger: env.VITE_LOGGER_TYPE === 'json' ? customLogger : undefined,
-    // Enable source maps in development too
-    css: {
-      devSourcemap: true,
-    },
-    server: {
-      allowedHosts: true,
-      watch: {
-        awaitWriteFinish: {
-          stabilityThreshold: 150,
-          pollInterval: 50,
-        },
-      },
-    },
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "./src"),
@@ -136,10 +58,8 @@ export default ({ mode }: { mode: string }) => {
       },
     },
     optimizeDeps: {
-      // This is still crucial for reducing the time from when `bun run dev`
-      // is executed to when the server is actually ready.
       include: ["react", "react-dom", "react-router-dom"],
-      exclude: ["agents"], // Exclude agents package from pre-bundling due to Node.js dependencies
+      exclude: ["agents"],
       force: true,
     },
     define: {

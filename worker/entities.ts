@@ -1,8 +1,97 @@
 import { IndexedEntity } from "./core-utils";
 import type { 
   Transaction, InventoryItem, Event, EventRegistration, Tenant, AppUser, ForumPost, ZisTransaction,
-  PrayerSchedule, Notification, ChatRoom, ChatMessage, Ustadz, OrganizationMember, Mustahik
+  PrayerSchedule, Notification, ChatRoom, ChatMessage, Ustadz, OrganizationMember, Mustahik,
+  ChatSession, BlogPost, MediaItem, PageSection, KnowledgeSnippet, AIChatMessage
 } from "@shared/types";
+
+export class ChatSessionEntity extends IndexedEntity<ChatSession> {
+  static readonly entityName = "chat_session";
+  static readonly indexName = "chat_sessions";
+  static readonly initialState: ChatSession = {
+    id: "",
+    tenantId: "",
+    userId: null,
+    isAnonymous: true,
+    sessionSalt: "",
+    status: 'active',
+    createdAt: 0,
+    lastActivityAt: 0
+  };
+}
+
+export class AIChatMessageEntity extends IndexedEntity<AIChatMessage> {
+  static readonly entityName = "ai_chat_message";
+  static readonly indexName = "ai_chat_messages";
+  static readonly initialState: AIChatMessage = {
+    id: "",
+    sessionId: "",
+    tenantId: "",
+    senderRole: 'user',
+    text: "",
+    timestamp: 0
+  };
+}
+
+export class BlogPostEntity extends IndexedEntity<BlogPost> {
+  static readonly entityName = "blog_post";
+  static readonly indexName = "blog_posts";
+  static readonly initialState: BlogPost = {
+    id: "",
+    tenantId: "",
+    slug: "",
+    title: "",
+    content: "",
+    authorId: "",
+    category: "umum",
+    status: 'draft',
+    createdAt: 0,
+    updatedAt: 0
+  };
+}
+
+export class MediaItemEntity extends IndexedEntity<MediaItem> {
+  static readonly entityName = "media_item";
+  static readonly indexName = "media_items";
+  static readonly initialState: MediaItem = {
+    id: "",
+    tenantId: "",
+    cloudinaryUrl: "",
+    fileName: "",
+    fileType: "",
+    eventTag: null,
+    isWatermarked: false,
+    createdAt: 0
+  };
+}
+
+export class PageSectionEntity extends IndexedEntity<PageSection> {
+  static readonly entityName = "page_section";
+  static readonly indexName = "page_sections";
+  static readonly initialState: PageSection = {
+    id: "",
+    tenantId: "",
+    type: "hero",
+    order: 0,
+    config: {},
+    isVisible: true,
+    updatedAt: 0
+  };
+}
+
+export class KnowledgeSnippetEntity extends IndexedEntity<KnowledgeSnippet> {
+  static readonly entityName = "knowledge_snippet";
+  static readonly indexName = "knowledge_snippets";
+  static readonly initialState: KnowledgeSnippet = {
+    id: "",
+    tenantId: "",
+    content: "",
+    priority: 0,
+    expirationDate: null,
+    createdAt: 0
+  };
+}
+
 export class TenantEntity extends IndexedEntity<Tenant> {
   static readonly entityName = "tenant";
   static readonly indexName = "tenants";

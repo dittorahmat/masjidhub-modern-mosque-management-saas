@@ -12,6 +12,7 @@ build/
 .wrangler/
 
 # Environment specific
+.dev.vars
 .env
 .env.local
 .env.development.local
@@ -62,7 +63,7 @@ tmp/
 temp/
 
 # Screenshots
-screenshot/
+#screenshot/
 
 # TypeScript cache
 *.tsbuildinfo

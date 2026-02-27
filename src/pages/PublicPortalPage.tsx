@@ -19,6 +19,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
 import type { Tenant, Event, PrayerSchedule, OrganizationMember } from '@shared/types';
+import { ChatWindow } from '@/components/features/ai/chat-window';
 
 export default function PublicPortalPage() {
   const { slug } = useParams();
@@ -251,7 +252,7 @@ export default function PublicPortalPage() {
           </section>
         )}
 
-        {/* Organization Structure (New Section) */}
+        {/* Organization Structure */}
         {members.length > 0 && (
           <section className="space-y-12">
             <div className="text-center space-y-4">
@@ -331,6 +332,13 @@ export default function PublicPortalPage() {
           </div>
         </section>
       </main>
+
+      {/* Floating AI Chat Widget */}
+      <div className="fixed bottom-6 right-6 z-[100]">
+        {tenant && (
+          <ChatWindow slug={slug!} mosqueName={tenant.name} />
+        )}
+      </div>
 
       {/* Footer */}
       <footer className="border-t py-20 bg-white">

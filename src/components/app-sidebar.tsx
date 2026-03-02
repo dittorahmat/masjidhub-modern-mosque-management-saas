@@ -48,7 +48,7 @@ export function AppSidebar(): JSX.Element {
   const navigation = [
     { name: "Dasbor", icon: LayoutDashboard, href: `/app/${slug}/dashboard`, show: true },
     { name: "Shared Inbox", icon: Sparkles, href: `/app/${slug}/inbox`, show: isAdminOrAmil },
-    { name: "Basis Pengetahuan", icon: BrainCircuit, href: `/app/${slug}/knowledge`, show: isAdminOrAmil },
+    { name: "Pusat Kendali AI", icon: BrainCircuit, href: `/app/${slug}/knowledge`, show: isAdminOrAmil },
     { name: "Puzzle Builder", icon: LayoutTemplate, href: `/app/${slug}/builder`, show: isAdminOrAmil },
     { name: "Kajian & Blog", icon: BookOpen, href: `/app/${slug}/blog`, show: isAdminOrAmil },
     { name: "Media & Galeri", icon: ImageIcon, href: `/app/${slug}/media`, show: isAdminOrAmil },

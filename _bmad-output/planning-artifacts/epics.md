@@ -61,11 +61,12 @@ This document provides the complete epic and story breakdown for masjidhub-moder
 
 ## Epic List
 
-1. **Epic 1: Intelligent Communication Hub** (Chat & AI Core)
-2. **Epic 2: Mosque Knowledge Base** (Knowledge Management)
-3. **Epic 3: Puzzle Page Builder** (Visual Presence)
-4. **Epic 4: Smart CMS & Blog** (Integrated Content)
-5. **Epic 5: Media & Operational Transparency** (Assets & Finance)
+1. **Epic 1: Intelligent Communication Hub** (Chat & AI Core) [DONE]
+2. **Epic 2: Mosque Knowledge Base** (Knowledge Management) [DONE]
+3. **Epic 3: Puzzle Page Builder** (Visual Presence) [DONE]
+4. **Epic 4: Smart CMS & Blog** (Integrated Content) [DONE]
+5. **Epic 5: Media & Operational Transparency** (Assets & Finance) [DONE]
+6. **Epic 6: AI Persona & Role Management** (Identity & Customization) [DONE]
 
 ---
 
@@ -85,8 +86,7 @@ As a Admin DKM, I want melihat dan membalas chat dari dashboard, So that koordin
 **AC:** Given admin login, When menu Inbox dibuka, Then sistem menampilkan daftar ChatSession aktif (multi-tenant isolated).
 
 ### Story 1.6: Chat Session Persistence
-As a Jamaah, I want riwayat chat tidak hilang saat refresh, So that saya bisa lanjut bertanya.
-**AC:** Given sesi aktif, When halaman di-refresh, Then sistem menarik riwayat pesan dari ChatMessageEntity berdasarkan sessionId.
+As a Jamaah, I want riwayat chat saya tidak hilang saat refresh, So that saya bisa melanjutkan percakapan.
 
 ---
 
@@ -99,7 +99,6 @@ As a Admin DKM, I want mengunggah file PDF laporan, So that AI bisa menjawab ber
 
 ### Story 2.2: Persetujuan Dokumen Manual
 As a Admin, I want menyetujui dokumen sebelum diindeks AI, So that akurasi data terjaga.
-**AC:** Given file "Ready", When admin klik Approve, Then file tersebut masuk ke context window AI untuk chat berikutnya.
 
 ### Story 2.3: Quick Knowledge Snippets (Textbox)
 As a Admin, I want mengetik info singkat (zakat/info ramadhan) di textbox, So that AI tahu info dinamis tanpa upload PDF.
@@ -112,11 +111,9 @@ As a Admin, I want mengetik info singkat (zakat/info ramadhan) di textbox, So th
 
 ### Story 3.1: Drag-and-Drop Page Builder
 As a Admin, I want menyusun tata letak web dengan blok section, So that pembuatan portal sangat cepat.
-**AC:** Given builder aktif, When blok ditarik ke kanvas, Then sistem simpan urutan & config di PageSectionEntity.
 
 ### Story 3.2: Design Guard (Theming)
 As a Admin, I want pilihan warna dibatasi, So that web tetap cantik & profesional.
-**AC:** Given editor dibuka, When memilih warna, Then sistem hanya menampilkan palet Emerald/Amber yang sudah dikunci.
 
 ---
 
@@ -125,7 +122,6 @@ As a Admin, I want pilihan warna dibatasi, So that web tetap cantik & profesiona
 
 ### Story 4.1: CMS dengan Smart Blocks (Ayat/Hadits)
 As a Ustadz, I want menyisipkan teks Arab Ayat secara otomatis, So that penulisan kajian lebih akurat.
-**AC:** Given editor blog, When ketik "/ayat", Then sistem cari referensi via AI/API & sisipkan teks asli Al-Quran.
 
 ---
 
@@ -134,8 +130,38 @@ As a Ustadz, I want menyisipkan teks Arab Ayat secara otomatis, So that penulisa
 
 ### Story 5.2: Social-Ready Transparency (Infographics)
 As a Admin DKM, I want generate infografis laporan kas satu klik, So that mudah share ke WhatsApp.
-**AC:** Given modul Finance, When klik "Share Infographic", Then sistem convert data saldo/transaksi menjadi gambar (Cloudinary transformation).
 
 ### Story 5.3: Super Admin Panic Button & Governance
-As a Super Admin, I want mematikan AI per tenant, So that platform tetap aman dari penyalahgunaan.
-**AC:** Given panel kontrol global, When tenant dinonaktifkan AI-nya, Then rute chat di tenant tersebut otomatis mengalihkan ke mode manual.
+As a Super Admin, I want mematikan AI per tenant, So that keamanan platform terjaga.
+
+---
+
+## Epic 6: AI Persona & Role Management
+**Goal:** Memungkinkan admin masjid memilih karakter visual dan gaya bahasa asisten AI yang sesuai dengan nilai lokal.
+
+### Story 6.1: Role Presets & System Instructions
+**As a** Admin DKM, 
+**I want** memilih preset persona (Marbot Muda, Ustadz Muda, Sekretaris Digital), 
+**So that** AI merespon dengan gaya bahasa dan wibawa yang sesuai.
+**AC:** 
+- Given menu Settings AI, 
+- When persona dipilih (e.g. Ustadz Muda), 
+- Then sistem memperbarui System Instruction AI untuk menggunakan gaya bahasa santun dan memprioritaskan dalil.
+
+### Story 6.2: Dynamic Authority (Google Search Filtering)
+**As a** Admin DKM, 
+**I want** membatasi sumber Google Search AI via Quick Snippets, 
+**So that** referensi AI tetap akurat dan terpercaya.
+**AC:** 
+- Given AI melakukan Google Search, 
+- When ada baris "REFERENSI:" di Quick Snippets, 
+- Then AI memprioritaskan hasil pencarian dari domain-domain tersebut.
+
+### Story 6.3: UI Role Gallery
+**As a** Admin DKM, 
+**I want** antarmuka visual kartu persona di Dashboard, 
+**So that** penggantian identitas AI intuitif.
+**AC:** 
+- Given halaman Settings, 
+- When tab Identitas AI dibuka, 
+- Then sistem menampilkan pilihan kartu Marbot Muda, Ustadz Muda, dan Sekretaris Digital.

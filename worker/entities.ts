@@ -107,7 +107,8 @@ export class TenantEntity extends IndexedEntity<Tenant> {
     runningText: "",
     bankInfo: "",
     bio: "",
-    status: 'active'
+    status: 'active',
+    selectedPersona: 'marbot_muda'
   };
   static seedData: Tenant[] = [
     {
@@ -122,7 +123,8 @@ export class TenantEntity extends IndexedEntity<Tenant> {
       runningText: "Selamat datang di Portal Masjid Al-Hikmah",
       bankInfo: "BSI 7123456789 a/n Masjid Al-Hikmah",
       bio: "A community-focused mosque dedicated to religious education and social welfare.",
-      status: 'active'
+      status: 'active',
+      selectedPersona: 'ustadz_muda'
     }
   ];
 }

@@ -102,6 +102,8 @@ export interface PrayerSchedule {
   khutbahFileUrl?: string;
 }
 
+export type AIPersona = 'marbot_muda' | 'ustadz_muda' | 'sekretaris_digital' | 'kakak_risma';
+
 export interface Tenant {
   id: string;
   name: string;
@@ -117,6 +119,7 @@ export interface Tenant {
   bio?: string;
   status: 'active' | 'pending' | 'suspended';
   aiEnabled?: boolean;
+  selectedPersona?: AIPersona;
 }
 
 export interface ChatRoom {

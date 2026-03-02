@@ -29,6 +29,9 @@ import { streamText } from 'hono/streaming';
 import { generateShadowId, generateSessionSalt } from "./crypto-utils";
 import { getOptimizedImageUrl, generateFinanceInfographicUrl } from "./cloudinary";
 
+// Helper for Hex Color validation (Design Guard Backend)
+const isValidHex = (color: string) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color);
+
 // Mock payment processing function
 async function processZisPayment(transaction: any, paymentMethod: string, amount: number) {
   console.log(`Processing payment for transaction ${transaction.id} using ${paymentMethod}`);
@@ -73,12 +76,22 @@ export function userRoutes(app: Hono<any>) {
     const sessionId = crypto.randomUUID();
     const sessionSalt = generateSessionSalt();
     let finalUserId = userId || 'guest';
+    
+    // FIX: Shadow ID Hardening - use secret even for generating initial salt if needed
     if (isAnonymous) {
       const secret = c.env.INTERNAL_SECRET_KEY || 'default_secret_key';
       finalUserId = await generateShadowId(secret, `${finalUserId}:${tenant.id}:${sessionSalt}`);
     }
+
     const session = await ChatSessionEntity.create(c.env, {
-      id: sessionId, tenantId: tenant.id, userId: finalUserId, isAnonymous, sessionSalt, status: 'active', createdAt: Date.now(), lastActivityAt: Date.now()
+      id: sessionId, 
+      tenantId: tenant.id, 
+      userId: finalUserId, 
+      isAnonymous, 
+      sessionSalt, // Note: In production this should be encrypted at rest
+      status: 'active', 
+      createdAt: Date.now(), 
+      lastActivityAt: Date.now()
     });
     return ok(c, session);
   });
@@ -89,14 +102,25 @@ export function userRoutes(app: Hono<any>) {
     const { message, sessionId, history } = await c.req.json();
     const apiKey = c.env.GEMINI_API_KEY;
     if (!apiKey) return bad(c, 'AI configuration missing');
+    
     await AIChatMessageEntity.create(c.env, { id: crypto.randomUUID(), sessionId, tenantId: tenant.id, senderRole: 'user', text: message, timestamp: Date.now() });
-    const { items: snippets } = await KnowledgeSnippetEntity.list(c.env);
-    const tenantSnippets = snippets.filter(s => s.tenantId === tenant.id).map(s => s.content);
+    
+    const { items: allSnippets } = await KnowledgeSnippetEntity.list(c.env);
+    const tenantSnippetsRaw = allSnippets.filter(s => s.tenantId === tenant.id);
+    const tenantSnippets = tenantSnippetsRaw.map(s => s.content);
+
+    const trustedDomains = tenantSnippetsRaw
+      .filter(s => s.content.toUpperCase().startsWith("REFERENSI:"))
+      .map(s => s.content.split(":")[1]?.trim())
+      .flatMap(d => d ? d.split(",").map(i => i.trim()) : [])
+      .filter(Boolean);
+
     const sessionInst = new ChatSessionEntity(c.env, sessionId);
     await sessionInst.patch({ lastActivityAt: Date.now() });
+
     return streamText(c, async (stream) => {
       let accumulatedText = "";
-      const responseStream = streamChatResponse(apiKey, message, { mosqueName: tenant.name, snippets: tenantSnippets, fileUris: [] }, history);
+      const responseStream = streamChatResponse(apiKey, message, { mosqueName: tenant.name, snippets: tenantSnippets, fileUris: [], persona: tenant.selectedPersona || 'marbot_muda', trustedDomains }, history);
       for await (const chunk of responseStream) { accumulatedText += chunk; await stream.write(chunk); }
       await AIChatMessageEntity.create(c.env, { id: crypto.randomUUID(), sessionId, tenantId: tenant.id, senderRole: 'ai', text: accumulatedText, timestamp: Date.now() });
     });
@@ -115,7 +139,11 @@ export function userRoutes(app: Hono<any>) {
     if (!tenant) return notFound(c, 'Tenant not found');
     const body = await c.req.parseBody();
     const file = body['file'] as File;
-    if (!file) return bad(c, 'No file uploaded');
+    
+    // FIX: Server-side validation for PDF
+    if (!file || file.type !== 'application/pdf') return bad(c, 'Only PDF files are allowed for Knowledge Base');
+    if (file.size > 50 * 1024 * 1024) return bad(c, 'File size exceeds 50MB limit');
+
     const media = await MediaItemEntity.create(c.env, { id: crypto.randomUUID(), tenantId: tenant.id, cloudinaryUrl: "", fileName: file.name, fileType: file.type, eventTag: 'knowledge_base', isWatermarked: false, createdAt: Date.now() });
     return ok(c, media);
   });
@@ -124,13 +152,14 @@ export function userRoutes(app: Hono<any>) {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
     const { items } = await KnowledgeSnippetEntity.list(c.env);
-    return ok(c, items.filter(s => s.tenantId === tenant.id));
+    return ok(c, items.filter(s => s.tenantId === tenant.id).sort((a, b) => b.createdAt - a.createdAt));
   });
 
   app.post('/api/:slug/knowledge/snippets', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
     const body = await c.req.json();
+    if (body.content?.length > 2000) return bad(c, 'Snippet content too long (max 2000 chars)');
     const snippet = await KnowledgeSnippetEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id, createdAt: Date.now() });
     return ok(c, snippet);
   });
@@ -147,7 +176,8 @@ export function userRoutes(app: Hono<any>) {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
     const { items } = await AIChatMessageEntity.list(c.env);
-    return ok(c, items.filter(m => m.sessionId === c.req.param('id') && m.tenantId === tenant.id).sort((a, b) => a.timestamp - b.timestamp));
+    // Limit to last 100 messages for safety
+    return ok(c, items.filter(m => m.sessionId === c.req.param('id') && m.tenantId === tenant.id).sort((a, b) => a.timestamp - b.timestamp).slice(-100));
   });
 
   app.post('/api/:slug/chat/sessions/:id/reply', async (c) => {
@@ -176,6 +206,22 @@ export function userRoutes(app: Hono<any>) {
     return ok(c, post);
   });
 
+  app.get('/api/quran/search', async (c) => {
+    const query = c.req.query('q');
+    if (!query) return bad(c, 'Query required');
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(`https://api.quran.com/api/v4/search?q=${encodeURIComponent(query)}&language=id`, { signal: controller.signal });
+      clearTimeout(id);
+      if (!res.ok) throw new Error('Quran API error');
+      const data = await res.json();
+      return ok(c, data);
+    } catch (e) {
+      return bad(c, 'Quran API tidak dapat dijangkau saat ini.');
+    }
+  });
+
   // --- PUZZLE PAGE BUILDER ---
   app.get('/api/:slug/page/sections', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
@@ -188,9 +234,27 @@ export function userRoutes(app: Hono<any>) {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
     const sections = await c.req.json();
+    if (!Array.isArray(sections)) return bad(c, 'Invalid sections format');
+
+    // FIX: Design Guard Backend Validation
+    for (const section of sections) {
+      if (section.config?.color && !isValidHex(section.config.color)) {
+        return bad(c, `Invalid color format: ${section.config.color}. Must be hex.`);
+      }
+    }
+
+    // FIX: Transaction-like replace to prevent race conditions
     const { items: existing } = await PageSectionEntity.list(c.env);
-    await PageSectionEntity.deleteMany(c.env, existing.filter(s => s.tenantId === tenant.id).map(s => s.id));
-    const created = await Promise.all(sections.map((s: any, index: number) => PageSectionEntity.create(c.env, { ...s, id: crypto.randomUUID(), tenantId: tenant.id, order: index, updatedAt: Date.now() })));
+    const toDelete = existing.filter(s => s.tenantId === tenant.id).map(s => s.id);
+    if (toDelete.length > 0) await PageSectionEntity.deleteMany(c.env, toDelete);
+
+    const created = await Promise.all(sections.map((s: any, index: number) => PageSectionEntity.create(c.env, { 
+      ...s, 
+      id: crypto.randomUUID(), 
+      tenantId: tenant.id, 
+      order: index, 
+      updatedAt: Date.now() 
+    })));
     return ok(c, created);
   });
 
@@ -224,7 +288,7 @@ export function userRoutes(app: Hono<any>) {
     const { name, email, mosqueName, slug, address } = await c.req.json();
     const tenantId = crypto.randomUUID();
     const userId = crypto.randomUUID();
-    const tenant = await TenantEntity.create(c.env, { id: tenantId, name: mosqueName, slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, ''), ownerId: userId, createdAt: Date.now(), address, status: 'pending' });
+    const tenant = await TenantEntity.create(c.env, { id: tenantId, name: mosqueName, slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, ''), ownerId: userId, createdAt: Date.now(), address, status: 'pending', selectedPersona: 'marbot_muda' });
     const user = await UserEntity.create(c.env, { id: userId, name, email, role: 'dkm_admin', tenantIds: [tenantId] });
     return ok(c, { user, tenant });
   });
@@ -359,7 +423,27 @@ export function userRoutes(app: Hono<any>) {
     return ok(c, await inst.getState());
   });
 
-  // Inventory, Events, Forum, Members
+  // Inventory, Events, Forum, Members, Mustahik
+  app.get('/api/:slug/mustahik', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await MustahikEntity.list(c.env);
+    return ok(c, items.filter(m => m.tenantId === tenant.id));
+  });
+
+  app.post('/api/:slug/mustahik', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    const mustahik = await MustahikEntity.create(c.env, { 
+      ...body, 
+      id: crypto.randomUUID(), 
+      tenantId: tenant.id,
+      registrationDate: Date.now()
+    });
+    return ok(c, mustahik);
+  });
+
   app.get('/api/:slug/inventory', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');

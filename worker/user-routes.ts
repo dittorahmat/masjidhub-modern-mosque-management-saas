@@ -418,6 +418,7 @@ export function userRoutes(app: Hono<any>) {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
     const { items } = await PrayerScheduleEntity.list(c.env);
+    // Return all schedules for this tenant
     return ok(c, items.filter(s => s.tenantId === tenant.id));
   });
 
@@ -430,8 +431,7 @@ export function userRoutes(app: Hono<any>) {
     const state = await inst.getState();
     if (!state || state.tenantId !== tenant.id) return notFound(c, 'Schedule not found');
     
-    // FIX: Strictly allow only these fields to be updated
-    const allowedFields = ['time', 'imamName', 'isLocked'];
+    const allowedFields = ['time', 'imamName', 'isLocked', 'date'];
     const filteredBody: any = {};
     allowedFields.forEach(f => { if (body[f] !== undefined) filteredBody[f] = body[f]; });
     
@@ -444,45 +444,53 @@ export function userRoutes(app: Hono<any>) {
     if (!tenant) return notFound(c, 'Tenant not found');
     if (!tenant.latitude || !tenant.longitude) return bad(c, 'Lokasi masjid belum diatur.');
 
-    const year = new Date().getFullYear();
-    const month = new Date().getMonth() + 1;
+    const now = new Date();
+    const prayerMap: any = { 'Fajr': 'fajr', 'Dhuhr': 'dhuhr', 'Asr': 'asr', 'Maghrib': 'maghrib', 'Isha': 'isha' };
+    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
 
     try {
-      const res = await fetch(`https://api.aladhan.com/v1/calendar?latitude=${tenant.latitude}&longitude=${tenant.longitude}&method=20&month=${month}&year=${year}`);
-      const data: any = await res.json();
-      if (data.code !== 200) throw new Error('API Error');
-
-      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      const prayerMap: any = { 'Fajr': 'fajr', 'Dhuhr': 'dhuhr', 'Asr': 'asr', 'Maghrib': 'maghrib', 'Isha': 'isha' };
-
       const { items: existing } = await PrayerScheduleEntity.list(c.env);
       const tenantSchedules = existing.filter(s => s.tenantId === tenant.id);
 
-      // FIX: Performance Optimization using Promise.all for parallel database operations
-      const syncTasks = [];
-      
-      for (const dayData of data.data) {
-        const dayName = days[new Date(dayData.date.gregorian.date.split('-').reverse().join('-')).getDay()];
-        for (const [apiName, internalName] of Object.entries(prayerMap)) {
-          const time = dayData.timings[apiName as string].split(' ')[0];
-          const existingRecord = tenantSchedules.find(s => s.day === dayName && s.prayerTime === internalName);
-          
-          if (existingRecord) {
-            if (!existingRecord.isLocked) {
-              const inst = new PrayerScheduleEntity(c.env, existingRecord.id);
-              syncTasks.push(inst.patch({ time }));
+      // We sync 12 months sequentially to avoid overloading the Worker/DO
+      for (let i = 0; i < 12; i++) {
+        const targetDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
+        const year = targetDate.getFullYear();
+        const month = targetDate.getMonth() + 1;
+
+        const res = await fetch(`https://api.aladhan.com/v1/calendar?latitude=${tenant.latitude}&longitude=${tenant.longitude}&method=20&month=${month}&year=${year}`);
+        const data: any = await res.json();
+        if (data.code !== 200) continue;
+
+        const syncTasks = [];
+        for (const dayData of data.data) {
+          const [d, m, y] = dayData.date.gregorian.date.split('-');
+          const isoDate = `${y}-${m}-${d}`;
+          const dayName = days[new Date(isoDate).getDay()];
+
+          for (const [apiName, internalName] of Object.entries(prayerMap)) {
+            const time = dayData.timings[apiName as string].split(' ')[0];
+            // Key is tenantId + date + prayerTime for daily accuracy
+            const existingRecord = tenantSchedules.find(s => s.date === isoDate && s.prayerTime === internalName);
+            
+            if (existingRecord) {
+              if (!existingRecord.isLocked) {
+                const inst = new PrayerScheduleEntity(c.env, existingRecord.id);
+                syncTasks.push(inst.patch({ time }));
+              }
+            } else {
+              syncTasks.push(PrayerScheduleEntity.create(c.env, {
+                id: crypto.randomUUID(), tenantId: tenant.id, date: isoDate,
+                day: dayName as any, prayerTime: internalName as any, time, isLocked: false
+              }));
             }
-          } else {
-            syncTasks.push(PrayerScheduleEntity.create(c.env, {
-              id: crypto.randomUUID(), tenantId: tenant.id, day: dayName as any, 
-              prayerTime: internalName as any, time, isLocked: false
-            }));
           }
         }
+        // Process this month's batch
+        await Promise.all(syncTasks);
       }
 
-      await Promise.all(syncTasks);
-      return ok(c, { success: true, updated: data.data.length });
+      return ok(c, { success: true, message: 'Jadwal 1 tahun berhasil disinkronkan' });
     } catch (e) { return bad(c, 'Gagal sinkronisasi jadwal shalat.'); }
   });
 

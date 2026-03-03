@@ -93,6 +93,7 @@ export interface ForumPost {
 export interface PrayerSchedule {
   id: string;
   tenantId: string;
+  date?: string; // NEW: YYYY-MM-DD for daily accuracy
   day: 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
   prayerTime: 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
   time: string;
@@ -123,6 +124,15 @@ export interface Tenant {
   status: 'active' | 'pending' | 'suspended';
   aiEnabled?: boolean;
   selectedPersona?: AIPersona;
+  kioskRunningText?: string;
+  kioskPrayerMode?: 'silent' | 'clock';
+  iqomahMinutes?: {
+    fajr: number;
+    dhuhr: number;
+    asr: number;
+    maghrib: number;
+    isha: number;
+  };
 }
 
 export interface ChatRoom {

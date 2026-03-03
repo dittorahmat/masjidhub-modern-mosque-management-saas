@@ -16,12 +16,8 @@ const PRAYER_NAMES = {
   'isha': 'Isya'
 };
 
-const IQOMAH_MINUTES = {
-  'fajr': 12,
-  'dhuhr': 10,
-  'asr': 10,
-  'maghrib': 7,
-  'isha': 10
+const DEFAULT_IQOMAH = {
+  fajr: 12, dhuhr: 10, asr: 10, maghrib: 7, isha: 10
 };
 
 export default function KioskPage() {
@@ -47,23 +43,30 @@ export default function KioskPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Today's Schedules Memo
+  // Today's Schedules Memo (Daily Accuracy Fix)
   const todaySchedules = useMemo(() => {
+    const todayStr = format(now, 'yyyy-MM-dd');
     const dayName = format(now, 'eeee', { locale: id }).toLowerCase();
-    return schedules.filter(s => s.day === dayName);
+    
+    // 1. Try to find precise daily schedule
+    const daily = schedules.filter(s => s.date === todayStr);
+    if (daily.length > 0) return daily;
+    
+    // 2. Fallback to weekly template if daily not found
+    return schedules.filter(s => s.day === dayName && !s.date);
   }, [schedules, now]);
 
   // Logic for Prayer States
   useEffect(() => {
     if (todaySchedules.length === 0) return;
 
-    const currentTimeStr = format(now, 'HH:mm');
+    const iqomahSettings = tenant?.iqomahMinutes || DEFAULT_IQOMAH;
     
-    // Check for each prayer
     for (const s of todaySchedules) {
       const prayerTime = parse(s.time, 'HH:mm', now);
-      const iqomahTime = addMinutes(prayerTime, IQOMAH_MINUTES[s.prayerTime as keyof typeof IQOMAH_MINUTES] || 10);
-      const sholatEndTime = addMinutes(iqomahTime, 15); // Silent mode for 15 mins
+      const iqomahMinutes = iqomahSettings[s.prayerTime as keyof typeof DEFAULT_IQOMAH] || 10;
+      const iqomahTime = addMinutes(prayerTime, iqomahMinutes);
+      const sholatEndTime = addMinutes(iqomahTime, 15);
 
       if (isAfter(now, prayerTime) && isBefore(now, iqomahTime)) {
         setMode('iqomah');
@@ -72,15 +75,20 @@ export default function KioskPage() {
         setIqomahCountdown(diff > 0 ? diff : 0);
         return;
       } else if (isAfter(now, iqomahTime) && isBefore(now, sholatEndTime)) {
-        setMode('sholat');
-        setActivePrayer(s.prayerTime);
+        if (tenant?.kioskPrayerMode === 'clock') {
+          setMode('normal');
+          setActivePrayer(s.prayerTime);
+        } else {
+          setMode('sholat');
+          setActivePrayer(s.prayerTime);
+        }
         return;
       }
     }
 
     setMode('normal');
     setActivePrayer(null);
-  }, [now, todaySchedules]);
+  }, [now, todaySchedules, tenant]);
 
   if (mode === 'sholat') {
     return (
@@ -113,23 +121,12 @@ export default function KioskPage() {
       </header>
 
       <main className="flex-1 grid grid-cols-5 gap-6">
-        {/* Prayer Grid */}
         {['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].map((pt) => {
           const s = todaySchedules.find(item => item.prayerTime === pt);
           const isActive = activePrayer === pt;
           return (
-            <div 
-              key={pt} 
-              className={cn(
-                "rounded-[3rem] p-8 flex flex-col items-center justify-between border transition-all duration-500",
-                isActive 
-                  ? "bg-emerald-600 border-emerald-500 text-white shadow-2xl scale-105" 
-                  : "bg-white border-stone-100 text-stone-800"
-              )}
-            >
-              <p className={cn("text-sm uppercase font-black tracking-widest", isActive ? "text-emerald-100" : "text-stone-400")}>
-                {PRAYER_NAMES[pt as keyof typeof PRAYER_NAMES]}
-              </p>
+            <div key={pt} className={cn("rounded-[3rem] p-8 flex flex-col items-center justify-between border transition-all duration-500", isActive ? "bg-emerald-600 border-emerald-500 text-white shadow-2xl scale-105" : "bg-white border-stone-100 text-stone-800")}>
+              <p className={cn("text-sm uppercase font-black tracking-widest", isActive ? "text-emerald-100" : "text-stone-400")}>{PRAYER_NAMES[pt as keyof typeof PRAYER_NAMES]}</p>
               <p className="text-6xl font-mono font-black tabular-nums">{s?.time || '--:--'}</p>
               <div className="text-center">
                 <p className={cn("text-[10px] uppercase font-bold", isActive ? "text-emerald-200" : "text-stone-300")}>Imam</p>
@@ -140,16 +137,12 @@ export default function KioskPage() {
         })}
       </main>
 
-      {/* Iqomah Overlay (Conditional) */}
+      {/* Iqomah Overlay */}
       {mode === 'iqomah' && (
         <div className="absolute inset-0 bg-emerald-900/95 backdrop-blur-xl flex flex-col items-center justify-center text-white z-50 animate-in zoom-in duration-500">
-          <div className="bg-white/10 p-10 rounded-full mb-10 border border-white/20">
-            <Volume2 className="h-20 w-20 text-white animate-pulse" />
-          </div>
+          <div className="bg-white/10 p-10 rounded-full mb-10 border border-white/20"><Volume2 className="h-20 w-20 text-white animate-pulse" /></div>
           <h2 className="text-5xl font-display font-black mb-4 uppercase tracking-tighter">Iqomah {PRAYER_NAMES[activePrayer as keyof typeof PRAYER_NAMES]}</h2>
-          <div className="text-[12rem] font-mono font-black leading-none tabular-nums shadow-emerald-500/50 drop-shadow-2xl">
-            {Math.floor(iqomahCountdown / 60)}:{String(iqomahCountdown % 60).padStart(2, '0')}
-          </div>
+          <div className="text-[12rem] font-mono font-black leading-none tabular-nums shadow-emerald-500/50 drop-shadow-2xl">{Math.floor(iqomahCountdown / 60)}:{String(iqomahCountdown % 60).padStart(2, '0')}</div>
           <p className="text-2xl text-emerald-200 font-medium mt-8 italic">"Sempurnakan wudhu dan bersiap menuju shaf."</p>
         </div>
       )}
@@ -159,23 +152,16 @@ export default function KioskPage() {
         <div className="bg-emerald-500 px-4 py-2 rounded-2xl font-black text-xs uppercase tracking-widest shrink-0 shadow-lg shadow-emerald-500/20">Info</div>
         <div className="flex-1 overflow-hidden whitespace-nowrap">
           <div className="inline-block animate-marquee font-bold text-xl uppercase tracking-wider">
-            {tenant?.runningText || "Selamat datang di " + (tenant?.name || 'MasjidHub') + " - Mari makmurkan masjid kita bersama."}
+            {tenant?.kioskRunningText || tenant?.runningText || "Selamat datang di " + (tenant?.name || 'MasjidHub')}
             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-            ✨ Saldo Kas Terakhir: Rp 12.450.000 (Terima kasih atas infaq Anda)
-            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-            🕌 Kajian Rutin Setiap Ahad Ba'da Subuh
+            🕌 Mari makmurkan masjid kita bersama.
           </div>
         </div>
       </footer>
 
       <style>{`
-        @keyframes marquee {
-          0% { transform: translateX(100%); }
-          100% { transform: translateX(-100%); }
-        }
-        .animate-marquee {
-          animation: marquee 30s linear infinite;
-        }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        .animate-marquee { animation: marquee 30s linear infinite; }
       `}</style>
     </div>
   );

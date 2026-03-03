@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { 
   Save, 
@@ -20,7 +21,10 @@ import {
   Sparkles,
   Search,
   Loader2,
-  CheckCircle2
+  CheckCircle2,
+  Tv,
+  Clock,
+  Layout
 } from 'lucide-react';
 import type { Tenant } from '@shared/types';
 
@@ -62,18 +66,10 @@ export default function SettingsPage() {
   };
 
   const handleSelectLocation = (res: any) => {
-    // Basic mapping from Nominatim result
     const city = res.display_name.split(',')[0];
     const lat = parseFloat(res.lat);
     const lon = parseFloat(res.lon);
-    
-    mutation.mutate({ 
-      city, 
-      latitude: lat, 
-      longitude: lon,
-      address: res.display_name
-    });
-    
+    mutation.mutate({ city, latitude: lat, longitude: lon, address: res.display_name });
     setGeoResults([]);
     setGeoQuery(city);
     toast.success(`Lokasi disetel ke ${city}`);
@@ -83,12 +79,25 @@ export default function SettingsPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     const data = Object.fromEntries(formData.entries());
+    
+    // Structure iqomahMinutes if present in form
+    const iqomahMinutes = {
+      fajr: Number(data.iqomah_fajr),
+      dhuhr: Number(data.iqomah_dhuhr),
+      asr: Number(data.iqomah_asr),
+      maghrib: Number(data.iqomah_maghrib),
+      isha: Number(data.iqomah_isha)
+    };
+
     mutation.mutate({
       name: data.name as string,
       runningText: data.runningText as string,
       bankInfo: data.bankInfo as string,
       bio: data.bio as string,
       aiEnabled: data.aiEnabled === 'on',
+      kioskRunningText: data.kioskRunningText as string,
+      kioskPrayerMode: data.kioskPrayerMode as any,
+      iqomahMinutes
     });
   };
 
@@ -96,21 +105,31 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
-      <div>
-        <h1 className="text-3xl font-display font-bold text-stone-800">Pengaturan Masjid</h1>
-        <p className="text-muted-foreground text-sm">Kelola profil, lokasi, dan konfigurasi platform.</p>
+      <div className="flex justify-between items-end">
+        <div>
+          <h1 className="text-3xl font-display font-bold text-stone-800">Pengaturan Masjid</h1>
+          <p className="text-muted-foreground text-sm">Kelola profil, lokasi, dan konfigurasi platform.</p>
+        </div>
+        <Button variant="outline" className="rounded-xl gap-2" asChild>
+          <a href={`/kiosk/${slug}`} target="_blank" rel="noopener noreferrer">
+            <Tv className="h-4 w-4" /> Buka Layar Kiosk
+          </a>
+        </Button>
       </div>
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="bg-stone-100/50 p-1 rounded-xl">
+        <TabsList className="bg-stone-100/50 p-1 rounded-xl flex-wrap h-auto">
           <TabsTrigger value="general" className="rounded-lg gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
             <Building2 className="h-4 w-4" /> Informasi Umum
           </TabsTrigger>
           <TabsTrigger value="location" className="rounded-lg gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-            <MapPin className="h-4 w-4" /> Lokasi & Jadwal Shalat
+            <MapPin className="h-4 w-4" /> Lokasi & Jadwal
+          </TabsTrigger>
+          <TabsTrigger value="kiosk" className="rounded-lg gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <Layout className="h-4 w-4" /> Tampilan Kiosk (TV)
           </TabsTrigger>
           <TabsTrigger value="finance" className="rounded-lg gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
-            <CreditCard className="h-4 w-4" /> Rekening & ZIS
+            <CreditCard className="h-4 w-4" /> Rekening
           </TabsTrigger>
         </TabsList>
 
@@ -127,10 +146,10 @@ export default function SettingsPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="bio">Bio / Deskripsi Singkat</Label>
-                  <Textarea id="bio" name="bio" defaultValue={tenant?.bio} className="rounded-xl min-h-[100px]" />
+                  <Textarea id="bio" name="bio" defaultValue={tenant?.bio} className="rounded-xl min-h-[80px]" />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="runningText">Running Text (Pengumuman)</Label>
+                  <Label htmlFor="runningText">Running Text (Portal Web)</Label>
                   <Input id="runningText" name="runningText" defaultValue={tenant?.runningText} className="rounded-xl" />
                 </div>
                 <div className="flex items-center justify-between p-4 bg-emerald-50 rounded-2xl border border-emerald-100 mt-4">
@@ -155,35 +174,22 @@ export default function SettingsPage() {
                   <div className="flex gap-2">
                     <div className="flex-1 relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
-                      <Input 
-                        placeholder="Cari Kota (e.g. Jakarta Selatan)" 
-                        className="pl-9 rounded-xl"
-                        value={geoQuery}
-                        onChange={(e) => setGeoQuery(e.target.value)}
-                        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), searchGeo())}
-                      />
+                      <Input placeholder="Cari Kota (e.g. Jakarta Selatan)" className="pl-9 rounded-xl" value={geoQuery} onChange={(e) => setGeoQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), searchGeo())} />
                     </div>
                     <Button type="button" variant="secondary" onClick={searchGeo} disabled={isSearchingGeo} className="rounded-xl">
                       {isSearchingGeo ? <Loader2 className="h-4 w-4 animate-spin" /> : "Cari"}
                     </Button>
                   </div>
-
                   {geoResults.length > 0 && (
                     <div className="border rounded-2xl overflow-hidden divide-y bg-white shadow-lg">
                       {geoResults.map((res, i) => (
-                        <button
-                          key={i}
-                          type="button"
-                          className="w-full text-left p-3 hover:bg-emerald-50 text-xs flex items-start gap-3 transition-colors"
-                          onClick={() => handleSelectLocation(res)}
-                        >
+                        <button key={i} type="button" className="w-full text-left p-3 hover:bg-emerald-50 text-xs flex items-start gap-3 transition-colors" onClick={() => handleSelectLocation(res)}>
                           <MapPin className="h-4 w-4 text-emerald-600 mt-0.5 shrink-0" />
                           <span>{res.display_name}</span>
                         </button>
                       ))}
                     </div>
                   )}
-
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-dashed">
                     <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
                       <Label className="text-[10px] uppercase text-stone-400 font-bold">Kota Terdaftar</Label>
@@ -191,10 +197,62 @@ export default function SettingsPage() {
                     </div>
                     <div className="p-4 bg-stone-50 rounded-2xl border border-stone-100">
                       <Label className="text-[10px] uppercase text-stone-400 font-bold">Koordinat</Label>
-                      <p className="text-xs font-mono text-stone-600">
-                        {tenant?.latitude ? `${tenant.latitude.toFixed(4)}, ${tenant.longitude?.toFixed(4)}` : '-'}
-                      </p>
+                      <p className="text-xs font-mono text-stone-600">{tenant?.latitude ? `${tenant.latitude.toFixed(4)}, ${tenant.longitude?.toFixed(4)}` : '-'}</p>
                     </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="kiosk" className="space-y-6 mt-0">
+            <Card className="rounded-3xl border-stone-200 shadow-sm overflow-hidden">
+              <CardHeader className="bg-stone-50/50 border-b">
+                <CardTitle className="text-sm font-bold">Pusat Kendali Kiosk (TV)</CardTitle>
+                <CardDescription className="text-xs">Atur tampilan layar TV di masjid Anda.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <div className="grid gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="kioskRunningText">Running Text TV</Label>
+                    <Input id="kioskRunningText" name="kioskRunningText" defaultValue={tenant?.kioskRunningText} placeholder="Pesan pengumuman di bawah layar TV..." className="rounded-xl" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Mode Tampilan Saat Shalat</Label>
+                    <Select name="kioskPrayerMode" defaultValue={tenant?.kioskPrayerMode || 'silent'}>
+                      <SelectTrigger className="rounded-xl">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="silent">Layar Gelap (Khidmat)</SelectItem>
+                        <SelectItem value="clock">Tampilkan Jam Besar</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-6 border-t">
+                  <Label className="text-stone-800 font-bold flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-emerald-600" /> Jeda Iqomah (Menit)
+                  </Label>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    {[
+                      { id: 'fajr', label: 'Subuh' },
+                      { id: 'dhuhr', label: 'Dzuhur' },
+                      { id: 'asr', label: 'Ashar' },
+                      { id: 'maghrib', label: 'Maghrib' },
+                      { id: 'isha', label: 'Isya' }
+                    ].map(p => (
+                      <div key={p.id} className="space-y-2">
+                        <Label className="text-[10px] text-stone-400 uppercase font-bold">{p.label}</Label>
+                        <Input 
+                          type="number" 
+                          name={`iqomah_${p.id}`} 
+                          defaultValue={tenant?.iqomahMinutes?.[p.id as keyof typeof tenant.iqomahMinutes] || 10} 
+                          className="rounded-xl h-10" 
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
               </CardContent>
@@ -208,7 +266,7 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent className="p-6 space-y-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="bankInfo">Detail Bank (Muncul di Portal)</Label>
+                  <Label htmlFor="bankInfo">Detail Bank</Label>
                   <Textarea id="bankInfo" name="bankInfo" defaultValue={tenant?.bankInfo} placeholder="Contoh: BSI 7123456789 a/n Masjid Al-Hikmah" className="rounded-xl" />
                 </div>
               </CardContent>

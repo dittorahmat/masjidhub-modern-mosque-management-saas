@@ -143,7 +143,7 @@ export default function PrayerSchedulePage() {
               className="rounded-xl gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 h-10"
             >
               {syncMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-              Sinkronisasi
+              Sinkronisasi 1 Tahun
             </Button>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>

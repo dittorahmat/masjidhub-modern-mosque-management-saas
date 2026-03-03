@@ -55,6 +55,7 @@ export default function PrayerSchedulePage() {
   const queryClient = useQueryClient();
   const [editingSchedule, setEditingSchedule] = useState<PrayerSchedule | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [syncProgress, setSyncProgress] = useState<{current: number, total: number} | null>(null);
 
   const { data: schedules = [], isLoading } = useQuery({
     queryKey: ['prayer-schedules', slug],
@@ -62,12 +63,31 @@ export default function PrayerSchedulePage() {
   });
 
   const syncMutation = useMutation({
-    mutationFn: () => api(`/api/${slug}/prayer-schedules/sync`, { method: 'POST' }),
+    mutationFn: async () => {
+      const now = new Date();
+      setSyncProgress({ current: 0, total: 12 });
+      
+      for (let i = 0; i < 12; i++) {
+        const targetDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
+        await api(`/api/${slug}/prayer-schedules/sync-month`, {
+          method: 'POST',
+          body: JSON.stringify({
+            year: targetDate.getFullYear(),
+            month: targetDate.getMonth() + 1
+          })
+        });
+        setSyncProgress(prev => prev ? { ...prev, current: i + 1 } : null);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['prayer-schedules', slug] });
-      toast.success(`Sinkronisasi Berhasil!`);
+      toast.success(`Alhamdulillah! Jadwal 1 tahun berhasil disinkronkan.`);
+      setSyncProgress(null);
     },
-    onError: (e: any) => toast.error(e.message || 'Gagal sinkronisasi.')
+    onError: (e: any) => {
+      toast.error(e.message || 'Gagal sinkronisasi.');
+      setSyncProgress(null);
+    }
   });
 
   const updateMutation = useMutation({
@@ -84,45 +104,9 @@ export default function PrayerSchedulePage() {
     }
   });
 
-  const createMutation = useMutation({
-    mutationFn: (newSchedule: Omit<PrayerSchedule, 'id' | 'tenantId'>) => 
-      api<PrayerSchedule>(`/api/${slug}/prayer-schedules`, {
-        method: 'POST',
-        body: JSON.stringify({ ...newSchedule, isLocked: true })
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['prayer-schedules', slug] });
-      setIsDialogOpen(false);
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => api(`/api/${slug}/prayer-schedules/${id}`, { method: 'DELETE' }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['prayer-schedules', slug] })
-  });
-
   const toggleLock = (s: PrayerSchedule) => {
     updateMutation.mutate({ id: s.id, isLocked: !s.isLocked });
-    toast.info(s.isLocked ? "Jadwal dibuka kunci (Akan mengikuti API)" : "Jadwal dikunci (Tetap manual)");
-  };
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const data = Object.fromEntries(formData.entries()) as any;
-    const scheduleData = {
-      day: data.day,
-      prayerTime: data.prayerTime,
-      time: data.time,
-      imamName: data.imamName || undefined,
-      isLocked: true
-    };
-
-    if (editingSchedule) {
-      updateMutation.mutate({ ...editingSchedule, ...scheduleData });
-    } else {
-      createMutation.mutate(scheduleData);
-    }
+    toast.info(s.isLocked ? "Jadwal dibuka kunci" : "Jadwal dikunci");
   };
 
   if (isLoading) return <div className="p-8">Memuat jadwal sholat...</div>;
@@ -133,59 +117,28 @@ export default function PrayerSchedulePage() {
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <h1 className="text-3xl font-display font-bold text-stone-800">Jadwal Shalat</h1>
-            <p className="text-muted-foreground text-sm">Kelola waktu ibadah dan penugasan imam secara hibrida.</p>
+            <p className="text-muted-foreground text-sm">Kelola waktu ibadah harian secara akurat.</p>
           </div>
           <div className="flex gap-2">
             <Button 
               variant="outline" 
               onClick={() => syncMutation.mutate()} 
               disabled={syncMutation.isPending}
-              className="rounded-xl gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 h-10"
+              className="rounded-xl gap-2 border-emerald-200 text-emerald-700 hover:bg-emerald-50 h-10 relative overflow-hidden"
             >
-              {syncMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCcw className="h-4 w-4" />}
-              Sinkronisasi 1 Tahun
+              {syncMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Bulan {syncProgress?.current}/{syncProgress?.total}</span>
+                  <div className="absolute bottom-0 left-0 h-1 bg-emerald-500 transition-all duration-300" style={{ width: `${(syncProgress?.current || 0) / (syncProgress?.total || 1) * 100}%` }} />
+                </>
+              ) : (
+                <>
+                  <RefreshCcw className="h-4 w-4" />
+                  <span>Sinkronisasi 1 Tahun</span>
+                </>
+              )}
             </Button>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="rounded-xl gap-2 bg-emerald-600 hover:bg-emerald-700 h-10">
-                  <Plus className="h-4 w-4" /> Tambah Manual
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="rounded-3xl">
-                <DialogHeader>
-                  <DialogTitle className="font-bold">{editingSchedule ? 'Edit Jadwal' : 'Tambah Jadwal'}</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-4 pt-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Hari</Label>
-                      <Select name="day" defaultValue={editingSchedule?.day || 'monday'} required>
-                        <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                        <SelectContent>{DAYS.map(day => <SelectItem key={day} value={day}>{DAY_NAMES[day as keyof typeof DAY_NAMES]}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Waktu Sholat</Label>
-                      <Select name="prayerTime" defaultValue={editingSchedule?.prayerTime || 'fajr'} required>
-                        <SelectTrigger className="rounded-xl"><SelectValue /></SelectTrigger>
-                        <SelectContent>{PRAYER_TIMES.map(time => <SelectItem key={time} value={time}>{PRAYER_NAMES[time as keyof typeof PRAYER_NAMES]}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Waktu (HH:MM)</Label>
-                    <Input name="time" type="time" defaultValue={editingSchedule?.time.substring(0, 5) || '05:00'} required className="rounded-xl" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Nama Imam</Label>
-                    <Input name="imamName" defaultValue={editingSchedule?.imamName || ''} placeholder="Ustadz Pembina" className="rounded-xl" />
-                  </div>
-                  <Button type="submit" className="w-full h-12 rounded-xl bg-emerald-600 shadow-lg" disabled={updateMutation.isPending}>
-                    {updateMutation.isPending ? 'Menyimpan...' : 'Simpan & Kunci'}
-                  </Button>
-                </form>
-              </DialogContent>
-            </Dialog>
           </div>
         </div>
 
@@ -201,9 +154,13 @@ export default function PrayerSchedulePage() {
             </TableHeader>
             <TableBody>
               {DAYS.map(day => {
+                // For simplicity in weekly template view, we show current week's average or most recent data
                 const daySchedules = schedules.filter(s => s.day === day);
                 const scheduleMap: Record<string, PrayerSchedule | undefined> = {};
-                daySchedules.forEach(s => { scheduleMap[s.prayerTime] = s; });
+                // If we have daily data, pick the one for current week or just the first one found
+                daySchedules.forEach(s => { 
+                  if (!scheduleMap[s.prayerTime]) scheduleMap[s.prayerTime] = s;
+                });
 
                 return (
                   <TableRow key={day} className="hover:bg-stone-50/30 transition-colors border-stone-100 h-24">
@@ -229,12 +186,6 @@ export default function PrayerSchedulePage() {
                               <span className="text-[10px] text-stone-400 font-bold truncate max-w-[90px]">
                                 {s.imamName || '-'}
                               </span>
-                              
-                              {/* Hover Actions */}
-                              <div className="absolute right-1 top-1 flex opacity-0 group-hover:opacity-100 transition-opacity">
-                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setEditingSchedule(s); setIsDialogOpen(true); }}><Edit className="h-3 w-3 text-stone-400" /></Button>
-                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => deleteMutation.mutate(s.id)}><Trash2 className="h-3 w-3 text-rose-400" /></Button>
-                              </div>
                             </div>
                           ) : <span className="text-stone-200 text-xs">-</span>}
                         </TableCell>
@@ -249,7 +200,7 @@ export default function PrayerSchedulePage() {
 
         <div className="flex items-center gap-2 text-stone-400 justify-center">
           <Info className="h-4 w-4" />
-          <p className="text-[10px] font-medium italic">Ikon <Lock className="inline h-3 w-3" /> menandakan jadwal manual yang tidak akan berubah saat sinkronisasi API.</p>
+          <p className="text-[10px] font-medium italic">Menampilkan jadwal mingguan acuan. Perubahan harian otomatis tersinkron ke layar Kiosk.</p>
         </div>
       </div>
     </div>

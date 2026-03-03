@@ -2,8 +2,21 @@ import { IndexedEntity } from "./core-utils";
 import type { 
   Transaction, InventoryItem, Event, EventRegistration, Tenant, AppUser, ForumPost, ZisTransaction,
   PrayerSchedule, Notification, ChatRoom, ChatMessage, Ustadz, OrganizationMember, Mustahik,
-  ChatSession, BlogPost, MediaItem, PageSection, KnowledgeSnippet, AIChatMessage, StatementLog
+  ChatSession, BlogPost, MediaItem, PageSection, KnowledgeSnippet, AIChatMessage, StatementLog,
+  MonthlyPrayerSchedule
 } from "@shared/types";
+
+export class MonthlyPrayerScheduleEntity extends IndexedEntity<MonthlyPrayerSchedule> {
+  static readonly entityName = "monthly_prayer_schedule";
+  static readonly indexName = "monthly_prayer_schedules";
+  static readonly initialState: MonthlyPrayerSchedule = {
+    id: "",
+    tenantId: "",
+    year: 0,
+    month: 0,
+    days: {}
+  };
+}
 
 export class StatementLogEntity extends IndexedEntity<StatementLog> {
   static readonly entityName = "statement_log";
@@ -128,13 +141,7 @@ export class TenantEntity extends IndexedEntity<Tenant> {
     selectedPersona: 'marbot_muda',
     kioskRunningText: "Selamat datang di MasjidHub - Mari makmurkan masjid kita bersama.",
     kioskPrayerMode: 'silent',
-    iqomahMinutes: {
-      fajr: 12,
-      dhuhr: 10,
-      asr: 10,
-      maghrib: 7,
-      isha: 10
-    }
+    iqomahMinutes: { fajr: 12, dhuhr: 10, asr: 10, maghrib: 7, isha: 10 }
   };
   static seedData: Tenant[] = [
     {
@@ -154,7 +161,10 @@ export class TenantEntity extends IndexedEntity<Tenant> {
       bankInfo: "BSI 7123456789 a/n Masjid Al-Hikmah",
       bio: "A community-focused mosque dedicated to religious education and social welfare.",
       status: 'active',
-      selectedPersona: 'ustadz_muda'
+      selectedPersona: 'ustadz_muda',
+      kioskRunningText: "Selamat datang di Masjid Al-Hikmah - Mari makmurkan masjid kita bersama.",
+      kioskPrayerMode: 'silent',
+      iqomahMinutes: { fajr: 12, dhuhr: 10, asr: 10, maghrib: 7, isha: 10 }
     }
   ];
 }

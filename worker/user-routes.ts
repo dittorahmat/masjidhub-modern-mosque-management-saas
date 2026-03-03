@@ -21,9 +21,10 @@ import {
   PageSectionEntity,
   MediaItemEntity,
   AIChatMessageEntity,
-  StatementLogEntity
+  StatementLogEntity,
+  MonthlyPrayerScheduleEntity
 } from "./entities";
-import type { UserRole, ZisTransaction } from "@shared/types";
+import type { UserRole, ZisTransaction, DailyPrayer } from "@shared/types";
 import { ok, bad, notFound } from './core-utils';
 import { streamChatResponse, parseBankStatement } from "./ai-logic";
 import { streamText } from 'hono/streaming';
@@ -76,7 +77,7 @@ export function userRoutes(app: Hono<any>) {
     const { name, email, mosqueName, slug, address } = await c.req.json();
     const tenantId = crypto.randomUUID();
     const userId = crypto.randomUUID();
-    const tenant = await TenantEntity.create(c.env, { id: tenantId, name: mosqueName, slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, ''), ownerId: userId, createdAt: Date.now(), address, status: 'pending', selectedPersona: 'marbot_muda' });
+    const tenant = await TenantEntity.create(c.env, { id: tenantId, name: mosqueName, slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, ''), ownerId: userId, createdAt: Date.now(), address, status: 'pending', selectedPersona: 'marbot_muda', kioskRunningText: "", kioskPrayerMode: 'silent', iqomahMinutes: { fajr: 12, dhuhr: 10, asr: 10, maghrib: 7, isha: 10 } });
     const user = await UserEntity.create(c.env, { id: userId, name, email, role: 'dkm_admin', tenantIds: [tenantId] });
     return ok(c, { user, tenant });
   });
@@ -96,19 +97,14 @@ export function userRoutes(app: Hono<any>) {
 
   // --- CONFIG & UTILS ---
   app.get('/api/config/cloudinary', (c) => {
-    return ok(c, {
-      cloudName: c.env.CLOUDINARY_CLOUD_NAME || 'masjidhub',
-      uploadPreset: c.env.CLOUDINARY_UPLOAD_PRESET || 'masjidhub_preset'
-    });
+    return ok(c, { cloudName: c.env.CLOUDINARY_CLOUD_NAME || 'masjidhub', uploadPreset: c.env.CLOUDINARY_UPLOAD_PRESET || 'masjidhub_preset' });
   });
 
   app.get('/api/geo/search', async (c) => {
     const q = c.req.query('q');
     if (!q) return bad(c, 'Query required');
     try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=id&limit=5`, {
-        headers: { 'User-Agent': 'MasjidHub-SaaS' }
-      });
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=id&limit=5`, { headers: { 'User-Agent': 'MasjidHub-SaaS' } });
       const data = await res.json();
       return ok(c, data);
     } catch (e) { return bad(c, 'Gagal mencari lokasi.'); }
@@ -283,26 +279,6 @@ export function userRoutes(app: Hono<any>) {
     return ok(c, tenants.map(t => ({ ...t, totalBalance: txs.filter(tx => tx.tenantId === t.id).reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0), memberCount: users.filter(u => u.tenantIds.includes(t.id)).length, eventCount: 0 })));
   });
 
-  app.get('/api/super/users', async (c) => {
-    const { items: users } = await UserEntity.list(c.env);
-    return ok(c, users);
-  });
-
-  app.post('/api/super/tenants/:id/approve', async (c) => {
-    const inst = new TenantEntity(c.env, c.req.param('id'));
-    if (!(await inst.exists())) return notFound(c, 'Tenant not found');
-    await inst.patch({ status: 'active' });
-    return ok(c, { success: true });
-  });
-
-  app.post('/api/super/tenants/:id/toggle-ai', async (c) => {
-    const inst = new TenantEntity(c.env, c.req.param('id'));
-    if (!(await inst.exists())) return notFound(c, 'Tenant not found');
-    const { enabled } = await c.req.json();
-    await inst.patch({ aiEnabled: enabled });
-    return ok(c, { success: true, aiEnabled: enabled });
-  });
-
   // --- TENANT SPECIFIC ---
   app.get('/api/tenants/:slug', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
@@ -319,26 +295,10 @@ export function userRoutes(app: Hono<any>) {
     return ok(c, await inst.getState());
   });
 
-  // Finance & ZIS
   app.get('/api/:slug/finance', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
     const { items } = await TransactionEntity.list(c.env);
-    return ok(c, items.filter(t => t.tenantId === tenant.id));
-  });
-
-  app.post('/api/:slug/finance', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const body = await c.req.json();
-    const tx = await TransactionEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id });
-    return ok(c, tx);
-  });
-
-  app.get('/api/:slug/zis', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await ZisTransactionEntity.list(c.env);
     return ok(c, items.filter(t => t.tenantId === tenant.id));
   });
 
@@ -350,148 +310,75 @@ export function userRoutes(app: Hono<any>) {
     return ok(c, tx);
   });
 
-  app.get('/api/:slug/zis/report', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await ZisTransactionEntity.list(c.env);
-    const zisTransactions = items.filter(t => t.tenantId === tenant.id);
-    return ok(c, { totalAmount: zisTransactions.reduce((sum, tx) => sum + tx.amount, 0), totalTransactions: zisTransactions.length });
-  });
-
-  app.post('/api/:slug/zis/:id/process-payment', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const inst = new ZisTransactionEntity(c.env, c.req.param('id'));
-    const tx = await inst.getState();
-    const body = await c.req.json();
-    const result = await processZisPayment(tx, body.payment_method, body.amount);
-    await inst.patch({ payment_method: body.payment_method, payment_status: result.status as any, payment_reference: result.reference, payment_gateway: result.gateway, payment_date: Date.now() });
-    return ok(c, await inst.getState());
-  });
-
-  // Inventory, Events, Forum, Members, Mustahik
-  app.get('/api/:slug/mustahik', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await MustahikEntity.list(c.env);
-    return ok(c, items.filter(m => m.tenantId === tenant.id));
-  });
-
-  app.post('/api/:slug/mustahik', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const body = await c.req.json();
-    const mustahik = await MustahikEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id, registrationDate: Date.now() });
-    return ok(c, mustahik);
-  });
-
-  app.get('/api/:slug/inventory', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await InventoryItemEntity.list(c.env);
-    return ok(c, items.filter(i => i.tenantId === tenant.id));
-  });
-
-  app.get('/api/:slug/events', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await EventEntity.list(c.env);
-    return ok(c, items.filter(e => e.tenantId === tenant.id));
-  });
-
-  app.get('/api/:slug/forum', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await ForumPostEntity.list(c.env);
-    return ok(c, items.filter(p => p.tenantId === tenant.id));
-  });
-
-  app.get('/api/:slug/members', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await UserEntity.list(c.env);
-    return ok(c, items.filter(u => u.tenantIds.includes(tenant.id)));
-  });
-
-  // --- PRAYER SCHEDULE HUB ---
+  // --- PRAYER SCHEDULE HUB (OPTIMIZED) ---
   app.get('/api/:slug/prayer-schedules', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await PrayerScheduleEntity.list(c.env);
-    // Return all schedules for this tenant
-    return ok(c, items.filter(s => s.tenantId === tenant.id));
+    const { items: monthly } = await MonthlyPrayerScheduleEntity.list(c.env);
+    const tenantMonthly = monthly.filter(m => m.tenantId === tenant.id);
+    
+    // Flatten daily prayers for frontend compatibility
+    const allDaily: any[] = [];
+    tenantMonthly.forEach(m => {
+      Object.entries(m.days).forEach(([date, prayers]) => {
+        const dayDate = new Date(date);
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const dayName = dayNames[dayDate.getDay()];
+        
+        ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(pt => {
+          allDaily.push({
+            id: `${m.id}:${date}:${pt}`,
+            tenantId: tenant.id,
+            date,
+            day: dayName,
+            prayerTime: pt,
+            time: (prayers as any)[pt],
+            imamName: prayers.imamName,
+            isLocked: prayers.isLocked
+          });
+        });
+      });
+    });
+    return ok(c, allDaily);
   });
 
-  app.put('/api/:slug/prayer-schedules/:id', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    
-    const body = await c.req.json();
-    const inst = new PrayerScheduleEntity(c.env, c.req.param('id'));
-    const state = await inst.getState();
-    if (!state || state.tenantId !== tenant.id) return notFound(c, 'Schedule not found');
-    
-    const allowedFields = ['time', 'imamName', 'isLocked', 'date'];
-    const filteredBody: any = {};
-    allowedFields.forEach(f => { if (body[f] !== undefined) filteredBody[f] = body[f]; });
-    
-    await inst.patch(filteredBody);
-    return ok(c, await inst.getState());
-  });
-
-  app.post('/api/:slug/prayer-schedules/sync', async (c) => {
+  app.post('/api/:slug/prayer-schedules/sync-month', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
     if (!tenant.latitude || !tenant.longitude) return bad(c, 'Lokasi masjid belum diatur.');
 
-    const now = new Date();
-    const prayerMap: any = { 'Fajr': 'fajr', 'Dhuhr': 'dhuhr', 'Asr': 'asr', 'Maghrib': 'maghrib', 'Isha': 'isha' };
-    const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const { year, month } = await c.req.json();
+    const monthId = `${tenant.id}:${year}-${String(month).padStart(2, '0')}`;
 
     try {
-      const { items: existing } = await PrayerScheduleEntity.list(c.env);
-      const tenantSchedules = existing.filter(s => s.tenantId === tenant.id);
+      const res = await fetch(`https://api.aladhan.com/v1/calendar?latitude=${tenant.latitude}&longitude=${tenant.longitude}&method=20&month=${month}&year=${year}`);
+      const data: any = await res.json();
+      if (data.code !== 200) throw new Error('API Error');
 
-      // We sync 12 months sequentially to avoid overloading the Worker/DO
-      for (let i = 0; i < 12; i++) {
-        const targetDate = new Date(now.getFullYear(), now.getMonth() + i, 1);
-        const year = targetDate.getFullYear();
-        const month = targetDate.getMonth() + 1;
+      const prayerMap: any = { 'Fajr': 'fajr', 'Dhuhr': 'dhuhr', 'Asr': 'asr', 'Maghrib': 'maghrib', 'Isha': 'isha' };
+      
+      // Load existing monthly record to preserve manual edits
+      const inst = new MonthlyPrayerScheduleEntity(c.env, monthId);
+      const existing = await inst.exists() ? await inst.getState() : null;
+      const days: Record<string, DailyPrayer> = existing ? { ...existing.days } : {};
 
-        const res = await fetch(`https://api.aladhan.com/v1/calendar?latitude=${tenant.latitude}&longitude=${tenant.longitude}&method=20&month=${month}&year=${year}`);
-        const data: any = await res.json();
-        if (data.code !== 200) continue;
+      for (const dayData of data.data) {
+        const [d, m, y] = dayData.date.gregorian.date.split('-');
+        const isoDate = `${y}-${m}-${d}`;
+        
+        // Skip if this day is locked by admin
+        if (days[isoDate]?.isLocked) continue;
 
-        const syncTasks = [];
-        for (const dayData of data.data) {
-          const [d, m, y] = dayData.date.gregorian.date.split('-');
-          const isoDate = `${y}-${m}-${d}`;
-          const dayName = days[new Date(isoDate).getDay()];
-
-          for (const [apiName, internalName] of Object.entries(prayerMap)) {
-            const time = dayData.timings[apiName as string].split(' ')[0];
-            // Key is tenantId + date + prayerTime for daily accuracy
-            const existingRecord = tenantSchedules.find(s => s.date === isoDate && s.prayerTime === internalName);
-            
-            if (existingRecord) {
-              if (!existingRecord.isLocked) {
-                const inst = new PrayerScheduleEntity(c.env, existingRecord.id);
-                syncTasks.push(inst.patch({ time }));
-              }
-            } else {
-              syncTasks.push(PrayerScheduleEntity.create(c.env, {
-                id: crypto.randomUUID(), tenantId: tenant.id, date: isoDate,
-                day: dayName as any, prayerTime: internalName as any, time, isLocked: false
-              }));
-            }
-          }
+        const daily: any = days[isoDate] || {};
+        for (const [apiName, internalName] of Object.entries(prayerMap)) {
+          daily[internalName as string] = dayData.timings[apiName as string].split(' ')[0];
         }
-        // Process this month's batch
-        await Promise.all(syncTasks);
+        days[isoDate] = daily;
       }
 
-      return ok(c, { success: true, message: 'Jadwal 1 tahun berhasil disinkronkan' });
-    } catch (e) { return bad(c, 'Gagal sinkronisasi jadwal shalat.'); }
+      await MonthlyPrayerScheduleEntity.create(c.env, { id: monthId, tenantId: tenant.id, year, month, days });
+      return ok(c, { success: true, monthId });
+    } catch (e) { return bad(c, 'Gagal sinkronisasi bulan ini.'); }
   });
 
   app.get('/api/:slug/search', async (c) => {

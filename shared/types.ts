@@ -90,10 +90,28 @@ export interface ForumPost {
   likeCount?: number;
   commentCount?: number;
 }
+export interface DailyPrayer {
+  fajr: string;
+  dhuhr: string;
+  asr: string;
+  maghrib: string;
+  isha: string;
+  isLocked?: boolean;
+  imamName?: string;
+}
+
+export interface MonthlyPrayerSchedule {
+  id: string; // Format: tenantId:YYYY-MM
+  tenantId: string;
+  year: number;
+  month: number;
+  days: Record<string, DailyPrayer>; // Key: YYYY-MM-DD
+}
+
 export interface PrayerSchedule {
   id: string;
   tenantId: string;
-  date?: string; // NEW: YYYY-MM-DD for daily accuracy
+  date?: string;
   day: 'sunday' | 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday';
   prayerTime: 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
   time: string;

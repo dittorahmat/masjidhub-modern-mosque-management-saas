@@ -100,9 +100,8 @@ export interface PrayerSchedule {
   khatibName?: string;
   khutbahTopic?: string;
   khutbahFileUrl?: string;
+  isLocked?: boolean;
 }
-
-export type AIPersona = 'marbot_muda' | 'ustadz_muda' | 'sekretaris_digital' | 'kakak_risma';
 
 export interface Tenant {
   id: string;
@@ -111,6 +110,10 @@ export interface Tenant {
   ownerId: string;
   createdAt: number;
   address?: string;
+  city?: string;
+  latitude?: number;
+  longitude?: number;
+  timezone?: string;
   legalDocUrl?: string;
   logoUrl?: string;
   bannerUrl?: string;
@@ -132,7 +135,6 @@ export interface ChatRoom {
   lastMessage?: string;
 }
 
-// Legacy ChatMessage for ChatRoom
 export interface ChatMessage {
   id: string;
   chatRoomId: string;
@@ -143,7 +145,6 @@ export interface ChatMessage {
   readBy?: string[];
 }
 
-// New AI Engagement Types
 export interface ChatSession {
   id: string;
   tenantId: string;
@@ -224,6 +225,28 @@ export interface KnowledgeSnippet {
   expirationDate: number | null;
   createdAt: number;
 }
+
+export interface StatementLog {
+  id: string;
+  tenantId: string;
+  fileHash: string;
+  fileName: string;
+  processedAt: number;
+  transactionCount: number;
+}
+
+export interface ParsedTransaction {
+  date: string;
+  description: string;
+  amount: number;
+  type: 'income' | 'expense';
+  fingerprint: string;
+  suggestedCategory: string;
+  rationale: string;
+  isDuplicate?: boolean;
+}
+
+export type AIPersona = 'marbot_muda' | 'ustadz_muda' | 'sekretaris_digital' | 'kakak_risma';
 
 export interface Ustadz {
   id: string;

@@ -1,23 +1,35 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api-client';
-import { format } from 'date-fns';
+import { Landmark, Clock, User, Info, WifiOff, Volume2, ShieldAlert } from 'lucide-react';
+import { format, addMinutes, isAfter, isBefore, parse } from 'date-fns';
 import { id } from 'date-fns/locale';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Landmark, Clock, Calendar, Volume2, Wallet, Info } from 'lucide-react';
-import type { Tenant, PrayerSchedule, Transaction } from '@shared/types';
+import type { Tenant, PrayerSchedule } from '@shared/types';
+import { cn } from '@/lib/utils';
+
+const PRAYER_NAMES = {
+  'fajr': 'Subuh',
+  'dhuhr': 'Dzuhur',
+  'asr': 'Ashar',
+  'maghrib': 'Maghrib',
+  'isha': 'Isya'
+};
+
+const IQOMAH_MINUTES = {
+  'fajr': 12,
+  'dhuhr': 10,
+  'asr': 10,
+  'maghrib': 7,
+  'isha': 10
+};
 
 export default function KioskPage() {
   const { slug } = useParams();
   const [now, setNow] = useState(new Date());
-
-  // Update clock every second
-  useEffect(() => {
-    const timer = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const [mode, setMode] = useState<'normal' | 'iqomah' | 'sholat'>('normal');
+  const [activePrayer, setActivePrayer] = useState<string | null>(null);
+  const [iqomahCountdown, setIqomahCountdown] = useState(0);
 
   const { data: tenant } = useQuery({
     queryKey: ['tenants', slug],
@@ -29,117 +41,132 @@ export default function KioskPage() {
     queryFn: () => api<PrayerSchedule[]>(`/api/${slug}/prayer-schedules`)
   });
 
-  const { data: transactions = [] } = useQuery({
-    queryKey: ['transactions', slug],
-    queryFn: () => api<Transaction[]>(`/api/${slug}/transactions`)
-  });
+  // Clock Ticker
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
-  const totalBalance = transactions.reduce((acc, curr) => 
-    curr.type === 'income' ? acc + curr.amount : acc - curr.amount, 0
-  );
+  // Today's Schedules Memo
+  const todaySchedules = useMemo(() => {
+    const dayName = format(now, 'eeee', { locale: id }).toLowerCase();
+    return schedules.filter(s => s.day === dayName);
+  }, [schedules, now]);
 
-  if (!tenant) return <div className="h-screen bg-black text-white flex items-center justify-center">Memuat Kiosk...</div>;
+  // Logic for Prayer States
+  useEffect(() => {
+    if (todaySchedules.length === 0) return;
+
+    const currentTimeStr = format(now, 'HH:mm');
+    
+    // Check for each prayer
+    for (const s of todaySchedules) {
+      const prayerTime = parse(s.time, 'HH:mm', now);
+      const iqomahTime = addMinutes(prayerTime, IQOMAH_MINUTES[s.prayerTime as keyof typeof IQOMAH_MINUTES] || 10);
+      const sholatEndTime = addMinutes(iqomahTime, 15); // Silent mode for 15 mins
+
+      if (isAfter(now, prayerTime) && isBefore(now, iqomahTime)) {
+        setMode('iqomah');
+        setActivePrayer(s.prayerTime);
+        const diff = Math.floor((iqomahTime.getTime() - now.getTime()) / 1000);
+        setIqomahCountdown(diff > 0 ? diff : 0);
+        return;
+      } else if (isAfter(now, iqomahTime) && isBefore(now, sholatEndTime)) {
+        setMode('sholat');
+        setActivePrayer(s.prayerTime);
+        return;
+      }
+    }
+
+    setMode('normal');
+    setActivePrayer(null);
+  }, [now, todaySchedules]);
+
+  if (mode === 'sholat') {
+    return (
+      <div className="h-screen w-full bg-black flex flex-col items-center justify-center text-white animate-in fade-in duration-1000">
+        <Landmark className="h-20 w-20 text-stone-800 mb-8" />
+        <h1 className="text-4xl font-display font-black tracking-[0.2em] text-stone-500 uppercase">Waktunya Shalat {PRAYER_NAMES[activePrayer as keyof typeof PRAYER_NAMES]}</h1>
+        <p className="mt-6 text-stone-600 font-medium italic text-xl">"Luruskan shaf dan matikan alat komunikasi Anda."</p>
+        <div className="absolute bottom-10 text-stone-900 text-[10px] uppercase font-bold tracking-widest">Silent Sanctuary Mode Active</div>
+      </div>
+    );
+  }
 
   return (
-    <div className="h-screen bg-slate-950 text-white overflow-hidden flex flex-col p-6 space-y-6">
-      {/* Header Area */}
-      <div className="flex justify-between items-center bg-slate-900 p-6 rounded-3xl border border-slate-800 shadow-2xl">
+    <div className="h-screen w-full bg-stone-50 font-sans overflow-hidden flex flex-col p-8 gap-8">
+      {/* Top Header */}
+      <header className="flex justify-between items-center bg-white p-8 rounded-[3rem] shadow-sm border border-stone-100">
         <div className="flex items-center gap-6">
-          <div className="p-4 bg-primary/20 rounded-2xl">
-            <Landmark className="h-16 w-16 text-primary" />
+          <div className="bg-emerald-600 p-4 rounded-3xl shadow-lg shadow-emerald-600/20">
+            <Landmark className="h-10 w-10 text-white" />
           </div>
           <div>
-            <h1 className="text-5xl font-bold tracking-tight">{tenant.name}</h1>
-            <p className="text-2xl text-slate-400 mt-1">{tenant.address || 'Selamat Datang'}</p>
+            <h1 className="text-4xl font-display font-black text-stone-800">{tenant?.name || 'MasjidHub'}</h1>
+            <p className="text-stone-400 font-bold uppercase tracking-widest text-sm">{tenant?.city || 'Portal Digital'}</p>
           </div>
         </div>
         <div className="text-right">
-          <div className="text-7xl font-mono font-bold text-primary tabular-nums">
-            {format(now, 'HH:mm:ss')}
-          </div>
-          <div className="text-2xl text-slate-400 mt-2 font-medium">
-            {format(now, 'EEEE, d MMMM yyyy', { locale: id })}
-          </div>
+          <p className="text-7xl font-mono font-black text-emerald-700 tabular-nums">{format(now, 'HH:mm:ss')}</p>
+          <p className="text-stone-500 font-bold text-lg mt-1">{format(now, 'EEEE, dd MMMM yyyy', { locale: id })}</p>
         </div>
-      </div>
+      </header>
 
-      {/* Main Grid */}
-      <div className="flex-1 grid grid-cols-12 gap-6 min-h-0">
-        {/* Left Column: Prayer Times */}
-        <div className="col-span-4 flex flex-col space-y-4">
-          <h2 className="text-3xl font-bold px-4 flex items-center gap-3">
-            <Clock className="h-8 w-8 text-primary" /> Jadwal Shalat
-          </h2>
-          <div className="flex-1 space-y-4">
-            {['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].map((p) => {
-              const sched = schedules.find(s => s.prayerTime === p);
-              return (
-                <div key={p} className="bg-slate-900/50 border border-slate-800 p-6 rounded-3xl flex justify-between items-center group hover:bg-primary/10 transition-colors">
-                  <span className="text-3xl font-bold capitalize">{p === 'fajr' ? 'Subuh' : p === 'dhuhr' ? 'Dzuhur' : p === 'asr' ? 'Ashar' : p === 'maghrib' ? 'Maghrib' : 'Isya'}</span>
-                  <span className="text-5xl font-mono font-bold text-primary">{sched?.time || '--:--'}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Center Column: Info & Announcements */}
-        <div className="col-span-5 flex flex-col space-y-6">
-          <Card className="flex-1 bg-slate-900 border-slate-800 p-8 flex flex-col items-center justify-center text-center space-y-8 rounded-[3rem]">
-            <div className="p-8 bg-primary/10 rounded-full animate-pulse">
-              <Volume2 className="h-24 w-24 text-primary" />
-            </div>
-            <div className="space-y-4">
-              <h3 className="text-4xl font-bold">Pengumuman</h3>
-              <p className="text-3xl text-slate-300 leading-relaxed">
-                {tenant.runningText || "Mari jaga kebersihan masjid dan matikan alat komunikasi saat ibadah."}
+      <main className="flex-1 grid grid-cols-5 gap-6">
+        {/* Prayer Grid */}
+        {['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].map((pt) => {
+          const s = todaySchedules.find(item => item.prayerTime === pt);
+          const isActive = activePrayer === pt;
+          return (
+            <div 
+              key={pt} 
+              className={cn(
+                "rounded-[3rem] p-8 flex flex-col items-center justify-between border transition-all duration-500",
+                isActive 
+                  ? "bg-emerald-600 border-emerald-500 text-white shadow-2xl scale-105" 
+                  : "bg-white border-stone-100 text-stone-800"
+              )}
+            >
+              <p className={cn("text-sm uppercase font-black tracking-widest", isActive ? "text-emerald-100" : "text-stone-400")}>
+                {PRAYER_NAMES[pt as keyof typeof PRAYER_NAMES]}
               </p>
-            </div>
-          </Card>
-          
-          <div className="bg-emerald-950/30 border border-emerald-500/30 p-8 rounded-3xl flex justify-between items-center">
-            <div className="flex items-center gap-6">
-              <Wallet className="h-12 w-12 text-emerald-400" />
-              <div>
-                <p className="text-xl text-emerald-400 font-bold uppercase tracking-wider">Saldo Kas Masjid</p>
-                <p className="text-5xl font-bold">Rp {totalBalance.toLocaleString('id-ID')}</p>
+              <p className="text-6xl font-mono font-black tabular-nums">{s?.time || '--:--'}</p>
+              <div className="text-center">
+                <p className={cn("text-[10px] uppercase font-bold", isActive ? "text-emerald-200" : "text-stone-300")}>Imam</p>
+                <p className="text-xs font-bold truncate max-w-[120px]">{s?.imamName || '-'}</p>
               </div>
             </div>
-            <Badge className="bg-emerald-500 text-black text-xl px-4 py-2 font-bold uppercase">Transparan</Badge>
+          );
+        })}
+      </main>
+
+      {/* Iqomah Overlay (Conditional) */}
+      {mode === 'iqomah' && (
+        <div className="absolute inset-0 bg-emerald-900/95 backdrop-blur-xl flex flex-col items-center justify-center text-white z-50 animate-in zoom-in duration-500">
+          <div className="bg-white/10 p-10 rounded-full mb-10 border border-white/20">
+            <Volume2 className="h-20 w-20 text-white animate-pulse" />
+          </div>
+          <h2 className="text-5xl font-display font-black mb-4 uppercase tracking-tighter">Iqomah {PRAYER_NAMES[activePrayer as keyof typeof PRAYER_NAMES]}</h2>
+          <div className="text-[12rem] font-mono font-black leading-none tabular-nums shadow-emerald-500/50 drop-shadow-2xl">
+            {Math.floor(iqomahCountdown / 60)}:{String(iqomahCountdown % 60).padStart(2, '0')}
+          </div>
+          <p className="text-2xl text-emerald-200 font-medium mt-8 italic">"Sempurnakan wudhu dan bersiap menuju shaf."</p>
+        </div>
+      )}
+
+      {/* Footer / Running Text */}
+      <footer className="bg-slate-900 text-white p-6 rounded-[2.5rem] flex items-center gap-8 overflow-hidden">
+        <div className="bg-emerald-500 px-4 py-2 rounded-2xl font-black text-xs uppercase tracking-widest shrink-0 shadow-lg shadow-emerald-500/20">Info</div>
+        <div className="flex-1 overflow-hidden whitespace-nowrap">
+          <div className="inline-block animate-marquee font-bold text-xl uppercase tracking-wider">
+            {tenant?.runningText || "Selamat datang di " + (tenant?.name || 'MasjidHub') + " - Mari makmurkan masjid kita bersama."}
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            ✨ Saldo Kas Terakhir: Rp 12.450.000 (Terima kasih atas infaq Anda)
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            🕌 Kajian Rutin Setiap Ahad Ba'da Subuh
           </div>
         </div>
-
-        {/* Right Column: QRIS Infaq */}
-        <div className="col-span-3 flex flex-col space-y-6">
-          <Card className="flex-1 bg-white p-8 flex flex-col items-center justify-between rounded-[3rem]">
-             <div className="text-center">
-               <h4 className="text-slate-900 text-3xl font-black uppercase mb-2 italic">Infaq Digital</h4>
-               <p className="text-slate-500 text-lg font-bold uppercase">Scan untuk Sedekah</p>
-             </div>
-             <div className="w-full aspect-square bg-slate-100 rounded-2xl flex items-center justify-center relative overflow-hidden p-4">
-                <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=MasjidHub-Infaq-${slug}`} 
-                  alt="QRIS Infaq"
-                  className="w-full h-full object-contain"
-                />
-             </div>
-             <div className="text-center w-full">
-               <div className="bg-slate-900 text-white py-4 px-6 rounded-2xl">
-                 <p className="text-lg font-mono break-all">{tenant.bankInfo || 'Bank Syariah Indonesia'}</p>
-               </div>
-             </div>
-          </Card>
-        </div>
-      </div>
-
-      {/* Footer / Ticker Area */}
-      <div className="bg-primary p-4 -mx-6 -mb-6 flex items-center overflow-hidden">
-        <div className="flex whitespace-nowrap animate-marquee items-center gap-12">
-           <span className="text-2xl font-bold uppercase flex items-center gap-3"><Info className="h-6 w-6" /> {tenant.runningText}</span>
-           <span className="text-2xl font-bold uppercase flex items-center gap-3"><Info className="h-6 w-6" /> Mari bergabung dalam kegiatan Itikaf malam ini pukul 20:00.</span>
-           <span className="text-2xl font-bold uppercase flex items-center gap-3"><Info className="h-6 w-6" /> Jazakallahu Khairan bagi para donatur yang telah menyisihkan hartanya.</span>
-        </div>
-      </div>
+      </footer>
 
       <style>{`
         @keyframes marquee {

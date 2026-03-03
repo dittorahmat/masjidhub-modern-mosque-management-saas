@@ -334,11 +334,9 @@ export default function PublicPortalPage() {
       </main>
 
       {/* Floating AI Chat Widget */}
-      <div className="fixed bottom-6 right-6 z-[100]">
-        {tenant && (
-          <ChatWindow slug={slug!} mosqueName={tenant.name} />
-        )}
-      </div>
+      {tenant && (
+        <ChatWindow slug={slug!} mosqueName={tenant.name} />
+      )}
 
       {/* Footer */}
       <footer className="border-t py-20 bg-white">

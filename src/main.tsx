@@ -35,6 +35,7 @@ const KnowledgeManagementPage = lazy(() => import('@/pages/dashboard/KnowledgeMa
 const PageBuilderPage = lazy(() => import('@/pages/dashboard/PageBuilderPage'));
 const BlogManagementPage = lazy(() => import('@/pages/dashboard/BlogManagementPage'));
 const MediaManagementPage = lazy(() => import('@/pages/dashboard/MediaManagementPage'));
+const ImportStatementPage = lazy(() => import('@/pages/dashboard/ImportStatementPage'));
 
 // Existing Management Modules
 const FinancePage = lazy(() => import('@/pages/dashboard/FinancePage'));
@@ -116,6 +117,7 @@ const router = createBrowserRouter([
       { path: "blog", element: <BlogManagementPage /> },
       { path: "media", element: <MediaManagementPage /> },
       { path: "finance", element: <FinancePage /> },
+      { path: "finance/import", element: <ImportStatementPage /> },
       { path: "zis", element: <ZisPage /> },
       { path: "zis/report", element: <ZisReportPage /> },
       { path: "zis/payment", element: <ZisPaymentPage /> },

@@ -3,7 +3,9 @@ stepsCompleted: [step-01-init, step-02-design-epics, step-03-create-stories, ste
 inputDocuments: [
   '_bmad-output/planning-artifacts/prd.md',
   '_bmad-output/planning-artifacts/architecture.md',
-  '_bmad-output/planning-artifacts/ux-design-specification.md'
+  '_bmad-output/planning-artifacts/ux-design-specification.md',
+  '_bmad-output/brainstorming/brainstorming-session-2026-03-02-bank-parser.md',
+  '_bmad-output/brainstorming/brainstorming-session-2026-03-03.md'
 ]
 workflowType: 'architecture'
 lastStep: 4
@@ -14,7 +16,7 @@ status: 'complete'
 
 ## Overview
 
-This document provides the complete epic and story breakdown for masjidhub-modern-mosque-management-saas, decomposing the requirements from the PRD, UX Design, and Architecture requirements into implementable stories.
+This document provides the complete epic and story breakdown for masjidhub-modern-mosque-management-saas, decomposing the requirements into implementable stories.
 
 ## Requirements Inventory
 
@@ -46,6 +48,12 @@ This document provides the complete epic and story breakdown for masjidhub-moder
 - **FR25:** Smart Blocks (Ayat/Hadits).
 - **FR26:** Puzzle Page Builder.
 - **FR27:** Design Guard (Lock colors/fonts).
+- **FR28:** AI-Powered Bank Statement Parser (Bulk Import).
+- **FR29:** Atomic Transaction Fingerprinting for deduplication.
+- **FR30:** Auto-Loyalty Detection for recurring donors.
+- **FR31 (NEW):** Automatic Prayer Schedule via City Geocoding.
+- **FR32 (NEW):** Iqomah Countdown & Silent Sanctuary Mode for Kiosk.
+- **FR33 (NEW):** Respectful Override Logic for prayer data.
 
 ### NonFunctional Requirements
 - **NFR1:** Streaming Latency < 1s.
@@ -55,7 +63,7 @@ This document provides the complete epic and story breakdown for masjidhub-moder
 - **NFR5:** Unix Timestamps (ms) Standard.
 
 ### Additional Requirements
-- **AI Integration:** Gemini 2.5 Flash Lite (Files API).
+- **AI Integration:** Gemini 2.5 Flash Lite (Files API / Vision).
 - **Media Storage:** Cloudinary Free Tier.
 - **Architecture:** Stateless AI Logic & Feature-based Hooks.
 
@@ -67,101 +75,26 @@ This document provides the complete epic and story breakdown for masjidhub-moder
 4. **Epic 4: Smart CMS & Blog** (Integrated Content) [DONE]
 5. **Epic 5: Media & Operational Transparency** (Assets & Finance) [DONE]
 6. **Epic 6: AI Persona & Role Management** (Identity & Customization) [DONE]
+7. **Epic 7: AI Financial Intelligence** (Statement Parser) [DONE]
+8. **Epic 8: Smart Prayer Schedule Hub** (Otomasi Ibadah) [DONE]
 
 ---
 
-## Epic 1: Intelligent Communication Hub
-**Goal:** Pondasi interaksi jamaah-masjid yang privat dan aman.
+## Epic 8: Smart Prayer Schedule Hub
+**Goal:** Mengotomatiskan jadwal shalat berbasis lokasi untuk kemudahan operasional DKM dan aksesibilitas jamaah.
 
-### Story 1.1: Dasar Infrastruktur Chat & Shadow ID
-As a Jamaah, I want memulai sesi chat secara anonim, So that saya merasa aman berkonsultasi.
-**AC:** Given portal dibuka, When tombol anonim aktif & kirim pesan, Then sistem generate shadowId via HMAC-SHA256 & salt unik per sesi.
+### Story 8.1: Automatic Location Setup
+**As a** Admin DKM, I want mengatur lokasi masjid cukup dengan mengetik nama kota, So that saya tidak perlu mencari koordinat manual.
+**AC:** Given halaman Settings, When admin mengetik nama kota, Then sistem lookup via Geocoding API & simpan koordinat/zona waktu.
 
-### Story 1.2: Pengiriman Pesan & Streaming AI (SSE)
-As a Jamaah, I want mendapatkan respon streaming kata-demi-kata dari AI, So that respon terasa instan.
-**AC:** Given chat aktif, When pesan dikirim, Then sistem memicu Gemini via AI-logic worker & kirim balik via SSE (First token < 1s).
+### Story 8.2: 30-Day Automated Prayer Sync & Cache
+**As a** Admin DKM, I want jadwal shalat tersinkronisasi otomatis setiap bulan, So that informasi selalu akurat tanpa input manual.
+**AC:** Given koordinat valid, When sinkronisasi bulanan dipicu, Then sistem tarik data 30 hari dari API (Kemenag standard) ke Durable Objects.
 
-### Story 1.3: Shared Admin Inbox
-As a Admin DKM, I want melihat dan membalas chat dari dashboard, So that koordinasi teratur.
-**AC:** Given admin login, When menu Inbox dibuka, Then sistem menampilkan daftar ChatSession aktif (multi-tenant isolated).
+### Story 8.3: The Respectful Override (Hybrid)
+**As a** Admin DKM, I want bisa mengedit jadwal atau petugas secara manual tanpa ditimpa sistem otomatis, So that kendali tetap di tangan pengurus.
+**AC:** Given jadwal di dashboard, When admin edit manual, Then sistem set flag `"Locked`" agar data tidak ditimpa sinkronisasi otomatis.
 
-### Story 1.6: Chat Session Persistence
-As a Jamaah, I want riwayat chat saya tidak hilang saat refresh, So that saya bisa melanjutkan percakapan.
-
----
-
-## Epic 2: Mosque Knowledge Base
-**Goal:** Manajemen basis pengetahuan masjid untuk melatih AI.
-
-### Story 2.1: Knowledge Inbox (Upload PDF)
-As a Admin DKM, I want mengunggah file PDF laporan, So that AI bisa menjawab berdasarkan data riil.
-**AC:** Given admin di Inbox, When file diunggah, Then sistem simpan fileUri dari Gemini Files API & set status "Processing".
-
-### Story 2.2: Persetujuan Dokumen Manual
-As a Admin, I want menyetujui dokumen sebelum diindeks AI, So that akurasi data terjaga.
-
-### Story 2.3: Quick Knowledge Snippets (Textbox)
-As a Admin, I want mengetik info singkat (zakat/info ramadhan) di textbox, So that AI tahu info dinamis tanpa upload PDF.
-**AC:** Given dashboard AI, When teks diisi di snippets box & simpan, Then sistem simpan di KnowledgeSnippetEntity dengan prioritas tinggi.
-
----
-
-## Epic 3: Puzzle Page Builder
-**Goal:** Membangun portal masjid profesional berbasis blok.
-
-### Story 3.1: Drag-and-Drop Page Builder
-As a Admin, I want menyusun tata letak web dengan blok section, So that pembuatan portal sangat cepat.
-
-### Story 3.2: Design Guard (Theming)
-As a Admin, I want pilihan warna dibatasi, So that web tetap cantik & profesional.
-
----
-
-## Epic 4: Smart CMS & Blog
-**Goal:** Publikasi kajian terintegrasi data masjid.
-
-### Story 4.1: CMS dengan Smart Blocks (Ayat/Hadits)
-As a Ustadz, I want menyisipkan teks Arab Ayat secara otomatis, So that penulisan kajian lebih akurat.
-
----
-
-## Epic 5: Media & Operational Transparency
-**Goal:** Otomasi manajemen media dan laporan finansial sosial.
-
-### Story 5.2: Social-Ready Transparency (Infographics)
-As a Admin DKM, I want generate infografis laporan kas satu klik, So that mudah share ke WhatsApp.
-
-### Story 5.3: Super Admin Panic Button & Governance
-As a Super Admin, I want mematikan AI per tenant, So that keamanan platform terjaga.
-
----
-
-## Epic 6: AI Persona & Role Management
-**Goal:** Memungkinkan admin masjid memilih karakter visual dan gaya bahasa asisten AI yang sesuai dengan nilai lokal.
-
-### Story 6.1: Role Presets & System Instructions
-**As a** Admin DKM, 
-**I want** memilih preset persona (Marbot Muda, Ustadz Muda, Sekretaris Digital), 
-**So that** AI merespon dengan gaya bahasa dan wibawa yang sesuai.
-**AC:** 
-- Given menu Settings AI, 
-- When persona dipilih (e.g. Ustadz Muda), 
-- Then sistem memperbarui System Instruction AI untuk menggunakan gaya bahasa santun dan memprioritaskan dalil.
-
-### Story 6.2: Dynamic Authority (Google Search Filtering)
-**As a** Admin DKM, 
-**I want** membatasi sumber Google Search AI via Quick Snippets, 
-**So that** referensi AI tetap akurat dan terpercaya.
-**AC:** 
-- Given AI melakukan Google Search, 
-- When ada baris "REFERENSI:" di Quick Snippets, 
-- Then AI memprioritaskan hasil pencarian dari domain-domain tersebut.
-
-### Story 6.3: UI Role Gallery
-**As a** Admin DKM, 
-**I want** antarmuka visual kartu persona di Dashboard, 
-**So that** penggantian identitas AI intuitif.
-**AC:** 
-- Given halaman Settings, 
-- When tab Identitas AI dibuka, 
-- Then sistem menampilkan pilihan kartu Marbot Muda, Ustadz Muda, dan Sekretaris Digital.
+### Story 8.4: Interactive Kiosk & Portal Presence
+**As a** Jamaah, I want melihat countdown Iqomah dan tampilan layar yang tenang saat shalat, So that saya bisa beribadah dengan lebih khusyuk.
+**AC:** Given Kiosk aktif, When waktu adzan tiba, Then muncul countdown Iqomah. When waktu shalat tiba, Then layar meredup (`"Silent Mode`").

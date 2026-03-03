@@ -30,6 +30,16 @@ export async function generateShadowId(secret: string, data: string): Promise<st
 }
 
 /**
+ * Calculates SHA-256 hash of a file (ArrayBuffer)
+ */
+export async function calculateFileHash(data: ArrayBuffer): Promise<string> {
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map(b => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/**
  * Generates a random session salt using CSPRNG
  */
 export function generateSessionSalt(): string {

@@ -1,12 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
-import { AIPersona } from "@shared/types";
+import { AIPersona, ParsedTransaction } from "@shared/types";
 
 export interface AIContext {
   mosqueName: string;
   snippets: string[];
   fileUris: string[];
   persona: AIPersona;
-  trustedDomains?: string[]; // Story 6.2 Fix
+  trustedDomains?: string[];
   extraContext?: string;
 }
 
@@ -80,7 +80,6 @@ export async function* streamChatResponse(
     },
   ];
 
-  // REAL FIX for Story 6.2: Implement dynamic authority in tools config
   const config: any = {
     systemInstruction: {
       parts: [{ text: systemInstruction }]
@@ -106,4 +105,55 @@ export async function* streamChatResponse(
       yield chunk.text;
     }
   }
+}
+
+/**
+ * Extracts transaction data from a bank statement PDF using Gemini Vision
+ */
+export async function parseBankStatement(
+  apiKey: string,
+  fileData: ArrayBuffer,
+  mimeType: string,
+  mosqueName: string
+): Promise<ParsedTransaction[]> {
+  const ai = new GoogleGenAI({ apiKey });
+  
+  const prompt = `Analisis file mutasi bank ini untuk Masjid ${mosqueName}. 
+Ekstrak seluruh transaksi menjadi format JSON array.
+
+ATURAN EKSTRAKSI:
+1. "date": Tanggal transaksi (DD/MM/YYYY).
+2. "description": Keterangan lengkap transaksi.
+3. "amount": Angka nominal (hilangkan tanda titik/koma ribuan).
+4. "type": "income" untuk uang masuk (CR) atau "expense" untuk uang keluar (DB).
+5. "suggestedCategory": Tebak kategori (e.g., Infaq, Operasional, Zakat, Gaji, dll).
+6. "rationale": Alasan singkat pemilihan kategori tersebut.
+
+HASIL HARUS BERUPA JSON ARRAY SAJA. JANGAN ADA TEKS LAIN.`;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash-lite',
+    contents: [
+      {
+        role: 'user',
+        parts: [
+          {
+            inlineData: {
+              data: Buffer.from(fileData).toString("base64"),
+              mimeType: mimeType,
+            },
+          },
+          { text: prompt },
+        ],
+      }
+    ]
+  });
+
+  const text = response.text;
+  if (!text) throw new Error("AI tidak mengembalikan teks hasil ekstraksi.");
+
+  const jsonMatch = text.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) throw new Error("Gagal mengekstrak data JSON dari mutasi.");
+  
+  return JSON.parse(jsonMatch[0]);
 }

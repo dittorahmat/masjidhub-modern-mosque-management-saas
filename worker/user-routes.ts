@@ -20,17 +20,21 @@ import {
   BlogPostEntity,
   PageSectionEntity,
   MediaItemEntity,
-  AIChatMessageEntity
+  AIChatMessageEntity,
+  StatementLogEntity
 } from "./entities";
 import type { UserRole, ZisTransaction } from "@shared/types";
 import { ok, bad, notFound } from './core-utils';
-import { streamChatResponse } from "./ai-logic";
+import { streamChatResponse, parseBankStatement } from "./ai-logic";
 import { streamText } from 'hono/streaming';
-import { generateShadowId, generateSessionSalt } from "./crypto-utils";
+import { generateShadowId, generateSessionSalt, calculateFileHash } from "./crypto-utils";
 import { getOptimizedImageUrl, generateFinanceInfographicUrl } from "./cloudinary";
 
-// Helper for Hex Color validation (Design Guard Backend)
+// Helper for Hex Color validation
 const isValidHex = (color: string) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(color);
+
+// Helper for Data Normalization
+const normalizeText = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
 
 // Mock payment processing function
 async function processZisPayment(transaction: any, paymentMethod: string, amount: number) {
@@ -59,222 +63,6 @@ export function userRoutes(app: Hono<any>) {
     if (subdomain) return await getTenantBySlug(env, subdomain);
     return null;
   };
-
-  // --- CONFIG ---
-  app.get('/api/config/cloudinary', (c) => {
-    return ok(c, {
-      cloudName: c.env.CLOUDINARY_CLOUD_NAME || 'masjidhub',
-      uploadPreset: c.env.CLOUDINARY_UPLOAD_PRESET || 'masjidhub_preset'
-    });
-  });
-
-  // --- AI CHAT ENGAGEMENT (PUBLIC) ---
-  app.post('/api/:slug/chat/init', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { userId, isAnonymous } = await c.req.json();
-    const sessionId = crypto.randomUUID();
-    const sessionSalt = generateSessionSalt();
-    let finalUserId = userId || 'guest';
-    
-    // FIX: Shadow ID Hardening - use secret even for generating initial salt if needed
-    if (isAnonymous) {
-      const secret = c.env.INTERNAL_SECRET_KEY || 'default_secret_key';
-      finalUserId = await generateShadowId(secret, `${finalUserId}:${tenant.id}:${sessionSalt}`);
-    }
-
-    const session = await ChatSessionEntity.create(c.env, {
-      id: sessionId, 
-      tenantId: tenant.id, 
-      userId: finalUserId, 
-      isAnonymous, 
-      sessionSalt, // Note: In production this should be encrypted at rest
-      status: 'active', 
-      createdAt: Date.now(), 
-      lastActivityAt: Date.now()
-    });
-    return ok(c, session);
-  });
-
-  app.post('/api/:slug/chat/send', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { message, sessionId, history } = await c.req.json();
-    const apiKey = c.env.GEMINI_API_KEY;
-    if (!apiKey) return bad(c, 'AI configuration missing');
-    
-    await AIChatMessageEntity.create(c.env, { id: crypto.randomUUID(), sessionId, tenantId: tenant.id, senderRole: 'user', text: message, timestamp: Date.now() });
-    
-    const { items: allSnippets } = await KnowledgeSnippetEntity.list(c.env);
-    const tenantSnippetsRaw = allSnippets.filter(s => s.tenantId === tenant.id);
-    const tenantSnippets = tenantSnippetsRaw.map(s => s.content);
-
-    const trustedDomains = tenantSnippetsRaw
-      .filter(s => s.content.toUpperCase().startsWith("REFERENSI:"))
-      .map(s => s.content.split(":")[1]?.trim())
-      .flatMap(d => d ? d.split(",").map(i => i.trim()) : [])
-      .filter(Boolean);
-
-    const sessionInst = new ChatSessionEntity(c.env, sessionId);
-    await sessionInst.patch({ lastActivityAt: Date.now() });
-
-    return streamText(c, async (stream) => {
-      let accumulatedText = "";
-      const responseStream = streamChatResponse(apiKey, message, { mosqueName: tenant.name, snippets: tenantSnippets, fileUris: [], persona: tenant.selectedPersona || 'marbot_muda', trustedDomains }, history);
-      for await (const chunk of responseStream) { accumulatedText += chunk; await stream.write(chunk); }
-      await AIChatMessageEntity.create(c.env, { id: crypto.randomUUID(), sessionId, tenantId: tenant.id, senderRole: 'ai', text: accumulatedText, timestamp: Date.now() });
-    });
-  });
-
-  // --- AI KNOWLEDGE MANAGEMENT (ADMIN) ---
-  app.get('/api/:slug/knowledge/files', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await MediaItemEntity.list(c.env);
-    return ok(c, items.filter(m => m.tenantId === tenant.id && m.fileType === 'application/pdf'));
-  });
-
-  app.post('/api/:slug/knowledge/upload', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const body = await c.req.parseBody();
-    const file = body['file'] as File;
-    
-    // FIX: Server-side validation for PDF
-    if (!file || file.type !== 'application/pdf') return bad(c, 'Only PDF files are allowed for Knowledge Base');
-    if (file.size > 50 * 1024 * 1024) return bad(c, 'File size exceeds 50MB limit');
-
-    const media = await MediaItemEntity.create(c.env, { id: crypto.randomUUID(), tenantId: tenant.id, cloudinaryUrl: "", fileName: file.name, fileType: file.type, eventTag: 'knowledge_base', isWatermarked: false, createdAt: Date.now() });
-    return ok(c, media);
-  });
-
-  app.get('/api/:slug/knowledge/snippets', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await KnowledgeSnippetEntity.list(c.env);
-    return ok(c, items.filter(s => s.tenantId === tenant.id).sort((a, b) => b.createdAt - a.createdAt));
-  });
-
-  app.post('/api/:slug/knowledge/snippets', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const body = await c.req.json();
-    if (body.content?.length > 2000) return bad(c, 'Snippet content too long (max 2000 chars)');
-    const snippet = await KnowledgeSnippetEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id, createdAt: Date.now() });
-    return ok(c, snippet);
-  });
-
-  // --- AI CHAT MANAGEMENT (ADMIN) ---
-  app.get('/api/:slug/chat/sessions', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await ChatSessionEntity.list(c.env);
-    return ok(c, items.filter(s => s.tenantId === tenant.id).sort((a, b) => b.lastActivityAt - a.lastActivityAt));
-  });
-
-  app.get('/api/:slug/chat/sessions/:id/messages', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await AIChatMessageEntity.list(c.env);
-    // Limit to last 100 messages for safety
-    return ok(c, items.filter(m => m.sessionId === c.req.param('id') && m.tenantId === tenant.id).sort((a, b) => a.timestamp - b.timestamp).slice(-100));
-  });
-
-  app.post('/api/:slug/chat/sessions/:id/reply', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { text } = await c.req.json();
-    const msg = await AIChatMessageEntity.create(c.env, { id: crypto.randomUUID(), sessionId: c.req.param('id'), tenantId: tenant.id, senderRole: 'admin', text, timestamp: Date.now() });
-    const sessionInst = new ChatSessionEntity(c.env, c.req.param('id'));
-    await sessionInst.patch({ lastActivityAt: Date.now() });
-    return ok(c, msg);
-  });
-
-  // --- SMART CMS & BLOG ---
-  app.get('/api/:slug/blog', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await BlogPostEntity.list(c.env);
-    return ok(c, items.filter(p => p.tenantId === tenant.id).sort((a, b) => b.createdAt - a.createdAt));
-  });
-
-  app.post('/api/:slug/blog', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const body = await c.req.json();
-    const post = await BlogPostEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id, createdAt: Date.now(), updatedAt: Date.now() });
-    return ok(c, post);
-  });
-
-  app.get('/api/quran/search', async (c) => {
-    const query = c.req.query('q');
-    if (!query) return bad(c, 'Query required');
-    try {
-      const controller = new AbortController();
-      const id = setTimeout(() => controller.abort(), 5000);
-      const res = await fetch(`https://api.quran.com/api/v4/search?q=${encodeURIComponent(query)}&language=id`, { signal: controller.signal });
-      clearTimeout(id);
-      if (!res.ok) throw new Error('Quran API error');
-      const data = await res.json();
-      return ok(c, data);
-    } catch (e) {
-      return bad(c, 'Quran API tidak dapat dijangkau saat ini.');
-    }
-  });
-
-  // --- PUZZLE PAGE BUILDER ---
-  app.get('/api/:slug/page/sections', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await PageSectionEntity.list(c.env);
-    return ok(c, items.filter(s => s.tenantId === tenant.id).sort((a, b) => a.order - b.order));
-  });
-
-  app.post('/api/:slug/page/sections', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const sections = await c.req.json();
-    if (!Array.isArray(sections)) return bad(c, 'Invalid sections format');
-
-    // FIX: Design Guard Backend Validation
-    for (const section of sections) {
-      if (section.config?.color && !isValidHex(section.config.color)) {
-        return bad(c, `Invalid color format: ${section.config.color}. Must be hex.`);
-      }
-    }
-
-    // FIX: Transaction-like replace to prevent race conditions
-    const { items: existing } = await PageSectionEntity.list(c.env);
-    const toDelete = existing.filter(s => s.tenantId === tenant.id).map(s => s.id);
-    if (toDelete.length > 0) await PageSectionEntity.deleteMany(c.env, toDelete);
-
-    const created = await Promise.all(sections.map((s: any, index: number) => PageSectionEntity.create(c.env, { 
-      ...s, 
-      id: crypto.randomUUID(), 
-      tenantId: tenant.id, 
-      order: index, 
-      updatedAt: Date.now() 
-    })));
-    return ok(c, created);
-  });
-
-  // --- MEDIA LIBRARY ---
-  app.get('/api/:slug/media', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await MediaItemEntity.list(c.env);
-    return ok(c, items.filter(m => m.tenantId === tenant.id));
-  });
-
-  // --- FINANCE TRANSPARENCY ---
-  app.get('/api/:slug/finance/report-card', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items: txs } = await TransactionEntity.list(c.env);
-    const balance = txs.filter(t => t.tenantId === tenant.id).reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0);
-    const imageUrl = generateFinanceInfographicUrl(c.env.CLOUDINARY_CLOUD_NAME || 'masjidhub', tenant.name, balance, new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }));
-    return ok(c, { imageUrl, balance });
-  });
 
   // --- PUBLIC & AUTH ---
   app.get('/api/check-subdomain/:slug', async (c) => {
@@ -306,6 +94,177 @@ export function userRoutes(app: Hono<any>) {
     return ok(c, { user });
   });
 
+  // --- CONFIG & UTILS ---
+  app.get('/api/config/cloudinary', (c) => {
+    return ok(c, {
+      cloudName: c.env.CLOUDINARY_CLOUD_NAME || 'masjidhub',
+      uploadPreset: c.env.CLOUDINARY_UPLOAD_PRESET || 'masjidhub_preset'
+    });
+  });
+
+  app.get('/api/geo/search', async (c) => {
+    const q = c.req.query('q');
+    if (!q) return bad(c, 'Query required');
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(q)}&countrycodes=id&limit=5`, {
+        headers: { 'User-Agent': 'MasjidHub-SaaS' }
+      });
+      const data = await res.json();
+      return ok(c, data);
+    } catch (e) { return bad(c, 'Gagal mencari lokasi.'); }
+  });
+
+  // --- AI CHAT ENGAGEMENT ---
+  app.post('/api/:slug/chat/init', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { userId, isAnonymous } = await c.req.json();
+    const sessionId = crypto.randomUUID();
+    const sessionSalt = generateSessionSalt();
+    let finalUserId = userId || 'guest';
+    if (isAnonymous) {
+      const secret = c.env.INTERNAL_SECRET_KEY || 'default_secret_key';
+      finalUserId = await generateShadowId(secret, `${finalUserId}:${tenant.id}:${sessionSalt}`);
+    }
+    const session = await ChatSessionEntity.create(c.env, { id: sessionId, tenantId: tenant.id, userId: finalUserId, isAnonymous, sessionSalt, status: 'active', createdAt: Date.now(), lastActivityAt: Date.now() });
+    return ok(c, session);
+  });
+
+  app.post('/api/:slug/chat/send', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { message, sessionId, history } = await c.req.json();
+    const apiKey = c.env.GEMINI_API_KEY;
+    if (!apiKey) return bad(c, 'AI configuration missing');
+    await AIChatMessageEntity.create(c.env, { id: crypto.randomUUID(), sessionId, tenantId: tenant.id, senderRole: 'user', text: message, timestamp: Date.now() });
+    const { items: allSnippets } = await KnowledgeSnippetEntity.list(c.env);
+    const tenantSnippetsRaw = allSnippets.filter(s => s.tenantId === tenant.id);
+    const tenantSnippets = tenantSnippetsRaw.map(s => s.content);
+    const trustedDomains = tenantSnippetsRaw.filter(s => s.content.toUpperCase().startsWith("REFERENSI:")).map(s => s.content.split(":")[1]?.trim()).flatMap(d => d ? d.split(",").map(i => i.trim()) : []).filter(Boolean);
+    const sessionInst = new ChatSessionEntity(c.env, sessionId);
+    await sessionInst.patch({ lastActivityAt: Date.now() });
+    return streamText(c, async (stream) => {
+      let accumulatedText = "";
+      const responseStream = streamChatResponse(apiKey, message, { mosqueName: tenant.name, snippets: tenantSnippets, fileUris: [], persona: tenant.selectedPersona || 'marbot_muda', trustedDomains }, history);
+      for await (const chunk of responseStream) { accumulatedText += chunk; await stream.write(chunk); }
+      await AIChatMessageEntity.create(c.env, { id: crypto.randomUUID(), sessionId, tenantId: tenant.id, senderRole: 'ai', text: accumulatedText, timestamp: Date.now() });
+    });
+  });
+
+  // --- AI KNOWLEDGE MANAGEMENT ---
+  app.get('/api/:slug/knowledge/files', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await MediaItemEntity.list(c.env);
+    return ok(c, items.filter(m => m.tenantId === tenant.id && m.fileType === 'application/pdf'));
+  });
+
+  app.post('/api/:slug/knowledge/upload', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.parseBody();
+    const file = body['file'] as File;
+    if (!file || file.type !== 'application/pdf') return bad(c, 'Only PDF allowed');
+    if (file.size > 50 * 1024 * 1024) return bad(c, 'File too large');
+    const media = await MediaItemEntity.create(c.env, { id: crypto.randomUUID(), tenantId: tenant.id, cloudinaryUrl: "", fileName: file.name, fileType: file.type, eventTag: 'knowledge_base', isWatermarked: false, createdAt: Date.now() });
+    return ok(c, media);
+  });
+
+  // --- AI CHAT MANAGEMENT ---
+  app.get('/api/:slug/chat/sessions', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await ChatSessionEntity.list(c.env);
+    return ok(c, items.filter(s => s.tenantId === tenant.id).sort((a, b) => b.lastActivityAt - a.lastActivityAt));
+  });
+
+  app.post('/api/:slug/chat/sessions/:id/reply', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { text } = await c.req.json();
+    const msg = await AIChatMessageEntity.create(c.env, { id: crypto.randomUUID(), sessionId: c.req.param('id'), tenantId: tenant.id, senderRole: 'admin', text, timestamp: Date.now() });
+    const sessionInst = new ChatSessionEntity(c.env, c.req.param('id'));
+    await sessionInst.patch({ lastActivityAt: Date.now() });
+    return ok(c, msg);
+  });
+
+  // --- SMART CMS & BLOG ---
+  app.get('/api/:slug/blog', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await BlogPostEntity.list(c.env);
+    return ok(c, items.filter(p => p.tenantId === tenant.id).sort((a, b) => b.createdAt - a.createdAt));
+  });
+
+  app.post('/api/:slug/blog', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    const post = await BlogPostEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id, createdAt: Date.now(), updatedAt: Date.now() });
+    return ok(c, post);
+  });
+
+  // --- FINANCE STATEMENT PARSER ---
+  app.post('/api/:slug/finance/parse-statement', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.parseBody();
+    const file = body['file'] as File;
+    if (!file) return bad(c, 'No file uploaded');
+    const apiKey = c.env.GEMINI_API_KEY;
+    if (!apiKey) return bad(c, 'AI configuration missing');
+    const buffer = await file.arrayBuffer();
+    const fileHash = await calculateFileHash(buffer);
+    const { items: logs } = await StatementLogEntity.list(c.env);
+    if (logs.some(l => l.fileHash === fileHash && l.tenantId === tenant.id)) return bad(c, 'File sudah pernah diproses.');
+    try {
+      const transactions = await parseBankStatement(apiKey, buffer, file.type, tenant.name);
+      const { items: existingTxs } = await TransactionEntity.list(c.env);
+      const tenantTxs = existingTxs.filter(t => t.tenantId === tenant.id);
+      const secret = c.env.INTERNAL_SECRET_KEY || 'default_secret';
+      const enhancedTxs = await Promise.all(transactions.map(async (tx) => {
+        const fingerprint = await generateShadowId(secret, `${tx.date}:${tx.amount}:${normalizeText(tx.description)}`);
+        const isDuplicate = tenantTxs.some(etx => etx.amount === tx.amount && normalizeText(etx.description).includes(normalizeText(tx.description).substring(0, 15)));
+        return { ...tx, fingerprint, isDuplicate };
+      }));
+      const signature = await generateShadowId(secret, JSON.stringify(enhancedTxs) + fileHash);
+      return ok(c, { fileHash, transactions: enhancedTxs, signature });
+    } catch (e: any) { return bad(c, e.message); }
+  });
+
+  app.post('/api/:slug/finance/bulk-save', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { transactions, fileHash, fileName, signature } = await c.req.json();
+    const secret = c.env.INTERNAL_SECRET_KEY || 'default_secret';
+    const expectedSignature = await generateShadowId(secret, JSON.stringify(transactions) + fileHash);
+    if (signature !== expectedSignature) return bad(c, 'Data integrity check failed.');
+    const impact: Record<string, number> = {};
+    transactions.filter((tx: any) => !tx.isDuplicate).forEach((tx: any) => { impact[tx.suggestedCategory] = (impact[tx.suggestedCategory] || 0) + tx.amount; });
+    const savedCount = transactions.length;
+    for (const tx of transactions) { if (tx.isDuplicate) continue; await TransactionEntity.create(c.env, { id: crypto.randomUUID(), tenantId: tenant.id, type: tx.type, amount: tx.amount, category: tx.suggestedCategory, description: tx.description, date: Date.now(), createdBy: 'ai_importer' }); }
+    await StatementLogEntity.create(c.env, { id: crypto.randomUUID(), tenantId: tenant.id, fileHash, fileName, processedAt: Date.now(), transactionCount: savedCount });
+    return ok(c, { count: savedCount, impact });
+  });
+
+  // --- MEDIA LIBRARY ---
+  app.get('/api/:slug/media', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await MediaItemEntity.list(c.env);
+    return ok(c, items.filter(m => m.tenantId === tenant.id));
+  });
+
+  // --- FINANCE TRANSPARENCY ---
+  app.get('/api/:slug/finance/report-card', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items: txs } = await TransactionEntity.list(c.env);
+    const balance = txs.filter(t => t.tenantId === tenant.id).reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0);
+    const imageUrl = generateFinanceInfographicUrl(c.env.CLOUDINARY_CLOUD_NAME || 'masjidhub', tenant.name, balance, new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }));
+    return ok(c, { imageUrl, balance });
+  });
+
   // --- SUPER ADMIN ---
   app.get('/api/super/summary', async (c) => {
     await TenantEntity.ensureSeed(c.env);
@@ -313,12 +272,7 @@ export function userRoutes(app: Hono<any>) {
     const { items: users } = await UserEntity.list(c.env);
     const { items: txs } = await TransactionEntity.list(c.env);
     const { items: events } = await EventEntity.list(c.env);
-    return ok(c, {
-      totalTenants: tenants.length, totalUsers: users.length, 
-      totalBalance: txs.reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0),
-      activeEvents: events.filter(e => e.date > Date.now()).length,
-      pendingApprovals: tenants.filter(t => t.status === 'pending').length
-    });
+    return ok(c, { totalTenants: tenants.length, totalUsers: users.length, totalBalance: txs.reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0), activeEvents: events.filter(e => e.date > Date.now()).length, pendingApprovals: tenants.filter(t => t.status === 'pending').length });
   });
 
   app.get('/api/super/tenants', async (c) => {
@@ -326,12 +280,7 @@ export function userRoutes(app: Hono<any>) {
     const { items: tenants } = await TenantEntity.list(c.env);
     const { items: txs } = await TransactionEntity.list(c.env);
     const { items: users } = await UserEntity.list(c.env);
-    return ok(c, tenants.map(t => ({
-      ...t, 
-      totalBalance: txs.filter(tx => tx.tenantId === t.id).reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0),
-      memberCount: users.filter(u => u.tenantIds.includes(t.id)).length,
-      eventCount: 0
-    })));
+    return ok(c, tenants.map(t => ({ ...t, totalBalance: txs.filter(tx => tx.tenantId === t.id).reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0), memberCount: users.filter(u => u.tenantIds.includes(t.id)).length, eventCount: 0 })));
   });
 
   app.get('/api/super/users', async (c) => {
@@ -406,10 +355,7 @@ export function userRoutes(app: Hono<any>) {
     if (!tenant) return notFound(c, 'Tenant not found');
     const { items } = await ZisTransactionEntity.list(c.env);
     const zisTransactions = items.filter(t => t.tenantId === tenant.id);
-    return ok(c, {
-      totalAmount: zisTransactions.reduce((sum, tx) => sum + tx.amount, 0),
-      totalTransactions: zisTransactions.length
-    });
+    return ok(c, { totalAmount: zisTransactions.reduce((sum, tx) => sum + tx.amount, 0), totalTransactions: zisTransactions.length });
   });
 
   app.post('/api/:slug/zis/:id/process-payment', async (c) => {
@@ -435,12 +381,7 @@ export function userRoutes(app: Hono<any>) {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
     const body = await c.req.json();
-    const mustahik = await MustahikEntity.create(c.env, { 
-      ...body, 
-      id: crypto.randomUUID(), 
-      tenantId: tenant.id,
-      registrationDate: Date.now()
-    });
+    const mustahik = await MustahikEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id, registrationDate: Date.now() });
     return ok(c, mustahik);
   });
 
@@ -472,11 +413,77 @@ export function userRoutes(app: Hono<any>) {
     return ok(c, items.filter(u => u.tenantIds.includes(tenant.id)));
   });
 
+  // --- PRAYER SCHEDULE HUB ---
   app.get('/api/:slug/prayer-schedules', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
     const { items } = await PrayerScheduleEntity.list(c.env);
     return ok(c, items.filter(s => s.tenantId === tenant.id));
+  });
+
+  app.put('/api/:slug/prayer-schedules/:id', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    
+    const body = await c.req.json();
+    const inst = new PrayerScheduleEntity(c.env, c.req.param('id'));
+    const state = await inst.getState();
+    if (!state || state.tenantId !== tenant.id) return notFound(c, 'Schedule not found');
+    
+    // FIX: Strictly allow only these fields to be updated
+    const allowedFields = ['time', 'imamName', 'isLocked'];
+    const filteredBody: any = {};
+    allowedFields.forEach(f => { if (body[f] !== undefined) filteredBody[f] = body[f]; });
+    
+    await inst.patch(filteredBody);
+    return ok(c, await inst.getState());
+  });
+
+  app.post('/api/:slug/prayer-schedules/sync', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    if (!tenant.latitude || !tenant.longitude) return bad(c, 'Lokasi masjid belum diatur.');
+
+    const year = new Date().getFullYear();
+    const month = new Date().getMonth() + 1;
+
+    try {
+      const res = await fetch(`https://api.aladhan.com/v1/calendar?latitude=${tenant.latitude}&longitude=${tenant.longitude}&method=20&month=${month}&year=${year}`);
+      const data: any = await res.json();
+      if (data.code !== 200) throw new Error('API Error');
+
+      const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const prayerMap: any = { 'Fajr': 'fajr', 'Dhuhr': 'dhuhr', 'Asr': 'asr', 'Maghrib': 'maghrib', 'Isha': 'isha' };
+
+      const { items: existing } = await PrayerScheduleEntity.list(c.env);
+      const tenantSchedules = existing.filter(s => s.tenantId === tenant.id);
+
+      // FIX: Performance Optimization using Promise.all for parallel database operations
+      const syncTasks = [];
+      
+      for (const dayData of data.data) {
+        const dayName = days[new Date(dayData.date.gregorian.date.split('-').reverse().join('-')).getDay()];
+        for (const [apiName, internalName] of Object.entries(prayerMap)) {
+          const time = dayData.timings[apiName as string].split(' ')[0];
+          const existingRecord = tenantSchedules.find(s => s.day === dayName && s.prayerTime === internalName);
+          
+          if (existingRecord) {
+            if (!existingRecord.isLocked) {
+              const inst = new PrayerScheduleEntity(c.env, existingRecord.id);
+              syncTasks.push(inst.patch({ time }));
+            }
+          } else {
+            syncTasks.push(PrayerScheduleEntity.create(c.env, {
+              id: crypto.randomUUID(), tenantId: tenant.id, day: dayName as any, 
+              prayerTime: internalName as any, time, isLocked: false
+            }));
+          }
+        }
+      }
+
+      await Promise.all(syncTasks);
+      return ok(c, { success: true, updated: data.data.length });
+    } catch (e) { return bad(c, 'Gagal sinkronisasi jadwal shalat.'); }
   });
 
   app.get('/api/:slug/search', async (c) => {

@@ -82,11 +82,13 @@ export default function ImportStatementPage() {
 
   const handleSave = () => {
     if (!parsedData || !file) return;
-    const toSave = parsedData.transactions.filter(tx => !tx.isDuplicate);
+    // Send all transactions and the original signature
+    // Backend will handle filtering duplicates during the save process
     saveMutation.mutate({
-      transactions: toSave,
+      transactions: parsedData.transactions,
       fileHash: parsedData.fileHash,
-      fileName: file.name
+      fileName: file.name,
+      signature: (parsedData as any).signature
     });
   };
 

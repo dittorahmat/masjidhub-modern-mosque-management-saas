@@ -108,7 +108,21 @@ export async function* streamChatResponse(
 }
 
 /**
+ * Helper to convert ArrayBuffer to Base64 (Worker-safe)
+ */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
+
+/**
  * Extracts transaction data from a bank statement PDF using Gemini Vision
+ * Enhanced for BSI and BCA formats.
  */
 export async function parseBankStatement(
   apiKey: string,
@@ -119,17 +133,20 @@ export async function parseBankStatement(
   const ai = new GoogleGenAI({ apiKey });
   
   const prompt = `Analisis file mutasi bank ini untuk Masjid ${mosqueName}. 
-Ekstrak seluruh transaksi menjadi format JSON array.
+Ekstrak seluruh baris transaksi menjadi format JSON array.
 
-ATURAN EKSTRAKSI:
-1. "date": Tanggal transaksi (DD/MM/YYYY).
-2. "description": Keterangan lengkap transaksi.
-3. "amount": Angka nominal (hilangkan tanda titik/koma ribuan).
-4. "type": "income" untuk uang masuk (CR) atau "expense" untuk uang keluar (DB).
-5. "suggestedCategory": Tebak kategori (e.g., Infaq, Operasional, Zakat, Gaji, dll).
-6. "rationale": Alasan singkat pemilihan kategori tersebut.
+ATURAN PARSING KHUSUS BANK INDONESIA:
+1. "date": Tanggal (Format: DD/MM/YYYY). Ubah format 01-02-2026 atau 28/02 menjadi format standar.
+2. "description": Gabungkan info pengirim/penerima dan keterangan transaksi menjadi satu teks yang bermakna.
+3. "amount": Angka nominal murni (Hanya angka, hapus titik/koma ribuan).
+   - Jika ada tanda minus di belakang (e.g. 1.000,00-) itu adalah uang KELUAR.
+   - Jika ada kode DB di belakang nominal itu adalah uang KELUAR.
+   - Jika ada kode CR di belakang nominal itu adalah uang MASUK.
+4. "type": "income" untuk uang masuk atau "expense" untuk uang keluar.
+5. "suggestedCategory": Tebak kategori (e.g., Infaq, Operasional, Zakat, Listrik, Gaji, dll).
+6. "rationale": Alasan singkat pemilihan kategori.
 
-HASIL HARUS BERUPA JSON ARRAY SAJA. JANGAN ADA TEKS LAIN.`;
+HASIL HARUS BERUPA JSON ARRAY SAJA. JANGAN ADA TEKS LAIN. JANGAN ADA BLOCK MARKDOWN.`;
 
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash-lite',
@@ -139,7 +156,7 @@ HASIL HARUS BERUPA JSON ARRAY SAJA. JANGAN ADA TEKS LAIN.`;
         parts: [
           {
             inlineData: {
-              data: Buffer.from(fileData).toString("base64"),
+              data: arrayBufferToBase64(fileData),
               mimeType: mimeType,
             },
           },
@@ -150,10 +167,12 @@ HASIL HARUS BERUPA JSON ARRAY SAJA. JANGAN ADA TEKS LAIN.`;
   });
 
   const text = response.text;
-  if (!text) throw new Error("AI tidak mengembalikan teks hasil ekstraksi.");
+  if (!text) throw new Error("AI tidak mengembalikan data.");
 
-  const jsonMatch = text.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) throw new Error("Gagal mengekstrak data JSON dari mutasi.");
+  // Clean JSON from potential markdown/extra text
+  const cleanJson = text.replace(/```json/g, "").replace(/```/g, "").trim();
+  const jsonMatch = cleanJson.match(/\[[\s\S]*\]/);
+  if (!jsonMatch) throw new Error("Gagal mengekstrak format JSON dari mutasi.");
   
   return JSON.parse(jsonMatch[0]);
 }

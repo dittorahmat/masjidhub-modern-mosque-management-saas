@@ -50,7 +50,10 @@ export default function ImportStatementPage() {
       setParsedData(data);
       toast.success('Analisis mutasi selesai. Silakan tinjau data di bawah.');
     },
-    onError: (error: any) => toast.error(error.message || 'Gagal memproses file mutasi.')
+    onError: (error: any) => {
+      console.error('[PARSE ERROR]', error);
+      toast.error(error.message || 'Gagal memproses file mutasi.', { duration: 5000 });
+    }
   });
 
   const saveMutation = useMutation({
@@ -63,7 +66,10 @@ export default function ImportStatementPage() {
       queryClient.invalidateQueries({ queryKey: ['finance', slug] });
       setImpactData(res);
     },
-    onError: () => toast.error('Gagal menyimpan transaksi.')
+    onError: (error: any) => {
+      console.error('[SAVE ERROR]', error);
+      toast.error('Gagal menyimpan transaksi.');
+    }
   });
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

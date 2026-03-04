@@ -166,12 +166,35 @@ export function userRoutes(app: Hono<any>) {
     return ok(c, media);
   });
 
+  app.get('/api/:slug/knowledge/snippets', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await KnowledgeSnippetEntity.list(c.env);
+    return ok(c, items.filter(s => s.tenantId === tenant.id).sort((a, b) => b.createdAt - a.createdAt));
+  });
+
+  app.post('/api/:slug/knowledge/snippets', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    if (body.content?.length > 2000) return bad(c, 'Snippet too long');
+    const snippet = await KnowledgeSnippetEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id, createdAt: Date.now() });
+    return ok(c, snippet);
+  });
+
   // --- AI CHAT MANAGEMENT ---
   app.get('/api/:slug/chat/sessions', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
     const { items } = await ChatSessionEntity.list(c.env);
     return ok(c, items.filter(s => s.tenantId === tenant.id).sort((a, b) => b.lastActivityAt - a.lastActivityAt));
+  });
+
+  app.get('/api/:slug/chat/sessions/:id/messages', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items: messages } = await AIChatMessageEntity.list(c.env);
+    return ok(c, messages.filter(m => m.sessionId === c.req.param('id') && m.tenantId === tenant.id).sort((a, b) => a.timestamp - b.timestamp).slice(-100));
   });
 
   app.post('/api/:slug/chat/sessions/:id/reply', async (c) => {
@@ -200,32 +223,106 @@ export function userRoutes(app: Hono<any>) {
     return ok(c, post);
   });
 
-  // --- FINANCE STATEMENT PARSER ---
-  app.post('/api/:slug/finance/parse-statement', async (c) => {
+  app.get('/api/quran/search', async (c) => {
+    const query = c.req.query('q');
+    if (!query) return bad(c, 'Query required');
+    try {
+      const controller = new AbortController();
+      const id = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(`https://api.quran.com/api/v4/search?q=${encodeURIComponent(query)}&language=id`, { signal: controller.signal });
+      clearTimeout(id);
+      const data = await res.json();
+      return ok(c, data);
+    } catch (e) { return bad(c, 'Quran API tidak dapat dijangkau'); }
+  });
+
+  // --- PUZZLE PAGE BUILDER ---
+  app.get('/api/:slug/page/sections', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await PageSectionEntity.list(c.env);
+    return ok(c, items.filter(s => s.tenantId === tenant.id).sort((a, b) => a.order - b.order));
+  });
+
+  app.post('/api/:slug/page/sections', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const sections = await c.req.json();
+    if (!Array.isArray(sections)) return bad(c, 'Invalid format');
+    for (const s of sections) { if (s.config?.color && !isValidHex(s.config.color)) return bad(c, 'Invalid color'); }
+    const { items: existing } = await PageSectionEntity.list(c.env);
+    const toDelete = existing.filter(s => s.tenantId === tenant.id).map(s => s.id);
+    if (toDelete.length > 0) await PageSectionEntity.deleteMany(c.env, toDelete);
+    const created = await Promise.all(sections.map((s: any, index: number) => PageSectionEntity.create(c.env, { ...s, id: crypto.randomUUID(), tenantId: tenant.id, order: index, updatedAt: Date.now() })));
+    return ok(c, created);
+  });
+
+  // --- FINANCE & ZIS ---
+  app.get('/api/:slug/finance', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await TransactionEntity.list(c.env);
+    return ok(c, items.filter(t => t.tenantId === tenant.id));
+  });
+
+  app.post('/api/:slug/finance', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    const tx = await TransactionEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id });
+    return ok(c, tx);
+  });
+
+  app.post('/api/:slug/finance/parse-statement', async (c) => {
+    console.log('[BACKEND] Received parse-statement request');
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    
     const body = await c.req.parseBody();
     const file = body['file'] as File;
-    if (!file) return bad(c, 'No file uploaded');
+    if (!file) {
+      console.error('[BACKEND] No file found in request body');
+      return bad(c, 'No file uploaded');
+    }
+    
+    console.log('[BACKEND] File received:', file.name, file.type, file.size);
+
     const apiKey = c.env.GEMINI_API_KEY;
-    if (!apiKey) return bad(c, 'AI configuration missing');
-    const buffer = await file.arrayBuffer();
-    const fileHash = await calculateFileHash(buffer);
-    const { items: logs } = await StatementLogEntity.list(c.env);
-    if (logs.some(l => l.fileHash === fileHash && l.tenantId === tenant.id)) return bad(c, 'File sudah pernah diproses.');
+    if (!apiKey) {
+      console.error('[BACKEND] GEMINI_API_KEY missing');
+      return bad(c, 'AI configuration missing (GEMINI_API_KEY)');
+    }
+
     try {
+      const buffer = await file.arrayBuffer();
+      console.log('[BACKEND] ArrayBuffer generated, size:', buffer.byteLength);
+      
+      const fileHash = await calculateFileHash(buffer);
+      const { items: logs } = await StatementLogEntity.list(c.env);
+      if (logs.some(l => l.fileHash === fileHash && l.tenantId === tenant.id)) {
+        return bad(c, 'File sudah pernah diproses.');
+      }
+
+      console.log('[BACKEND] Calling Gemini Vision Parser...');
       const transactions = await parseBankStatement(apiKey, buffer, file.type, tenant.name);
+      console.log('[BACKEND] Gemini Parsing Success, rows:', transactions.length);
+
       const { items: existingTxs } = await TransactionEntity.list(c.env);
       const tenantTxs = existingTxs.filter(t => t.tenantId === tenant.id);
       const secret = c.env.INTERNAL_SECRET_KEY || 'default_secret';
+      
       const enhancedTxs = await Promise.all(transactions.map(async (tx) => {
         const fingerprint = await generateShadowId(secret, `${tx.date}:${tx.amount}:${normalizeText(tx.description)}`);
         const isDuplicate = tenantTxs.some(etx => etx.amount === tx.amount && normalizeText(etx.description).includes(normalizeText(tx.description).substring(0, 15)));
         return { ...tx, fingerprint, isDuplicate };
       }));
+
       const signature = await generateShadowId(secret, JSON.stringify(enhancedTxs) + fileHash);
       return ok(c, { fileHash, transactions: enhancedTxs, signature });
-    } catch (e: any) { return bad(c, e.message); }
+    } catch (e: any) { 
+      console.error('[BACKEND] Parsing failed:', e.message);
+      return bad(c, `Gagal parsing: ${e.message}`); 
+    }
   });
 
   app.post('/api/:slug/finance/bulk-save', async (c) => {
@@ -237,13 +334,152 @@ export function userRoutes(app: Hono<any>) {
     if (signature !== expectedSignature) return bad(c, 'Data integrity check failed.');
     const impact: Record<string, number> = {};
     transactions.filter((tx: any) => !tx.isDuplicate).forEach((tx: any) => { impact[tx.suggestedCategory] = (impact[tx.suggestedCategory] || 0) + tx.amount; });
-    const savedCount = transactions.length;
     for (const tx of transactions) { if (tx.isDuplicate) continue; await TransactionEntity.create(c.env, { id: crypto.randomUUID(), tenantId: tenant.id, type: tx.type, amount: tx.amount, category: tx.suggestedCategory, description: tx.description, date: Date.now(), createdBy: 'ai_importer' }); }
-    await StatementLogEntity.create(c.env, { id: crypto.randomUUID(), tenantId: tenant.id, fileHash, fileName, processedAt: Date.now(), transactionCount: savedCount });
-    return ok(c, { count: savedCount, impact });
+    await StatementLogEntity.create(c.env, { id: crypto.randomUUID(), tenantId: tenant.id, fileHash, fileName, processedAt: Date.now(), transactionCount: transactions.length });
+    return ok(c, { count: transactions.length, impact });
   });
 
-  // --- MEDIA LIBRARY ---
+  app.get('/api/:slug/zis', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await ZisTransactionEntity.list(c.env);
+    return ok(c, items.filter(t => t.tenantId === tenant.id));
+  });
+
+  app.post('/api/:slug/zis', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    const tx = await ZisTransactionEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id, date: Date.now(), payment_status: body.payment_status || 'pending' });
+    return ok(c, tx);
+  });
+
+  app.get('/api/:slug/zis/report', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await ZisTransactionEntity.list(c.env);
+    const zisTransactions = items.filter(t => t.tenantId === tenant.id);
+    return ok(c, { totalAmount: zisTransactions.reduce((sum, tx) => sum + tx.amount, 0), totalTransactions: zisTransactions.length });
+  });
+
+  app.post('/api/:slug/zis/:id/process-payment', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const inst = new ZisTransactionEntity(c.env, c.req.param('id'));
+    const tx = await inst.getState();
+    const body = await c.req.json();
+    const result = await processZisPayment(tx, body.payment_method, body.amount);
+    await inst.patch({ payment_method: body.payment_method, payment_status: result.status as any, payment_reference: result.reference, payment_gateway: result.gateway, payment_date: Date.now() });
+    return ok(c, await inst.getState());
+  });
+
+  // --- MUSTAHIK & INVENTORY ---
+  app.get('/api/:slug/mustahik', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await MustahikEntity.list(c.env);
+    return ok(c, items.filter(m => m.tenantId === tenant.id));
+  });
+
+  app.post('/api/:slug/mustahik', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    const mustahik = await MustahikEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id, registrationDate: Date.now() });
+    return ok(c, mustahik);
+  });
+
+  app.get('/api/:slug/inventory', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await InventoryItemEntity.list(c.env);
+    return ok(c, items.filter(i => i.tenantId === tenant.id));
+  });
+
+  // --- EVENTS & FORUM ---
+  app.get('/api/:slug/events', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await EventEntity.list(c.env);
+    return ok(c, items.filter(e => e.tenantId === tenant.id));
+  });
+
+  app.get('/api/:slug/forum', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await ForumPostEntity.list(c.env);
+    return ok(c, items.filter(p => p.tenantId === tenant.id));
+  });
+
+  app.get('/api/:slug/members', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items } = await UserEntity.list(c.env);
+    return ok(c, items.filter(u => u.tenantIds.includes(tenant.id)));
+  });
+
+  // --- PRAYER SCHEDULE HUB ---
+  app.get('/api/:slug/prayer-schedules', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const { items: monthly } = await MonthlyPrayerScheduleEntity.list(c.env);
+    const tenantMonthly = monthly.filter(m => m.tenantId === tenant.id);
+    const allDaily: any[] = [];
+    tenantMonthly.forEach(m => {
+      Object.entries(m.days).forEach(([date, prayers]) => {
+        const dayDate = new Date(date);
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const dayName = dayNames[dayDate.getDay()];
+        ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(pt => {
+          allDaily.push({ id: `${m.id}:${date}:${pt}`, tenantId: tenant.id, date, day: dayName, prayerTime: pt, time: (prayers as any)[pt], imamName: prayers.imamName, isLocked: prayers.isLocked });
+        });
+      });
+    });
+    return ok(c, allDaily);
+  });
+
+  app.put('/api/:slug/prayer-schedules/:id', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    const inst = new PrayerScheduleEntity(c.env, c.req.param('id'));
+    const state = await inst.getState();
+    if (!state || state.tenantId !== tenant.id) return notFound(c, 'Schedule not found');
+    const allowedFields = ['time', 'imamName', 'isLocked', 'date'];
+    const filteredBody: any = {};
+    allowedFields.forEach(f => { if (body[f] !== undefined) filteredBody[f] = body[f]; });
+    await inst.patch(filteredBody);
+    return ok(c, await inst.getState());
+  });
+
+  app.post('/api/:slug/prayer-schedules/sync-month', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    if (!tenant.latitude || !tenant.longitude) return bad(c, 'Lokasi masjid belum diatur.');
+    const { year, month } = await c.req.json();
+    const monthId = `${tenant.id}:${year}-${String(month).padStart(2, '0')}`;
+    try {
+      const res = await fetch(`https://api.aladhan.com/v1/calendar?latitude=${tenant.latitude}&longitude=${tenant.longitude}&method=20&month=${month}&year=${year}`);
+      const data: any = await res.json();
+      if (data.code !== 200) throw new Error('API Error');
+      const prayerMap: any = { 'Fajr': 'fajr', 'Dhuhr': 'dhuhr', 'Asr': 'asr', 'Maghrib': 'maghrib', 'Isha': 'isha' };
+      const inst = new MonthlyPrayerScheduleEntity(c.env, monthId);
+      const existing = await inst.exists() ? await inst.getState() : null;
+      const days: Record<string, DailyPrayer> = existing ? { ...existing.days } : {};
+      for (const dayData of data.data) {
+        const [d, m, y] = dayData.date.gregorian.date.split('-');
+        const isoDate = `${y}-${m}-${d}`;
+        if (days[isoDate]?.isLocked) continue;
+        const daily: any = days[isoDate] || {};
+        for (const [apiName, internalName] of Object.entries(prayerMap)) { daily[internalName as string] = dayData.timings[apiName as string].split(' ')[0]; }
+        days[isoDate] = daily;
+      }
+      await MonthlyPrayerScheduleEntity.create(c.env, { id: monthId, tenantId: tenant.id, year, month, days });
+      return ok(c, { success: true, monthId });
+    } catch (e) { return bad(c, 'Gagal sinkronisasi bulan ini.'); }
+  });
+
+  // --- MEDIA & SEARCH ---
   app.get('/api/:slug/media', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
@@ -251,7 +487,6 @@ export function userRoutes(app: Hono<any>) {
     return ok(c, items.filter(m => m.tenantId === tenant.id));
   });
 
-  // --- FINANCE TRANSPARENCY ---
   app.get('/api/:slug/finance/report-card', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
@@ -259,6 +494,19 @@ export function userRoutes(app: Hono<any>) {
     const balance = txs.filter(t => t.tenantId === tenant.id).reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0);
     const imageUrl = generateFinanceInfographicUrl(c.env.CLOUDINARY_CLOUD_NAME || 'masjidhub', tenant.name, balance, new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }));
     return ok(c, { imageUrl, balance });
+  });
+
+  app.get('/api/:slug/search', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const q = c.req.query('q')?.toLowerCase() || "";
+    const [txs, inv, evs, posts] = await Promise.all([TransactionEntity.list(c.env), InventoryItemEntity.list(c.env), EventEntity.list(c.env), ForumPostEntity.list(c.env)]);
+    return ok(c, {
+      transactions: txs.items.filter(t => t.tenantId === tenant.id && t.description.toLowerCase().includes(q)),
+      inventory: inv.items.filter(i => i.tenantId === tenant.id && i.name.toLowerCase().includes(q)),
+      events: evs.items.filter(e => e.tenantId === tenant.id && e.title.toLowerCase().includes(q)),
+      forum: posts.items.filter(p => p.tenantId === tenant.id && p.title.toLowerCase().includes(q))
+    });
   });
 
   // --- SUPER ADMIN ---
@@ -279,118 +527,29 @@ export function userRoutes(app: Hono<any>) {
     return ok(c, tenants.map(t => ({ ...t, totalBalance: txs.filter(tx => tx.tenantId === t.id).reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0), memberCount: users.filter(u => u.tenantIds.includes(t.id)).length, eventCount: 0 })));
   });
 
-  // --- TENANT SPECIFIC ---
+  app.get('/api/super/users', async (c) => {
+    const { items: users } = await UserEntity.list(c.env);
+    return ok(c, users);
+  });
+
+  app.post('/api/super/tenants/:id/approve', async (c) => {
+    const inst = new TenantEntity(c.env, c.req.param('id'));
+    if (!(await inst.exists())) return notFound(c, 'Tenant not found');
+    await inst.patch({ status: 'active' });
+    return ok(c, { success: true });
+  });
+
+  app.post('/api/super/tenants/:id/toggle-ai', async (c) => {
+    const inst = new TenantEntity(c.env, c.req.param('id'));
+    if (!(await inst.exists())) return notFound(c, 'Tenant not found');
+    const { enabled } = await c.req.json();
+    await inst.patch({ aiEnabled: enabled });
+    return ok(c, { success: true, aiEnabled: enabled });
+  });
+
   app.get('/api/tenants/:slug', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Mosque not found');
     return ok(c, tenant);
-  });
-
-  app.put('/api/:slug/settings', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const body = await c.req.json();
-    const inst = new TenantEntity(c.env, tenant.id);
-    await inst.patch(body);
-    return ok(c, await inst.getState());
-  });
-
-  app.get('/api/:slug/finance', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await TransactionEntity.list(c.env);
-    return ok(c, items.filter(t => t.tenantId === tenant.id));
-  });
-
-  app.post('/api/:slug/zis', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const body = await c.req.json();
-    const tx = await ZisTransactionEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id, date: Date.now(), payment_status: body.payment_status || 'pending' });
-    return ok(c, tx);
-  });
-
-  // --- PRAYER SCHEDULE HUB (OPTIMIZED) ---
-  app.get('/api/:slug/prayer-schedules', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const { items: monthly } = await MonthlyPrayerScheduleEntity.list(c.env);
-    const tenantMonthly = monthly.filter(m => m.tenantId === tenant.id);
-    
-    // Flatten daily prayers for frontend compatibility
-    const allDaily: any[] = [];
-    tenantMonthly.forEach(m => {
-      Object.entries(m.days).forEach(([date, prayers]) => {
-        const dayDate = new Date(date);
-        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-        const dayName = dayNames[dayDate.getDay()];
-        
-        ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(pt => {
-          allDaily.push({
-            id: `${m.id}:${date}:${pt}`,
-            tenantId: tenant.id,
-            date,
-            day: dayName,
-            prayerTime: pt,
-            time: (prayers as any)[pt],
-            imamName: prayers.imamName,
-            isLocked: prayers.isLocked
-          });
-        });
-      });
-    });
-    return ok(c, allDaily);
-  });
-
-  app.post('/api/:slug/prayer-schedules/sync-month', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    if (!tenant.latitude || !tenant.longitude) return bad(c, 'Lokasi masjid belum diatur.');
-
-    const { year, month } = await c.req.json();
-    const monthId = `${tenant.id}:${year}-${String(month).padStart(2, '0')}`;
-
-    try {
-      const res = await fetch(`https://api.aladhan.com/v1/calendar?latitude=${tenant.latitude}&longitude=${tenant.longitude}&method=20&month=${month}&year=${year}`);
-      const data: any = await res.json();
-      if (data.code !== 200) throw new Error('API Error');
-
-      const prayerMap: any = { 'Fajr': 'fajr', 'Dhuhr': 'dhuhr', 'Asr': 'asr', 'Maghrib': 'maghrib', 'Isha': 'isha' };
-      
-      // Load existing monthly record to preserve manual edits
-      const inst = new MonthlyPrayerScheduleEntity(c.env, monthId);
-      const existing = await inst.exists() ? await inst.getState() : null;
-      const days: Record<string, DailyPrayer> = existing ? { ...existing.days } : {};
-
-      for (const dayData of data.data) {
-        const [d, m, y] = dayData.date.gregorian.date.split('-');
-        const isoDate = `${y}-${m}-${d}`;
-        
-        // Skip if this day is locked by admin
-        if (days[isoDate]?.isLocked) continue;
-
-        const daily: any = days[isoDate] || {};
-        for (const [apiName, internalName] of Object.entries(prayerMap)) {
-          daily[internalName as string] = dayData.timings[apiName as string].split(' ')[0];
-        }
-        days[isoDate] = daily;
-      }
-
-      await MonthlyPrayerScheduleEntity.create(c.env, { id: monthId, tenantId: tenant.id, year, month, days });
-      return ok(c, { success: true, monthId });
-    } catch (e) { return bad(c, 'Gagal sinkronisasi bulan ini.'); }
-  });
-
-  app.get('/api/:slug/search', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    const q = c.req.query('q')?.toLowerCase() || "";
-    const [txs, inv, evs, posts] = await Promise.all([TransactionEntity.list(c.env), InventoryItemEntity.list(c.env), EventEntity.list(c.env), ForumPostEntity.list(c.env)]);
-    return ok(c, {
-      transactions: txs.items.filter(t => t.tenantId === tenant.id && t.description.toLowerCase().includes(q)),
-      inventory: inv.items.filter(i => i.tenantId === tenant.id && i.name.toLowerCase().includes(q)),
-      events: evs.items.filter(e => e.tenantId === tenant.id && e.title.toLowerCase().includes(q)),
-      forum: posts.items.filter(p => p.tenantId === tenant.id && p.title.toLowerCase().includes(q))
-    });
   });
 }

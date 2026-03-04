@@ -66,7 +66,8 @@ export default function KioskPage() {
       const prayerTime = parse(s.time, 'HH:mm', now);
       const iqomahMinutes = iqomahSettings[s.prayerTime as keyof typeof DEFAULT_IQOMAH] || 10;
       const iqomahTime = addMinutes(prayerTime, iqomahMinutes);
-      const sholatEndTime = addMinutes(iqomahTime, 15);
+      const sholatDuration = tenant?.sholatDuration || 15;
+      const sholatEndTime = addMinutes(iqomahTime, sholatDuration);
 
       if (isAfter(now, prayerTime) && isBefore(now, iqomahTime)) {
         setMode('iqomah');

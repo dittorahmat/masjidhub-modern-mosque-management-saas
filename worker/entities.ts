@@ -141,7 +141,9 @@ export class TenantEntity extends IndexedEntity<Tenant> {
     selectedPersona: 'marbot_muda',
     kioskRunningText: "Selamat datang di MasjidHub - Mari makmurkan masjid kita bersama.",
     kioskPrayerMode: 'silent',
-    iqomahMinutes: { fajr: 12, dhuhr: 10, asr: 10, maghrib: 7, isha: 10 }
+    sholatDuration: 15,
+    iqomahMinutes: {
+ fajr: 12, dhuhr: 10, asr: 10, maghrib: 7, isha: 10 }
   };
   static seedData: Tenant[] = [
     {

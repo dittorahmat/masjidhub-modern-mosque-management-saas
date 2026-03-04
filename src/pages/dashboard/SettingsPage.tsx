@@ -97,6 +97,7 @@ export default function SettingsPage() {
       aiEnabled: data.aiEnabled === 'on',
       kioskRunningText: data.kioskRunningText as string,
       kioskPrayerMode: data.kioskPrayerMode as any,
+      sholatDuration: Number(data.sholatDuration),
       iqomahMinutes
     });
   };
@@ -217,17 +218,23 @@ export default function SettingsPage() {
                     <Label htmlFor="kioskRunningText">Running Text TV</Label>
                     <Input id="kioskRunningText" name="kioskRunningText" defaultValue={tenant?.kioskRunningText} placeholder="Pesan pengumuman di bawah layar TV..." className="rounded-xl" />
                   </div>
-                  <div className="grid gap-2">
-                    <Label>Mode Tampilan Saat Shalat</Label>
-                    <Select name="kioskPrayerMode" defaultValue={tenant?.kioskPrayerMode || 'silent'}>
-                      <SelectTrigger className="rounded-xl">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="silent">Layar Gelap (Khidmat)</SelectItem>
-                        <SelectItem value="clock">Tampilkan Jam Besar</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label>Mode Tampilan Saat Shalat</Label>
+                      <Select name="kioskPrayerMode" defaultValue={tenant?.kioskPrayerMode || 'silent'}>
+                        <SelectTrigger className="rounded-xl">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="silent">Layar Gelap (Khidmat)</SelectItem>
+                          <SelectItem value="clock">Tampilkan Jam Besar</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="sholatDuration">Durasi Mode Shalat (Menit)</Label>
+                      <Input id="sholatDuration" name="sholatDuration" type="number" defaultValue={tenant?.sholatDuration || 15} className="rounded-xl" />
+                    </div>
                   </div>
                 </div>
 

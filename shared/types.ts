@@ -144,6 +144,7 @@ export interface Tenant {
   selectedPersona?: AIPersona;
   kioskRunningText?: string;
   kioskPrayerMode?: 'silent' | 'clock';
+  sholatDuration?: number; // NEW: Duration of silent mode in minutes
   iqomahMinutes?: {
     fajr: number;
     dhuhr: number;

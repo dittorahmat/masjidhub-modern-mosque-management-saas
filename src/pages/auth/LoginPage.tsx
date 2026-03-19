@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { api } from '@/lib/api-client';
 import { useAppActions } from '@/lib/store';
 import { toast } from 'sonner';
-import { Landmark, ShieldAlert, Sparkles } from 'lucide-react';
+import { Landmark, ShieldAlert, Sparkles, ArrowRight, Lock, Mail } from 'lucide-react';
 import type { AppUser, Tenant, UserRole } from '@shared/types';
+import { motion } from 'framer-motion';
+
 export default function LoginPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -20,7 +22,6 @@ export default function LoginPage() {
   const [selectedRole, setSelectedRole] = useState<UserRole>('dkm_admin');
   const isDemoMode = searchParams.get('demo') === 'true';
 
-  // Demo email mapping based on selected role
   const demoEmails: Record<UserRole, string> = {
     'superadmin_platform': 'admin@masjidhub.com',
     'dkm_admin': 'demo-dkm@masjid.org',
@@ -36,14 +37,14 @@ export default function LoginPage() {
         description: 'Gunakan akun demo untuk mengeksplorasi fitur platform.'
       });
     }
-  }, [isDemoMode, selectedRole, demoEmails]);
+  }, []);
 
-  // Update email when role changes in demo mode
   useEffect(() => {
     if (isDemoMode) {
       setEmail(demoEmails[selectedRole]);
     }
-  }, [selectedRole, isDemoMode, demoEmails]);
+  }, [selectedRole, isDemoMode]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -58,7 +59,6 @@ export default function LoginPage() {
         navigate('/super-admin/dashboard');
       } else if (user.tenantIds.length > 0) {
         try {
-          // Fix: Backend returns Tenant[] array directly for /api/super/tenants
           const tenants = await api<Tenant[]>('/api/super/tenants');
           const myTenant = tenants.find(t => user.tenantIds.includes(t.id));
           if (myTenant) {
@@ -67,7 +67,6 @@ export default function LoginPage() {
             navigate('/app/al-hikmah/dashboard');
           }
         } catch (error) {
-          console.error("Login redirect failed", error);
           navigate('/app/al-hikmah/dashboard');
         }
       } else {
@@ -79,84 +78,98 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
   return (
     <MarketingLayout>
-      <div className="max-w-md mx-auto py-24 px-4">
-        <div className="illustrative-card p-10 space-y-8 relative overflow-hidden">
-          {isDemoMode && (
-            <div className="absolute top-0 right-0 bg-primary/10 text-primary px-3 py-1 rounded-bl-xl text-[10px] font-bold uppercase flex items-center gap-1">
-              <Sparkles className="h-3 w-3" /> Mode Demo
-            </div>
-          )}
-          <div className="text-center space-y-2">
-            <div className="mx-auto bg-emerald-100 w-16 h-16 rounded-2xl flex items-center justify-center mb-4">
-              <Landmark className="h-8 w-8 text-primary" />
-            </div>
-            <h1 className="text-3xl font-display font-bold">Masuk ke Portal</h1>
-            <p className="text-muted-foreground text-sm">Akses manajemen masjid Anda yang aman.</p>
-          </div>
-          <form onSubmit={handleLogin} className="space-y-6">
+      <div className="min-h-[80vh] flex items-center justify-center px-4 py-20 relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(5,150,105,0.03)_0%,transparent_70%)]" />
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full max-w-[500px] relative z-10"
+        >
+          <div className="illustrative-card p-12 space-y-10 relative overflow-hidden border-none shadow-none hover:shadow-none hover:translate-y-0">
             {isDemoMode && (
-              <div className="space-y-2">
-                <Label htmlFor="role">Pilih Peran Demo</Label>
-                <Select value={selectedRole} onValueChange={(value: UserRole) => setSelectedRole(value)}>
-                  <SelectTrigger className="bg-stone-50 h-12">
-                    <SelectValue placeholder="Pilih peran demo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="superadmin_platform">Super Admin Platform</SelectItem>
-                    <SelectItem value="dkm_admin">Admin DKM</SelectItem>
-                    <SelectItem value="amil_zakat">Amil Zakat</SelectItem>
-                    <SelectItem value="ustadz">Ustadz</SelectItem>
-                    <SelectItem value="jamaah">Jamaah</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[10px] text-muted-foreground italic">
-                  Pilih peran untuk mencoba fitur-fitur berdasarkan hak akses
-                </p>
+              <div className="absolute top-0 right-0 bg-primary text-white px-6 py-1.5 rounded-bl-[2rem] text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2 shadow-xl">
+                <Sparkles className="h-3 w-3 fill-white animate-pulse" /> Mode Demo
               </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Alamat Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="bg-stone-50 h-12"
-                placeholder="admin@masjid.org"
-              />
-              <p className="text-[10px] text-muted-foreground italic">
-                {isDemoMode ? 'Klik "Masuk Sekarang" untuk login demo.' : 'Gunakan email admin masjid Anda.'}
-              </p>
+            
+            <div className="text-center space-y-4">
+              <div className="mx-auto bg-stone-50 w-24 h-24 rounded-[2rem] flex items-center justify-center mb-6 shadow-sm border-2 border-stone-100">
+                <Landmark className="h-10 w-10 text-primary" />
+              </div>
+              <h1 className="text-4xl font-display font-black italic tracking-tighter text-slate-900 leading-none">Masuk ke Portal.</h1>
+              <p className="text-muted-foreground font-medium text-lg italic">Akses manajemen masjid Anda yang aman dan transparan.</p>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Kata Sandi</Label>
-              <Input
-                id="password"
-                type="password"
-                defaultValue="password"
-                className="bg-stone-50 h-12"
-                readOnly
-              />
-            </div>
-            <Button type="submit" className="w-full h-14 text-lg rounded-xl shadow-lg" disabled={loading}>
-              {loading ? 'Memproses...' : 'Masuk Sekarang'}
-            </Button>
-          </form>
-          <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 flex gap-3">
-            <ShieldAlert className="h-5 w-5 text-amber-600 shrink-0" />
-            <div className="text-xs text-amber-800 space-y-1">
-              <p className="font-bold">Keamanan Platform</p>
-              <p>Platform admin: admin@masjidhub.com. Demo accounts: demo-dkm@masjid.org, demo-amil@masjid.org, demo-ustadz@masjid.org, demo-jamaah@masjid.org.</p>
+
+            <form onSubmit={handleLogin} className="space-y-8">
+              {isDemoMode && (
+                <div className="space-y-3">
+                  <Label htmlFor="role" className="font-black text-[10px] uppercase tracking-[0.3em] text-muted-foreground ml-1">Pilih Peran Simulasi</Label>
+                  <Select value={selectedRole} onValueChange={(value: UserRole) => setSelectedRole(value)}>
+                    <SelectTrigger className="h-14 rounded-2xl border-2 font-bold focus:ring-primary bg-white">
+                      <SelectValue placeholder="Pilih peran demo" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl border-2 shadow-2xl">
+                      <SelectItem value="superadmin_platform">Super Admin Platform</SelectItem>
+                      <SelectItem value="dkm_admin">Admin DKM (Penuh)</SelectItem>
+                      <SelectItem value="amil_zakat">Amil Zakat (ZIS)</SelectItem>
+                      <SelectItem value="ustadz">Ustadz (Kajian)</SelectItem>
+                      <SelectItem value="jamaah">Jamaah (Forum)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="space-y-3 text-left">
+                <Label htmlFor="email" className="font-black text-[10px] uppercase tracking-[0.3em] text-muted-foreground ml-1">Alamat Email</Label>
+                <div className="relative">
+                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-stone-300" />
+                   <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="h-14 rounded-2xl border-2 pl-12 font-bold focus:ring-primary bg-white"
+                    placeholder="admin@masjid.org"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 text-left">
+                <Label htmlFor="password" className="font-black text-[10px] uppercase tracking-[0.3em] text-muted-foreground ml-1">Kata Sandi</Label>
+                <div className="relative">
+                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-stone-300" />
+                   <Input
+                    id="password"
+                    type="password"
+                    defaultValue="password"
+                    className="h-14 rounded-2xl border-2 pl-12 font-bold bg-stone-50/50 cursor-not-allowed"
+                    readOnly
+                  />
+                </div>
+              </div>
+
+              <Button type="submit" className="w-full h-20 text-xl rounded-full font-black shadow-2xl shadow-primary/30 bg-primary group" disabled={loading}>
+                {loading ? 'Memproses...' : (
+                  <span className="flex items-center gap-3">
+                    Masuk Sekarang <ArrowRight className="h-6 w-6 group-hover:translate-x-2 transition-transform" />
+                  </span>
+                )}
+              </Button>
+            </form>
+
+            <div className="p-6 bg-stone-50 rounded-[2rem] border-2 border-stone-100 flex gap-4">
+              <ShieldAlert className="h-6 w-6 text-primary shrink-0 opacity-50" />
+              <div className="text-xs text-muted-foreground space-y-1 text-left leading-relaxed">
+                <p className="font-black uppercase tracking-widest text-slate-800">Sistem Keamanan Aktif</p>
+                <p className="font-medium">Data Anda dilindungi dengan enkripsi end-to-end. Pastikan Anda masuk menggunakan kredensial resmi DKM.</p>
+              </div>
             </div>
           </div>
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground">
-              Belum punya portal? <Button variant="link" className="p-0 h-auto font-bold" onClick={() => navigate('/register')}>Daftar Masjid</Button>
-            </p>
-          </div>
-        </div>
+        </motion.div>
       </div>
     </MarketingLayout>
   );

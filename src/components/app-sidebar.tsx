@@ -46,7 +46,7 @@ export function AppSidebar(): JSX.Element {
   const isAdminOrAmil = userRole === 'dkm_admin' || userRole === 'amil_zakat' || userRole === 'ustadz' || isSuper;
 
   const navigation = [
-    { name: "Dasbor", icon: LayoutDashboard, href: `/app/${slug}/dashboard`, show: true },
+    { name: "Executive Dashboard", icon: LayoutDashboard, href: `/app/${slug}/dashboard`, show: true },
     { name: "Shared Inbox", icon: Sparkles, href: `/app/${slug}/inbox`, show: isAdminOrAmil },
     { name: "Pusat Kendali AI", icon: BrainCircuit, href: `/app/${slug}/knowledge`, show: isAdminOrAmil },
     { name: "Puzzle Builder", icon: LayoutTemplate, href: `/app/${slug}/builder`, show: isAdminOrAmil },
@@ -68,31 +68,31 @@ export function AppSidebar(): JSX.Element {
   ];
 
   return (
-    <Sidebar className="border-r">
-      <SidebarHeader className="h-16 flex items-center px-4 border-b">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-white">
-            <LayoutDashboard className="h-5 w-5" />
+    <Sidebar className="border-r border-stone-200/60 bg-stone-50/50 backdrop-blur-xl">
+      <SidebarHeader className="h-20 flex items-center px-6 border-b border-stone-200/40">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-2xl bg-primary flex items-center justify-center text-white shadow-lg shadow-primary/20">
+            <LayoutDashboard className="h-6 w-6" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-bold font-display truncate w-32">
+            <span className="text-base font-black font-display truncate w-32 tracking-tight italic">
               {tenantName || "MasjidHub"}
             </span>
-            <span className="text-[10px] text-muted-foreground capitalize">
+            <span className="text-[9px] font-black text-primary/60 uppercase tracking-widest">
               {userRole?.replace('_', ' ') || "Guest"}
             </span>
           </div>
         </div>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="p-4">
         {isSuper && (
-          <SidebarGroup>
+          <SidebarGroup className="mb-4">
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild className="bg-destructive/5 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                <SidebarMenuButton asChild className="bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 rounded-xl h-12 transition-all border border-red-100">
                   <Link to="/super-admin/dashboard" className="flex items-center gap-3">
                     <ShieldCheck className="h-5 w-5" />
-                    <span className="font-bold">Platform Admin</span>
+                    <span className="font-black text-xs uppercase tracking-widest">Platform Admin</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -100,13 +100,13 @@ export function AppSidebar(): JSX.Element {
           </SidebarGroup>
         )}
         <SidebarGroup>
-          <SidebarMenu>
+          <SidebarMenu className="gap-1">
             {navigation.filter(i => i.show).map((item) => (
               <SidebarMenuItem key={item.name}>
-                <SidebarMenuButton asChild tooltip={item.name}>
+                <SidebarMenuButton asChild tooltip={item.name} className="rounded-xl h-11 px-4 hover:bg-white hover:shadow-sm transition-all group data-[active=true]:bg-white data-[active=true]:shadow-md data-[active=true]:text-primary border-transparent border hover:border-stone-200/40">
                   <Link to={item.href} className="flex items-center gap-3">
-                    <item.icon className="h-5 w-5" />
-                    <span className="font-medium">{item.name}</span>
+                    <item.icon className="h-5 w-5 opacity-40 group-hover:opacity-100 transition-opacity" />
+                    <span className="font-bold text-sm tracking-tight">{item.name}</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -114,26 +114,28 @@ export function AppSidebar(): JSX.Element {
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t">
-        <SidebarMenu>
-          <div className="px-2 pb-2 mb-2 border-b">
-            <p className="text-[10px] text-muted-foreground">Masuk sebagai</p>
-            <p className="text-xs font-bold truncate">{userName || "Anonim"}</p>
+      <SidebarFooter className="p-6 border-t border-stone-200/40 bg-stone-100/30">
+        <SidebarMenu className="gap-4">
+          <div className="px-2">
+            <p className="text-[10px] font-black uppercase text-muted-foreground/50 tracking-widest mb-1">Masuk sebagai</p>
+            <p className="text-sm font-black text-slate-800 truncate">{userName || "Anonim"}</p>
           </div>
-          <SidebarMenuItem>
-            <SidebarMenuButton asChild>
-              <Link to={`/app/${slug}/settings`} className="flex items-center gap-3">
-                <Settings className="h-5 w-5" />
-                <span>Pengaturan</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-          <SidebarMenuItem>
-            <SidebarMenuButton onClick={logout} className="text-destructive hover:text-destructive">
-              <LogOut className="h-5 w-5" />
-              <span>Keluar</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
+          <div className="flex flex-col gap-2">
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild className="rounded-xl h-10 hover:bg-white transition-all font-bold text-xs gap-3">
+                <Link to={`/app/${slug}/settings`}>
+                  <Settings className="h-4 w-4 opacity-40" />
+                  <span>Pengaturan</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton onClick={logout} className="rounded-xl h-10 hover:bg-red-50 text-stone-500 hover:text-red-600 transition-all font-bold text-xs gap-3">
+                <LogOut className="h-4 w-4 opacity-40 group-hover:opacity-100" />
+                <span>Keluar</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </div>
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>

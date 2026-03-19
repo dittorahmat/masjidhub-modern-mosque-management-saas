@@ -77,33 +77,40 @@ export function OverviewPage() {
   ];
 
   return (
-    <div className="space-y-10 pb-10">
-      {/* Header with Greeting */}
+    <div className="space-y-12 pb-10">
+      {/* Refined Header (Issue #2: Distill) */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-end justify-between gap-6"
+        className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-stone-200/60 pb-10"
       >
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-[0.2em]">
-            <Sparkles className="h-4 w-4" />
-            <span>Dashboard Eksekutif</span>
+        <div className="space-y-4">
+          <nav className="flex items-center gap-2 text-muted-foreground/60 font-bold text-[10px] uppercase tracking-[0.3em]">
+            <Sparkles className="h-3 w-3 text-primary/40" />
+            <span>Sistem Manajemen Masjid</span>
+            <ChevronRight className="h-3 w-3" />
+            <span className="text-primary/60">Ringkasan Eksekutif</span>
+          </nav>
+          
+          <div className="space-y-2">
+            <h1 className="text-5xl md:text-7xl font-display font-black tracking-tighter italic leading-none">
+              Ahlan wa Sahlan, <span className="text-primary underline decoration-stone-200 underline-offset-[12px]">{userName?.split(' ')[0] || 'Admin'}</span>
+            </h1>
+            <p className="text-muted-foreground text-xl font-medium max-w-2xl">
+              Laporan terkini untuk <span className="text-foreground font-bold">{tenantName}</span>. 
+              <span className="hidden md:inline"> Hari ini adalah waktu yang baik untuk mengoptimalkan program jamaah.</span>
+            </p>
           </div>
-          <h1 className="text-4xl md:text-5xl font-display font-black tracking-tight italic">
-            Ahlan wa Sahlan, <span className="text-primary">{userName?.split(' ')[0] || 'Admin'}</span>
-          </h1>
-          <p className="text-muted-foreground text-lg font-medium">
-            Laporan terkini untuk <span className="text-foreground font-bold">{tenantName}</span>.
-          </p>
         </div>
-        <div className="flex gap-3">
+        
+        <div className="flex flex-wrap gap-4">
           <Link to={`/portal/${slug}`} target="_blank">
-            <Button variant="outline" className="rounded-2xl border-2 h-12 px-6 gap-2 font-bold shadow-sm hover:shadow-md transition-all">
-              Buka Portal Publik <ArrowUpRight className="h-4 w-4" />
+            <Button variant="outline" className="rounded-full border-2 h-14 px-8 gap-3 font-bold shadow-sm hover:shadow-md transition-all text-base">
+              Portal Publik <ArrowUpRight className="h-5 w-5" />
             </Button>
           </Link>
-          <Button className="rounded-2xl h-12 px-8 font-bold gap-2 shadow-xl shadow-primary/20">
-            <TrendingUp className="h-4 w-4" /> Laporan PDF
+          <Button className="rounded-full h-14 px-10 font-bold gap-3 shadow-xl shadow-primary/20 text-base">
+            <TrendingUp className="h-5 w-5" /> Laporan PDF
           </Button>
         </div>
       </motion.div>
@@ -163,7 +170,7 @@ export function OverviewPage() {
 
       <div className="grid lg:grid-cols-3 gap-8">
         {/* Main Chart Section */}
-        <Card className="lg:col-span-2 rounded-[2.5rem] border-none shadow-sm bg-white overflow-hidden">
+        <Card className="lg:col-span-2 illustrative-card border-none hover:shadow-none shadow-none">
           <CardHeader className="p-8 pb-0">
             <div className="flex justify-between items-start">
               <div className="space-y-1">
@@ -207,7 +214,7 @@ export function OverviewPage() {
 
         {/* Right Sidebar: Recent Activity & Quick Actions */}
         <div className="space-y-8">
-          <Card className="rounded-[2.5rem] border-none shadow-sm bg-white p-8">
+          <Card className="illustrative-card p-8">
             <CardHeader className="p-0 mb-6">
               <CardTitle className="text-xl font-bold flex items-center gap-2">
                 <Bell className="h-5 w-5 text-primary" />
@@ -265,26 +272,26 @@ function StatCard({ title, value, icon, trend, trendType, color, delay }: any) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.9 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay }}
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.5, ease: "easeOut" }}
+      whileHover={{ y: -8, transition: { duration: 0.2 } }}
+      className="illustrative-card p-6 flex flex-col justify-between group cursor-default"
     >
-      <Card className="rounded-[2rem] border-none shadow-sm bg-white p-6 hover:shadow-xl hover:-translate-y-1 transition-all group">
-        <div className="flex justify-between items-start mb-4">
-          <div className={`p-4 rounded-2xl ${colorMap[color]} group-hover:scale-110 transition-transform`}>
-            {icon}
-          </div>
-          {trend && (
-            <Badge variant="secondary" className="rounded-full font-bold text-[10px] px-2 py-0">
-              {trend}
-            </Badge>
-          )}
+      <div className="flex justify-between items-start mb-4">
+        <div className={`p-4 rounded-2xl ${colorMap[color]} group-hover:scale-110 transition-transform duration-300`}>
+          {icon}
         </div>
-        <div className="space-y-1">
-          <p className="text-sm font-bold text-muted-foreground uppercase tracking-wider">{title}</p>
-          <p className="text-3xl font-black tracking-tight">{value}</p>
-        </div>
-      </Card>
+        {trend && (
+          <Badge variant="secondary" className="rounded-full font-bold text-[10px] px-3 py-1 bg-stone-100 text-stone-600">
+            {trend}
+          </Badge>
+        )}
+      </div>
+      <div className="space-y-1">
+        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{title}</p>
+        <p className="text-3xl font-black italic tracking-tighter text-slate-900">{value}</p>
+      </div>
     </motion.div>
   );
 }

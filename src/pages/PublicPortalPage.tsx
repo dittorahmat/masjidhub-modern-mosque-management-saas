@@ -18,6 +18,7 @@ import {
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
 import type { Tenant, Event, PrayerSchedule, OrganizationMember } from '@shared/types';
 import { ChatWindow } from '@/components/features/ai/chat-window';
 
@@ -143,20 +144,38 @@ export default function PublicPortalPage() {
         </div>
       </header>
 
-      {/* Prayer Schedule Ribbon */}
-      <section className="max-w-7xl mx-auto px-4 -mt-10 relative z-20">
-        <div className="bg-slate-900 text-white p-6 md:p-10 rounded-[2.5rem] shadow-2xl grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-8">
-          {['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].map((p) => {
+      {/* Prayer Schedule Tiles (Issue #3: Adapt) */}
+      <section className="max-w-7xl mx-auto px-4 -mt-16 relative z-20">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-6">
+          {['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].map((p, idx) => {
             const sched = schedules.find(s => s.prayerTime === p);
             const pName = p === 'fajr' ? 'Subuh' : p === 'dhuhr' ? 'Dzuhur' : p === 'asr' ? 'Ashar' : p === 'maghrib' ? 'Maghrib' : 'Isya';
+            
             return (
-              <div key={p} className="text-center space-y-2 group">
-                <p className="text-slate-400 font-bold uppercase tracking-widest text-xs group-hover:text-primary transition-colors">{pName}</p>
-                <p className="text-3xl md:text-4xl font-mono font-black">{sched?.time || '--:--'}</p>
-                {sched?.imamName && (
-                  <p className="text-[10px] text-slate-500 font-medium truncate italic">Imam: {sched.imamName}</p>
+              <motion.div 
+                key={p}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 * idx }}
+                className="bg-slate-900/95 backdrop-blur-xl text-white p-6 md:p-8 rounded-[2rem] shadow-2xl border border-white/10 flex flex-col items-center justify-center space-y-3 group hover:bg-primary transition-all duration-500 cursor-default"
+              >
+                <span className="text-slate-400 font-bold uppercase tracking-[0.2em] text-[10px] md:text-xs group-hover:text-white/80 transition-colors">
+                  {pName}
+                </span>
+                <span className="text-3xl md:text-5xl font-mono font-black tracking-tighter">
+                  {sched?.time || '--:--'}
+                </span>
+                {sched?.imamName ? (
+                  <div className="flex items-center gap-1.5 opacity-40 group-hover:opacity-100 transition-opacity">
+                    <User className="h-3 w-3" />
+                    <span className="text-[10px] font-bold truncate max-w-[80px] uppercase tracking-wider">
+                      {sched.imamName.split(' ')[0]}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="h-4" /> // Spacer to maintain height
                 )}
-              </div>
+              </motion.div>
             );
           })}
         </div>
@@ -166,7 +185,7 @@ export default function PublicPortalPage() {
         
         {/* Lokasi & Donasi Section */}
         <div className="grid lg:grid-cols-3 gap-8">
-          <Card className="lg:col-span-2 rounded-[2rem] border-none shadow-sm bg-white p-8 md:p-12">
+          <Card className="lg:col-span-2 illustrative-card p-8 md:p-12">
              <div className="flex flex-col md:flex-row gap-10 items-start">
                 <div className="flex-1 space-y-6">
                   <div className="inline-flex p-3 bg-primary/10 rounded-2xl text-primary">
@@ -291,19 +310,19 @@ export default function PublicPortalPage() {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                {khutbahArchive.map((sched, idx) => (
-                 <Card key={idx} className="p-6 rounded-3xl border-none shadow-sm bg-white flex flex-col justify-between hover:bg-stone-50 transition-colors">
+                 <Card key={idx} className="illustrative-card p-8 flex flex-col justify-between hover:bg-stone-50 transition-colors border-none shadow-none hover:shadow-none">
                     <div className="space-y-4">
                       <div className="flex justify-between items-center">
                         <Badge variant="outline" className="border-primary/30 text-primary uppercase text-[10px] px-3 font-black">Khutbah</Badge>
-                        <span className="text-xs text-muted-foreground font-medium">{sched.khatibName || "Khatib Masjid"}</span>
+                        <span className="text-xs text-muted-foreground font-bold italic">{sched.khatibName || "Khatib Masjid"}</span>
                       </div>
-                      <h4 className="text-xl font-bold leading-snug">{sched.khutbahTopic}</h4>
+                      <h4 className="text-xl font-display font-bold leading-snug">{sched.khutbahTopic}</h4>
                     </div>
                     <div className="mt-8 pt-6 border-t flex justify-between items-center">
-                       <Button variant="ghost" size="sm" className="gap-2 text-primary font-bold">
+                       <Button variant="ghost" size="sm" className="gap-2 text-primary font-black hover:bg-primary/5 rounded-xl">
                          <FileText className="h-4 w-4" /> Baca Materi
                        </Button>
-                       <Button size="icon" variant="secondary" className="rounded-full h-8 w-8">
+                       <Button size="icon" variant="secondary" className="rounded-full h-10 w-10 shadow-sm">
                          <Download className="h-4 w-4" />
                        </Button>
                     </div>
@@ -397,53 +416,65 @@ function EventPublicCard({ event, slug }: { event: Event, slug: string }) {
   const isFull = event.currentRegistrations >= event.capacity;
 
   return (
-    <Card className="rounded-[2.5rem] overflow-hidden border-none shadow-sm bg-white h-full flex flex-col group hover:-translate-y-2 transition-all">
-      <div className="h-56 overflow-hidden relative">
-        <img 
-          src={event.imageUrl || "https://images.unsplash.com/photo-1519810755548-39cd217da494?auto=format&fit=crop&q=80"} 
-          alt={event.title}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-        />
-      </div>
-      <CardContent className="p-8 flex-1 flex flex-col">
-        <div className="flex-1 space-y-4">
-          <h3 className="text-2xl font-bold leading-tight group-hover:text-primary transition-colors">{event.title}</h3>
-          <p className="text-muted-foreground line-clamp-2">{event.description}</p>
-          <div className="space-y-2 pt-2">
-            <div className="flex items-center gap-2 text-sm text-slate-600 font-medium">
-              <Calendar className="h-4 w-4 text-primary" />
-              {format(event.date, 'PPP p', { locale: id })}
-            </div>
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5 }}
+    >
+      <Card className="illustrative-card overflow-hidden h-full flex flex-col group p-0 border-none shadow-none hover:shadow-none hover:translate-y-0">
+        <div className="h-64 overflow-hidden relative">
+          <img 
+            src={event.imageUrl || "https://images.unsplash.com/photo-1519810755548-39cd217da494?auto=format&fit=crop&q=80"} 
+            alt={event.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+          />
+          <div className="absolute top-4 left-4">
+             <Badge className="bg-white/90 backdrop-blur-md text-slate-900 font-bold px-4 py-1.5 rounded-full border-none shadow-sm">
+                {format(event.date, 'dd MMM', { locale: id })}
+             </Badge>
           </div>
         </div>
-        
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button className="w-full rounded-2xl h-12 mt-8 font-bold gap-2" disabled={isFull}>
-              {isFull ? 'Kuota Penuh' : 'Ikuti Kegiatan'} <ArrowRight className="h-4 w-4" />
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="rounded-3xl border-none p-8">
-            <DialogHeader>
-              <DialogTitle className="text-2xl font-display font-bold">Pendaftaran Kegiatan</DialogTitle>
-              <CardDescription className="text-lg">{event.title}</CardDescription>
-            </DialogHeader>
-            <form onSubmit={handleRegister} className="space-y-6 pt-4">
-              <div className="space-y-2">
-                <Label>Nama Lengkap</Label>
-                <Input name="name" required placeholder="Ahmad Abdullah" className="h-12 rounded-xl" />
+        <CardContent className="p-8 flex-1 flex flex-col">
+          <div className="flex-1 space-y-4">
+            <h3 className="text-2xl font-display font-bold leading-tight group-hover:text-primary transition-colors">{event.title}</h3>
+            <p className="text-muted-foreground line-clamp-2 font-medium leading-relaxed">{event.description}</p>
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center gap-2 text-sm text-slate-600 font-bold">
+                <Clock className="h-4 w-4 text-primary" />
+                {format(event.date, 'p', { locale: id })} WIB
               </div>
-              <div className="space-y-2">
-                <Label>Alamat Email</Label>
-                <Input name="email" type="email" required placeholder="ahmad@email.com" className="h-12 rounded-xl" />
-              </div>
-              <Button type="submit" className="w-full h-14 text-lg rounded-2xl font-bold" disabled={mutation.isPending}>
-                {mutation.isPending ? 'Memproses...' : 'Konfirmasi Pendaftaran'}
+            </div>
+          </div>
+          
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button className="w-full rounded-full h-14 mt-8 font-bold gap-2 shadow-lg shadow-primary/20 transition-all hover:scale-[1.02]" disabled={isFull}>
+                {isFull ? 'Kuota Penuh' : 'Ikuti Kegiatan'} <ArrowRight className="h-4 w-4" />
               </Button>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </CardContent>
-    </Card>
+            </DialogTrigger>
+            <DialogContent className="rounded-[2.5rem] border-none p-10 illustrative-card">
+              <DialogHeader>
+                <DialogTitle className="text-3xl font-display font-bold">Pendaftaran Kegiatan</DialogTitle>
+                <CardDescription className="text-lg font-medium">{event.title}</CardDescription>
+              </DialogHeader>
+              <form onSubmit={handleRegister} className="space-y-6 pt-6">
+                <div className="space-y-2">
+                  <Label htmlFor="name" className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Nama Lengkap</Label>
+                  <Input id="name" name="name" required placeholder="Masukkan nama Anda" className="h-12 rounded-xl border-2 focus:ring-primary" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone" className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Nomor WhatsApp</Label>
+                  <Input id="phone" name="phone" required type="tel" placeholder="0812..." className="h-12 rounded-xl border-2 focus:ring-primary" />
+                </div>
+                <Button type="submit" className="w-full h-14 rounded-full font-bold text-lg" disabled={mutation.isPending}>
+                  {mutation.isPending ? 'Memproses...' : 'Konfirmasi Kehadiran'}
+                </Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 }

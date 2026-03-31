@@ -4,7 +4,7 @@
  */
  {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "masjidhub-saas-jtbg-y-udxepva-ni4x4t",
+	"name": "masjidhub-modern-mosque-management-saas",
 	"main": "worker/index.ts",
 	"compatibility_date": "2025-04-24",
 	"assets": {

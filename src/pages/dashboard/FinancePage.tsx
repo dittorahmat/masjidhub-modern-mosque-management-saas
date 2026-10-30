@@ -2,19 +2,27 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { api } from '@/lib/api-client';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogDescription,
+  ResponsiveDialogTrigger,
+} from '@/components/ui/responsive-dialog';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { PlusCircle, Wallet, ArrowUpCircle, ArrowDownCircle, Search, FileSpreadsheet, FileText, BrainCircuit, ChevronRight, TrendingUp, Sparkles, Filter } from 'lucide-react';
+import { Plus, PlusCircle, Wallet, ArrowUpCircle, ArrowDownCircle, Search, FileSpreadsheet, FileText, BrainCircuit, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale/id';
 import { toast } from 'sonner';
 import type { Transaction } from '@shared/types';
 import { motion, AnimatePresence } from 'framer-motion';
+import { MobileFAB } from '@/components/layout/mobile/MobileFAB';
+import { TransactionCard } from '@/components/finance/TransactionCard';
+import { TransactionForm } from '@/components/finance/TransactionForm';
 
 export default function FinancePage() {
   const { slug } = useParams();
@@ -69,14 +77,14 @@ export default function FinancePage() {
   };
 
   return (
-    <div className="space-y-12 pb-10">
+    <div className="space-y-8 md:space-y-12 pb-16 md:pb-10">
       {/* Refined Header (Editorial Style) */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-stone-200/60 pb-10"
+        className="flex flex-col md:flex-row md:items-end justify-between gap-6 md:gap-8 border-b border-stone-200/60 pb-8 md:pb-10"
       >
-        <div className="space-y-4">
+        <div className="space-y-3 md:space-y-4">
           <nav className="flex items-center gap-2 text-muted-foreground/60 font-bold text-[10px] uppercase tracking-[0.3em]">
             <Wallet className="h-3 w-3 text-emerald-500/40" />
             <span>Sistem Keuangan</span>
@@ -85,89 +93,58 @@ export default function FinancePage() {
           </nav>
           
           <div className="space-y-2">
-            <h1 className="text-5xl md:text-6xl font-display font-black tracking-tighter italic leading-none">
+            <h1 className="text-4xl md:text-6xl font-display font-black tracking-tighter italic leading-none">
               Manajemen <span className="text-emerald-600">Keuangan</span>
             </h1>
-            <p className="text-muted-foreground text-xl font-medium max-w-2xl">
+            <p className="text-muted-foreground text-base md:text-xl font-medium max-w-2xl">
               Pantau <span className="text-foreground font-bold underline decoration-stone-200 underline-offset-4">arus kas</span> dan kontribusi jamaah secara transparan.
             </p>
           </div>
         </div>
         
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap items-center gap-3 md:gap-4">
           <Link to={`/app/${slug}/finance/import`}>
-            <Button variant="outline" className="rounded-full border-2 h-14 px-8 gap-3 font-bold shadow-sm hover:shadow-md transition-all text-base bg-white text-emerald-700">
-              <BrainCircuit className="h-5 w-5" /> Impor Mutasi
+            <Button variant="outline" className="rounded-full border-2 h-12 md:h-14 px-6 md:px-8 gap-2 md:gap-3 font-bold shadow-sm hover:shadow-md transition-all text-sm md:text-base bg-white text-emerald-700">
+              <BrainCircuit className="h-4 w-4 md:h-5 md:w-5" /> Impor Mutasi
             </Button>
           </Link>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="rounded-full h-14 px-10 font-bold gap-3 shadow-xl shadow-primary/20 text-base">
-                <PlusCircle className="h-5 w-5" /> Catat Transaksi
+          <ResponsiveDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <ResponsiveDialogTrigger asChild>
+              <Button className="rounded-full h-12 md:h-14 px-8 md:px-10 font-bold gap-2 md:gap-3 shadow-xl shadow-primary/20 text-sm md:text-base">
+                <PlusCircle className="h-4 w-4 md:h-5 md:w-5" /> Catat Transaksi
               </Button>
-            </DialogTrigger>
-            <DialogContent className="rounded-[2.5rem] illustrative-card p-10">
-              <DialogHeader>
-                <DialogTitle className="text-3xl font-display font-bold italic tracking-tight">Transaksi Baru</DialogTitle>
-                <CardDescription className="text-lg">Masukkan detail pemasukan atau pengeluaran operasional.</CardDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-6 pt-6">
-                <div className="space-y-2">
-                  <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Tipe Transaksi</Label>
-                  <Select name="type" defaultValue="income">
-                    <SelectTrigger className="h-14 rounded-xl border-2 font-bold focus:ring-emerald-500">
-                      <SelectValue placeholder="Pilih tipe" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-2">
-                      <SelectItem value="income">Pemasukan (Infaq/Sadaqoh)</SelectItem>
-                      <SelectItem value="expense">Pengeluaran (Operasional)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Jumlah (Rp)</Label>
-                  <div className="relative">
-                     <span className="absolute left-4 top-1/2 -translate-y-1/2 font-black text-stone-300">Rp</span>
-                     <Input name="amount" type="number" required placeholder="0" className="h-14 rounded-xl border-2 pl-12 focus:ring-emerald-500 font-black text-xl tracking-tighter" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Kategori</Label>
-                  <Input name="category" required placeholder="Mis: Infaq Jumat, Listrik" className="h-14 rounded-xl border-2 focus:ring-emerald-500 font-bold" />
-                </div>
-                <div className="space-y-2">
-                  <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Deskripsi</Label>
-                  <Input name="description" placeholder="Detail opsional" className="h-14 rounded-xl border-2 focus:ring-emerald-500" />
-                </div>
-                <Button type="submit" className="w-full h-16 text-lg rounded-full font-black bg-emerald-600 hover:bg-emerald-700 mt-4 shadow-xl shadow-emerald-200" disabled={createMutation.isPending}>
-                  {createMutation.isPending ? 'Menyimpan...' : 'Simpan Transaksi'}
-                </Button>
-              </form>
-            </DialogContent>
-          </Dialog>
+            </ResponsiveDialogTrigger>
+            <ResponsiveDialogContent className="rounded-t-[2rem] md:rounded-[2.5rem] illustrative-card p-6 md:p-10 max-h-[85vh] overflow-y-auto">
+              <ResponsiveDialogHeader>
+                <ResponsiveDialogTitle className="text-2xl md:text-3xl font-display font-bold italic tracking-tight">Transaksi Baru</ResponsiveDialogTitle>
+                <ResponsiveDialogDescription className="text-sm md:text-base">Masukkan detail pemasukan atau pengeluaran operasional.</ResponsiveDialogDescription>
+              </ResponsiveDialogHeader>
+              <TransactionForm onSubmit={handleCreate} isPending={createMutation.isPending} />
+            </ResponsiveDialogContent>
+          </ResponsiveDialog>
         </div>
       </motion.div>
 
       {/* Standardized Stats with Entrance Animations */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
         <StatCard 
           title="Total Saldo" 
           value={`Rp ${(totals.income - totals.expense).toLocaleString('id-ID')}`} 
-          icon={<Wallet className="h-6 w-6" />} 
+          icon={<Wallet className="h-5 w-5 md:h-6 md:w-6" />} 
           color="primary"
           delay={0.1}
         />
         <StatCard 
           title="Total Pemasukan" 
           value={`Rp ${totals.income.toLocaleString('id-ID')}`} 
-          icon={<ArrowUpCircle className="h-6 w-6" />} 
+          icon={<ArrowUpCircle className="h-5 w-5 md:h-6 md:w-6" />} 
           color="emerald"
           delay={0.2}
         />
         <StatCard 
           title="Total Pengeluaran" 
           value={`Rp ${totals.expense.toLocaleString('id-ID')}`} 
-          icon={<ArrowDownCircle className="h-6 w-6" />} 
+          icon={<ArrowDownCircle className="h-5 w-5 md:h-6 md:w-6" />} 
           color="amber"
           delay={0.3}
         />
@@ -175,26 +152,41 @@ export default function FinancePage() {
 
       {/* Main Table Container (Illustrative Style) */}
       <Card className="illustrative-card overflow-hidden border-none shadow-none hover:shadow-none">
-        <div className="p-8 border-b border-stone-100 flex flex-col md:flex-row justify-between items-center gap-6 bg-stone-50/30">
+        <div className="p-4 md:p-8 border-b border-stone-100 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 bg-stone-50/30">
           <div className="relative flex-1 w-full">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-stone-300" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-stone-300" />
             <Input
               placeholder="Cari transaksi berdasarkan kategori atau deskripsi..."
-              className="pl-12 h-14 rounded-full border-2 border-stone-200/60 bg-white focus:ring-emerald-500 text-base"
+              className="pl-11 md:pl-12 h-12 md:h-14 rounded-full border-2 border-stone-200/60 bg-white focus:ring-emerald-500 text-sm md:text-base"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex items-center gap-3 bg-stone-100/80 p-1.5 rounded-2xl border-2 border-stone-200/40">
-             <Button variant="ghost" size="sm" onClick={() => handleExport('CSV')} className="h-10 gap-2 rounded-xl font-bold px-4 hover:bg-white hover:shadow-sm">
-                <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> CSV
-             </Button>
-             <Button variant="ghost" size="sm" onClick={() => handleExport('PDF')} className="h-10 gap-2 rounded-xl font-bold px-4 hover:bg-white hover:shadow-sm">
-                <FileText className="h-4 w-4 text-red-600" /> PDF
-             </Button>
+          <div className="flex items-center gap-2 md:gap-3 bg-stone-100/80 p-1 rounded-2xl border-2 border-stone-200/40 w-full md:w-auto justify-end">
+            <Button variant="ghost" size="sm" onClick={() => handleExport('CSV')} className="h-9 md:h-10 gap-1.5 md:gap-2 rounded-xl font-bold px-3 md:px-4 hover:bg-white hover:shadow-sm text-xs md:text-sm">
+              <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> CSV
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => handleExport('PDF')} className="h-9 md:h-10 gap-1.5 md:gap-2 rounded-xl font-bold px-3 md:px-4 hover:bg-white hover:shadow-sm text-xs md:text-sm">
+              <FileText className="h-4 w-4 text-red-600" /> PDF
+            </Button>
           </div>
         </div>
-        <div className="overflow-x-auto">
+
+        {/* Mobile View: Stacked Responsive Cards */}
+        <div className="block md:hidden p-4 space-y-3">
+          {isLoading ? (
+            <div className="text-center py-12 text-stone-400 font-bold">Memuat transaksi...</div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-12 text-stone-400 font-medium">Belum ada transaksi</div>
+          ) : (
+            filtered
+              .sort((a, b) => b.date - a.date)
+              .map((tx) => <TransactionCard key={tx.id} transaction={tx} />)
+          )}
+        </div>
+
+        {/* Desktop View: Relational Data Table */}
+        <div className="hidden md:block overflow-x-auto">
           <Table>
             <TableHeader className="bg-stone-50/50">
               <TableRow className="border-b border-stone-100">
@@ -253,6 +245,13 @@ export default function FinancePage() {
           </Table>
         </div>
       </Card>
+
+      {/* Floating Action Button for Mobile */}
+      <MobileFAB 
+        icon={Plus} 
+        label="Tambah Transaksi" 
+        onClick={() => setIsDialogOpen(true)} 
+      />
     </div>
   );
 }
@@ -270,16 +269,16 @@ function StatCard({ title, value, icon, color, delay }: any) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.5, ease: "easeOut" }}
       whileHover={{ y: -8, transition: { duration: 0.2 } }}
-      className="illustrative-card p-8 flex flex-col justify-between group cursor-default"
+      className="illustrative-card p-6 md:p-8 flex flex-col justify-between group cursor-default"
     >
-       <div className="flex justify-between items-start mb-8">
-          <div className={`p-4 rounded-2xl bg-white shadow-sm group-hover:scale-110 transition-transform duration-300 ${colorMap[color].split(' ')[1]}`}>
+       <div className="flex justify-between items-start mb-6 md:mb-8">
+          <div className={`p-3 md:p-4 rounded-2xl bg-white shadow-sm group-hover:scale-110 transition-transform duration-300 ${colorMap[color].split(' ')[1]}`}>
              {icon}
           </div>
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">{title}</p>
        </div>
        <div className="space-y-1">
-          <p className="text-4xl font-display font-black tracking-tighter italic text-slate-900 leading-none">{value}</p>
+          <p className="text-2xl md:text-4xl font-display font-black tracking-tighter italic text-slate-900 leading-none">{value}</p>
        </div>
     </motion.div>
   );

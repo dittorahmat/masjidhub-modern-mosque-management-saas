@@ -39,7 +39,8 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
   - `super-admin.ts` - Platform admin dashboards, tenant approvals, feature toggles.
   - `common.ts` - Shared mappers, timestamp utilities, tenant resolution helpers.
 - **Frontend Component Hygiene:** The same anti-monolith rule applies to frontend pages (`src/pages/*`). Break complex views with multiple tabs or modals into subcomponents under `src/components/<feature>/` (e.g., `src/components/qris/`, `src/components/kajian/`) instead of dumping all JSX, state, and dialogs into a single monolithic page file.
-- **File-Size Check Command:** Always run `bun run validate` (`tsc -b && bun run check:size`) before reporting any task or committing changes to ensure no files exceed the 500 LOC cap.
+- **Validation & Guardrail Command:** Always run `bun run validate` (`tsc -b && bun run check:size && bun run check:touch`) before reporting any task or committing changes. This automatically checks TypeScript compilation, enforces the 500 LOC anti-monolith cap, and verifies 44px mobile touch targets.
+- **Sub-Agent Concurrency Limits:** When using `self` (heavy prompt) sub-agents, run at most **2 sub-agents concurrently** to prevent hitting individual rate/quota exhaustion (`RESOURCE_EXHAUSTED / code 429`). For lightweight refactoring or pure styling tasks, specify lighter sub-agent models (`flash` / `flash_lite`) or serialize execution on the primary thread.
 
 ---
 
@@ -53,7 +54,9 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
   await api(`/api/${slug}/endpoint`, { method: 'POST', body: JSON.stringify(payload) });
   ```
   Do NOT assume Axios-style methods (`api.get`, `api.post`).
-- **Centralized Shared Utilities:** Common media or external service helpers (such as `extractYoutubeVideoId`, URL parsers, and data formatting) must live in `shared/` (e.g. `shared/youtube.ts`) rather than duplicating regex and utility functions across frontend and backend.
+- **Centralized Shared Utilities & Navigation:** Common media or external service helpers (such as `extractYoutubeVideoId`, URL parsers, and data formatting) must live in `shared/` (e.g. `shared/youtube.ts`) rather than duplicating regex across frontend and backend. Similarly, tenant navigation routes, role-permission matrices, and menu trees must live in centralized frontend helpers (such as `src/lib/navigation.ts`) rather than duplicating route arrays across desktop sidebars, mobile bottom navigation bars, and off-canvas drawers.
+- **Mobile Ergonomics & Touch Targets:** All interactive controls (buttons, icon triggers, form selectors, navigation items) must enforce a minimum 44x44px touch target area (`min-h-[44px] min-w-[44px]`) to ensure accessibility on mobile devices.
+- **Defensive Form Typing:** Avoid untyped form payloads (`Record<string, any>` or raw `Object.fromEntries(formData)`). Explicitly type or validate form inputs with typed interfaces before invoking API mutations.
 - **Endpoint Authorization:** Any mutations on tenant configuration (e.g. `PUT /api/:slug/settings`) must enforce tenant ownership/membership verification.
 
 ---

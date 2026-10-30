@@ -1,18 +1,27 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { api } from '@/lib/api-client';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog';
+import {
+  ResponsiveDialog,
+  ResponsiveDialogContent,
+  ResponsiveDialogHeader,
+  ResponsiveDialogTitle,
+  ResponsiveDialogDescription,
+  ResponsiveDialogTrigger,
+} from '@/components/ui/responsive-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Package, Plus, MapPin, ClipboardList, ChevronRight, Sparkles, Search, History } from 'lucide-react';
+import { Package, Plus, MapPin, ClipboardList, ChevronRight, Search, History } from 'lucide-react';
 import { toast } from 'sonner';
 import type { InventoryItem } from '@shared/types';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { MobileFAB } from '@/components/layout/mobile/MobileFAB';
+import { InventoryCard } from '@/components/operations/InventoryCard';
 
 export default function InventoryPage() {
   const { slug } = useParams();
@@ -64,14 +73,14 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="space-y-12 pb-10">
+    <div className="space-y-8 md:space-y-12 pb-16 md:pb-10">
       {/* Refined Header (Editorial Style) */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-stone-200/60 pb-10"
+        className="flex flex-col md:flex-row md:items-end justify-between gap-6 md:gap-8 border-b border-stone-200/60 pb-8 md:pb-10"
       >
-        <div className="space-y-4">
+        <div className="space-y-3 md:space-y-4">
           <nav className="flex items-center gap-2 text-muted-foreground/60 font-bold text-[10px] uppercase tracking-[0.3em]">
             <Package className="h-3 w-3 text-primary/40" />
             <span>Manajemen Operasional</span>
@@ -80,50 +89,50 @@ export default function InventoryPage() {
           </nav>
           
           <div className="space-y-2">
-            <h1 className="text-5xl md:text-6xl font-display font-black tracking-tighter italic leading-none">
+            <h1 className="text-4xl md:text-6xl font-display font-black tracking-tighter italic leading-none">
               Aset <span className="text-primary">& Inventaris</span>
             </h1>
-            <p className="text-muted-foreground text-xl font-medium max-w-2xl">
+            <p className="text-muted-foreground text-base md:text-xl font-medium max-w-2xl">
               Pantau peralatan masjid dan <span className="text-foreground font-bold underline decoration-stone-200 underline-offset-4">kebutuhan pemeliharaan</span> secara berkala.
             </p>
           </div>
         </div>
         
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap items-center gap-3 md:gap-4">
           <div className="relative w-full md:w-72">
-             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-stone-300" />
+             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-stone-300" />
              <Input 
-               className="pl-12 rounded-full border-2 h-14 bg-white shadow-sm focus:ring-primary text-base" 
+               className="pl-11 md:pl-12 rounded-full border-2 h-12 md:h-14 bg-white shadow-sm focus:ring-primary text-sm md:text-base" 
                placeholder="Cari aset..." 
                value={searchTerm}
                onChange={(e) => setSearchTerm(e.target.value)}
              />
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="rounded-full h-14 px-10 font-bold gap-3 shadow-xl shadow-primary/20 text-base">
-                <Plus className="h-5 w-5" /> Tambah Aset
+          <ResponsiveDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <ResponsiveDialogTrigger asChild>
+              <Button className="w-full md:w-auto rounded-full h-12 md:h-14 px-8 md:px-10 font-bold gap-2 md:gap-3 shadow-xl shadow-primary/20 text-sm md:text-base">
+                <Plus className="h-4 w-4 md:h-5 md:w-5" /> Tambah Aset
               </Button>
-            </DialogTrigger>
-            <DialogContent className="rounded-[2.5rem] illustrative-card p-10">
-              <DialogHeader>
-                <DialogTitle className="text-3xl font-display font-bold italic tracking-tight">Tambah Aset Baru</DialogTitle>
-                <DialogDescription className="text-lg">Daftarkan inventaris masjid untuk pelacakan yang lebih baik.</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-6 pt-6">
+            </ResponsiveDialogTrigger>
+            <ResponsiveDialogContent className="rounded-t-[2rem] md:rounded-[2.5rem] illustrative-card p-6 md:p-10 max-h-[85vh] overflow-y-auto">
+              <ResponsiveDialogHeader>
+                <ResponsiveDialogTitle className="text-2xl md:text-3xl font-display font-bold italic tracking-tight">Tambah Aset Baru</ResponsiveDialogTitle>
+                <ResponsiveDialogDescription className="text-sm md:text-lg">Daftarkan inventaris masjid untuk pelacakan yang lebih baik.</ResponsiveDialogDescription>
+              </ResponsiveDialogHeader>
+              <form onSubmit={handleCreate} className="space-y-5 pt-4">
                 <div className="space-y-2">
                   <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Nama Aset</Label>
-                  <Input name="name" required placeholder="Mis: Mikrofon Nirkabel Shure" className="h-14 rounded-xl border-2 font-bold" />
+                  <Input name="name" required placeholder="Mis: Mikrofon Nirkabel Shure" className="h-12 md:h-14 rounded-xl border-2 font-bold" />
                 </div>
-                <div className="grid grid-cols-2 gap-6">
+                <div className="grid grid-cols-2 gap-4 md:gap-6">
                   <div className="space-y-2">
                     <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Jumlah</Label>
-                    <Input name="quantity" type="number" required defaultValue="1" className="h-14 rounded-xl border-2 font-bold" />
+                    <Input name="quantity" type="number" required defaultValue="1" className="h-12 md:h-14 rounded-xl border-2 font-bold" />
                   </div>
                   <div className="space-y-2">
                     <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Kondisi</Label>
                     <Select name="condition" defaultValue="good">
-                      <SelectTrigger className="h-14 rounded-xl border-2 font-bold">
+                      <SelectTrigger className="h-12 md:h-14 rounded-xl border-2 font-bold">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
@@ -137,19 +146,32 @@ export default function InventoryPage() {
                 </div>
                 <div className="space-y-2">
                   <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Lokasi Penyimpanan</Label>
-                  <Input name="location" required placeholder="Mis: Ruang Pengurus Lt. 1" className="h-14 rounded-xl border-2 font-bold" />
+                  <Input name="location" required placeholder="Mis: Ruang Pengurus Lt. 1" className="h-12 md:h-14 rounded-xl border-2 font-bold" />
                 </div>
-                <Button type="submit" className="w-full h-16 text-lg rounded-full font-black bg-primary shadow-xl shadow-primary/20 mt-4" disabled={createMutation.isPending}>
+                <Button type="submit" className="w-full h-14 md:h-16 text-base md:text-lg rounded-full font-black bg-primary shadow-xl shadow-primary/20 mt-4" disabled={createMutation.isPending}>
                   {createMutation.isPending ? 'Menambahkan...' : 'Simpan ke Inventaris'}
                 </Button>
               </form>
-            </DialogContent>
-          </Dialog>
+            </ResponsiveDialogContent>
+          </ResponsiveDialog>
         </div>
       </motion.div>
 
-      {/* Inventory Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
+      {/* Mobile View: Inventory Cards */}
+      <div className="block md:hidden space-y-3">
+        {isLoading ? (
+          <div className="text-center py-12 text-stone-400 font-bold">Memuat aset...</div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-12 text-stone-400 font-medium">Tidak ada aset ditemukan</div>
+        ) : (
+          filtered.map((item) => (
+            <InventoryCard key={item.id} item={item} />
+          ))
+        )}
+      </div>
+
+      {/* Desktop View: Inventory Grid */}
+      <div className="hidden md:grid grid-cols-2 lg:grid-cols-3 gap-10">
         {isLoading ? (
           Array(3).fill(0).map((_, i) => <Card key={i} className="h-64 rounded-[2.5rem] animate-pulse bg-stone-100 border-none" />)
         ) : filtered.length === 0 ? (
@@ -203,6 +225,13 @@ export default function InventoryPage() {
           ))
         )}
       </div>
+
+      {/* Floating Action Button for Mobile */}
+      <MobileFAB 
+        icon={Plus} 
+        label="Tambah Aset" 
+        onClick={() => setIsDialogOpen(true)} 
+      />
     </div>
   );
 }

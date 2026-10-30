@@ -19,6 +19,9 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { MobileQrScannerModal } from '@/components/operations/MobileQrScannerModal';
+import { PresensiCard } from '@/components/operations/PresensiCard';
+import { MobileFAB } from '@/components/layout/mobile/MobileFAB';
 import type { Event, EventRegistration } from '@shared/types';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -28,6 +31,7 @@ export default function EventsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
   const [isPresensiOpen, setIsPresensiOpen] = useState(false);
+  const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ['events', slug],
@@ -250,13 +254,30 @@ export default function EventsPage() {
                   <Button variant="outline" className="rounded-full h-14 px-8 font-black border-2 gap-3 hover:bg-stone-50">
                     <FileSpreadsheet className="h-5 w-5 text-emerald-600" /> Export
                   </Button>
-                  <Button className="rounded-full h-14 px-8 font-black gap-3 bg-slate-900 shadow-xl shadow-black/20">
+                  <Button onClick={() => setIsQrScannerOpen(true)} className="rounded-full h-14 px-8 font-black gap-3 bg-slate-900 shadow-xl shadow-black/20">
                     <QrCode className="h-5 w-5 text-emerald-400" /> Scanner
                   </Button>
                </div>
             </div>
 
-            <div className="border-2 border-stone-100 rounded-[2rem] overflow-hidden bg-white">
+            {/* Mobile Presensi Cards */}
+            <div className="space-y-3 md:hidden">
+               {[
+                 { name: "Ahmad Abdullah", contact: "0812-3456-7890", date: "2 Jam lalu", attended: true },
+                 { name: "Siti Rahmawati", contact: "siti@email.com", date: "5 Jam lalu", attended: false },
+                 { name: "Budi Setiawan", contact: "0857-1122-3344", date: "Kemarin", attended: true },
+                 { name: "Fatimah Zahra", contact: "fatimah@email.com", date: "Kemarin", attended: false },
+               ].map((reg, idx) => (
+                 <PresensiCard
+                   key={idx}
+                   record={reg}
+                   onToggleAttendance={() => toast.success(`Status presensi ${reg.name} diperbarui`)}
+                 />
+               ))}
+            </div>
+
+            {/* Desktop Presensi Table */}
+            <div className="hidden md:block border-2 border-stone-100 rounded-[2rem] overflow-hidden bg-white">
                <Table>
                   <TableHeader className="bg-stone-50/50">
                      <TableRow className="border-b border-stone-100">
@@ -318,6 +339,23 @@ export default function EventsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Mobile QR Scanner Modal */}
+      <MobileQrScannerModal
+        open={isQrScannerOpen}
+        onOpenChange={setIsQrScannerOpen}
+        title="Pindai Presensi Jamaah"
+        onScanSuccess={(code) => {
+          toast.success(`Presensi terverifikasi: ${code}`);
+        }}
+      />
+
+      {/* Mobile FAB for rapid event / scanner access */}
+      <MobileFAB
+        icon={QrCode}
+        label="Scan QR Presensi"
+        onClick={() => setIsQrScannerOpen(true)}
+      />
     </div>
   );
 }

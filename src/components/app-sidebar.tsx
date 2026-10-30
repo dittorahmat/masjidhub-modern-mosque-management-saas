@@ -18,7 +18,8 @@ import {
   BrainCircuit,
   LayoutTemplate,
   BookOpen,
-  ImageIcon
+  ImageIcon,
+  Video
 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import {
@@ -50,12 +51,14 @@ export function AppSidebar(): JSX.Element {
     { name: "Shared Inbox", icon: Sparkles, href: `/app/${slug}/inbox`, show: isAdminOrAmil },
     { name: "Pusat Kendali AI", icon: BrainCircuit, href: `/app/${slug}/knowledge`, show: isAdminOrAmil },
     { name: "Puzzle Builder", icon: LayoutTemplate, href: `/app/${slug}/builder`, show: isAdminOrAmil },
+    { name: "Rekaman Kajian", icon: Video, href: `/app/${slug}/kajian-videos`, show: true },
     { name: "Kajian & Blog", icon: BookOpen, href: `/app/${slug}/blog`, show: isAdminOrAmil },
     { name: "Media & Galeri", icon: ImageIcon, href: `/app/${slug}/media`, show: isAdminOrAmil },
     { name: "Keuangan", icon: Wallet, href: `/app/${slug}/finance`, show: isAdminOrAmil },
     { name: "ZIS Module", icon: HeartPulse, href: `/app/${slug}/zis`, show: isAdminOrAmil },
     { name: "Laporan ZIS", icon: FileText, href: `/app/${slug}/zis/report`, show: isAdminOrAmil },
     { name: "Pembayaran ZIS", icon: CreditCard, href: `/app/${slug}/zis/payment`, show: true },
+    { name: "Donasi QRIS", icon: QrCode, href: `/app/${slug}/qris`, show: true },
     { name: "Inventaris", icon: Package, href: `/app/${slug}/inventory`, show: isAdminOrAmil },
     { name: "Jadwal Sholat", icon: Calendar, href: `/app/${slug}/jadwal-sholat`, show: isAdminOrAmil },
     { name: "Pengumuman", icon: MessageSquare, href: `/app/${slug}/notifikasi`, show: isAdminOrAmil },

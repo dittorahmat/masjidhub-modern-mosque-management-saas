@@ -87,6 +87,48 @@ export function registerTenantRoutes(app: Hono<any>) {
     return ok(c, tenant);
   });
 
+  // Update tenant settings (PUT /api/:slug/settings)
+  app.put('/api/:slug/settings', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const updateData: Partial<typeof schema.tenants.$inferInsert> = {
+      updatedAt: Math.floor(Date.now() / 1000)
+    };
+
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.bio !== undefined) updateData.bio = body.bio;
+    if (body.address !== undefined) updateData.address = body.address;
+    if (body.city !== undefined) updateData.city = body.city;
+    if (body.latitude !== undefined) updateData.latitude = body.latitude;
+    if (body.longitude !== undefined) updateData.longitude = body.longitude;
+    if (body.timezone !== undefined) updateData.timezone = body.timezone;
+    if (body.phone !== undefined) updateData.phone = body.phone;
+    if (body.email !== undefined) updateData.email = body.email;
+    if (body.logoUrl !== undefined) updateData.logoUrl = body.logoUrl;
+    if (body.bannerUrl !== undefined) updateData.bannerUrl = body.bannerUrl;
+    if (body.qrisImageUrl !== undefined) updateData.qrisImageUrl = body.qrisImageUrl;
+    if (body.runningText !== undefined) updateData.runningText = body.runningText;
+    if (body.bankInfo !== undefined) updateData.bankInfo = body.bankInfo;
+    if (body.bankAccounts !== undefined) updateData.bankAccounts = body.bankAccounts;
+    if (body.aiEnabled !== undefined) updateData.aiEnabled = body.aiEnabled;
+    if (body.selectedPersona !== undefined) updateData.selectedPersona = body.selectedPersona;
+    if (body.kioskRunningText !== undefined) updateData.kioskRunningText = body.kioskRunningText;
+    if (body.kioskPrayerMode !== undefined) updateData.kioskPrayerMode = body.kioskPrayerMode;
+    if (body.sholatDuration !== undefined) updateData.sholatDuration = body.sholatDuration;
+    if (body.iqomahMinutes !== undefined) updateData.iqomahMinutes = body.iqomahMinutes;
+    if (body.prayerCalculationMethod !== undefined) updateData.prayerCalculationMethod = body.prayerCalculationMethod;
+    if (body.socialLinks !== undefined) updateData.socialLinks = body.socialLinks;
+
+    await db.update(schema.tenants).set(updateData).where(eq(schema.tenants.id, tenant.id));
+
+    const rows = await db.select().from(schema.tenants).where(eq(schema.tenants.id, tenant.id)).limit(1);
+    return ok(c, mapTenantRow(rows[0]));
+  });
+
   // Tenant members list
   app.get('/api/:slug/members', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);

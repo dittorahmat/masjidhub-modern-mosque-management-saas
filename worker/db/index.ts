@@ -69,6 +69,7 @@ export function getDb(envOrD1?: DbInput, options?: GetDbOptions): AppDb {
   // Case 4: Local SQLite fallback (singleton for process)
   if (!fallbackSqliteDb) {
     const dbPath =
+      process.env.SQLITE_DB_PATH ||
       process.env.LOCAL_DB_PATH ||
       process.env.DATABASE_URL ||
       path.resolve(process.cwd(), 'data', 'sqlite.db');

@@ -1,5 +1,3 @@
-// Making changes to this file is **STRICTLY** forbidden. Please add your routes in `userRoutes.ts` file.
-
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
@@ -9,11 +7,11 @@ export * from './core-utils';
 
 export type ClientErrorReport = { message: string; url: string; timestamp: string } & Record<string, unknown>;
 
-type Variables = {
+export type AppVariables = {
   subdomain: string | null;
-}
+};
 
-const app = new Hono<{ Bindings: Env, Variables: Variables }>();
+export const app = new Hono<{ Bindings: Env, Variables: AppVariables }>();
 
 app.use('*', logger());
 
@@ -31,11 +29,6 @@ app.post('/api/client-errors', async (c) => {
     return c.json({ success: false, error: 'Failed to process' }, 500);
   }
 });
-
-app.notFound((c) => c.json({ success: false, error: 'Not Found' }, 404));
-app.onError((err, c) => { console.error(`[ERROR] ${err}`); return c.json({ success: false, error: 'Internal Server Error' }, 500); });
-
-console.log(`Server is running`)
 
 // Middleware to extract tenant from subdomain
 app.use('/api/*', async (c, next) => {
@@ -62,6 +55,7 @@ app.use('/api/*', async (c, next) => {
 // Register user routes statically
 userRoutes(app);
 
+// Default Cloudflare Worker Exported Handler
 export default {
   async fetch(request, env, ctx) {
     return app.fetch(request, env, ctx);

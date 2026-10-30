@@ -212,5 +212,6 @@ export function getStorage(env?: any): StorageService {
   if (env?.BUCKET) {
     return new R2StorageService(env.BUCKET);
   }
-  return new LocalFilesystemStorageService();
+  const uploadDir = env?.UPLOAD_DIR || process.env.UPLOAD_DIR || 'uploads';
+  return new LocalFilesystemStorageService(uploadDir);
 }

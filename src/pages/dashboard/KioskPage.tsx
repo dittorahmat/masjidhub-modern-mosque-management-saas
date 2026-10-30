@@ -333,8 +333,8 @@ export default function KioskPage() {
         <div className="h-14 px-4 bg-slate-900 border-b border-white/10 flex items-center justify-between shrink-0 z-20">
           <div className="flex items-center gap-2 min-w-0">
             <Link to={`/app/${slug}/dashboard`}>
-              <Button size="icon" variant="ghost" className="h-9 w-9 text-slate-300 hover:text-white shrink-0">
-                <ArrowLeft className="h-4 w-4" />
+              <Button size="icon" variant="ghost" className="h-11 w-11 min-h-[44px] min-w-[44px] text-slate-300 hover:text-white shrink-0">
+                <ArrowLeft className="h-5 w-5" />
               </Button>
             </Link>
             <div className="flex items-center gap-2 truncate">

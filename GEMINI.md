@@ -9,8 +9,10 @@ The platform utilizes a **multi-tenant architecture**, where each mosque is an i
 ### Technology Stack
 
 *   **Frontend:** React 18, TypeScript, Vite, Tailwind CSS, shadcn/ui.
-*   **Backend:** Cloudflare Workers, Hono (web framework), Durable Objects (state & storage).
-*   **State Management:** Zustand v5 (Frontend), Durable Objects (Backend).
+*   **Backend:** Cloudflare Workers, Hono (web framework), Drizzle ORM.
+*   **Database & Persistence:** Cloudflare D1 (Edge) & SQLite (VPS/Local Fallback).
+*   **Object Storage:** Cloudflare R2 & Local Disk Fallback (`worker/storage/`).
+*   **State Management:** Zustand v5 (Frontend), D1/SQLite Database (Backend).
 *   **Package Manager:** Bun.
 
 ## Building and Running
@@ -28,10 +30,15 @@ The project uses `bun` as the primary package manager and task runner.
 | :--- | :--- |
 | `bun install` | Install all dependencies. |
 | `bun run dev` | Start the local development server (Frontend + Worker). |
+| `bun run start` | Start the standalone VPS server using Bun runtime. |
+| `bun run start:node` | Start the standalone VPS server using Node runtime. |
 | `bun run build` | Build the frontend and worker for production. |
 | `bun run deploy` | Deploy the application to Cloudflare. |
 | `bun run lint` | Run ESLint to check for code quality issues. |
 | `bun run cf-typegen` | Generate Cloudflare Worker types. |
+| `bun run db:migrate:local` | Apply D1 database migrations locally. |
+| `bun run db:migrate:remote` | Apply D1 database migrations to Cloudflare D1 remote. |
+| `bun run db:seed` | Seed database with initial tenants, users, and transactions. |
 
 **Note:** The `bun run dev` command starts a local server using `wrangler dev`, which simulates the Cloudflare Workers environment locally on port `8787`.
 
@@ -43,11 +50,21 @@ The project uses `bun` as the primary package manager and task runner.
     *   **`components/`**: UI components (shadcn/ui primitives in `ui/`, feature components like `app-sidebar.tsx`).
     *   **`pages/`**: Application routes (e.g., `dashboard/`, `auth/`, `super-admin/`).
     *   **`lib/`**: Utilities, API client (`api-client.ts`), and global store (`store.ts`).
-*   **`worker/`**: Backend source code (Cloudflare Worker).
-    *   **`index.ts`**: Entry point, middleware, and router setup.
-    *   **`user-routes.ts`**: API endpoint definitions.
-    *   **`entities.ts`**: Business logic and data models.
-    *   **`core-utils.ts`**: Low-level Durable Object and storage abstractions.
+*   **`worker/`**: Backend source code (Cloudflare Worker & Node/Bun VPS Server).
+    *   **`index.ts`**: Entry point, middleware, health check, and router setup.
+    *   **`user-routes.ts`**: Main router aggregator importing domain modules from `routes/`.
+    *   **`routes/`**: Modular domain route handlers:
+        *   `auth.ts`: Authentication, demo users, registration.
+        *   `tenants.ts`: Mosque tenant lookups and member management.
+        *   `finance.ts`: Transactions, bulk imports, statement parsing, report cards.
+        *   `zis.ts`: Zakat/Infaq/Shadaqah, Mustahik management, payments.
+        *   `operations.ts`: Inventory assets, events & QR registrations, prayer schedules.
+        *   `content.ts`: Blog, forum, DKM structure, AI chat, media & storage.
+        *   `super-admin.ts`: Platform administration, approvals, AI toggles.
+        *   `common.ts`: Centralized timestamp mappers and route helpers.
+    *   **`db/`**: Drizzle ORM configuration, database abstraction (`getDb`), and schemas (`schema.ts`).
+    *   **`storage/`**: Cloudflare R2 & Local Disk Object Storage abstraction (`StorageService`).
+    *   **`server.ts` & `server-node.ts`**: Standalone VPS production servers for Bun and Node.js.
 *   **`shared/`**: Code shared between Frontend and Backend.
     *   **`types.ts`**: TypeScript interfaces (contracts) for API responses and data models.
     *   **`mock-data.ts`**: Seed data for development.
@@ -72,7 +89,8 @@ The platform includes a built-in demo mode for testing:
     *   Use **Zustand** for global client-side state (user session, theme).
     *   Use **TanStack Query** (React Query) for server-state caching and fetching.
 *   **API Communication:** Use the strongly-typed `api` helper from `@/lib/api-client` which wraps `fetch`.
-*   **Backend Persistence:** All data is stored in Cloudflare Durable Objects. The `IndexedEntity` class in `worker/core-utils.ts` provides a high-level abstraction for CRUD operations.
+*   **Backend Persistence:** All database persistence is handled via **Drizzle ORM** with **Cloudflare D1** on edge deployments and **SQLite** (via `better-sqlite3`) on local/VPS environments. Storage files (images, audio, PDF) are handled by **Cloudflare R2** with a local disk fallback via `/api/storage/:key`. Legacy Durable Objects and `IndexedEntity` are deprecated.
+*   **Timestamps:** Standardized to epoch milliseconds (`Date.now()`). All schema mappers in `worker/routes/common.ts` safely normalize seconds to milliseconds so the UI never displays 1970 dates.
 
 ## Key Features
 
@@ -104,3 +122,17 @@ We have successfully implemented several features inspired by competitors but en
     *   Visual cash flow analysis.
 *   **Smart Assets:**
     *   Maintenance tracking for inventory items.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub issues via `gh` CLI. See [issue-tracker.md](file:///D:/development/masjidhub-modern-mosque-management-saas/docs/agents/issue-tracker.md).
+
+### Triage labels
+
+Canonical 5-role triage label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See [triage-labels.md](file:///D:/development/masjidhub-modern-mosque-management-saas/docs/agents/triage-labels.md).
+
+### Domain docs
+
+Single-context repository layout (`GLOSSARY.md` + `docs/adr/`). See [domain.md](file:///D:/development/masjidhub-modern-mosque-management-saas/docs/agents/domain.md).

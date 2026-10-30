@@ -1,8 +1,8 @@
 /**
- * Wrangler config for the Cloudflare Durable Object template
- * STRICTLY DO NOT MODIFY THIS FILE - Hidden from AI to prevent breaking core functionality
+ * Wrangler config for Cloudflare Workers, D1 Database, and R2 Bucket.
+ * Note: Legacy Durable Objects have been deprecated and replaced by Cloudflare D1 (DB) and Cloudflare R2 (BUCKET).
  */
- {
+{
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "masjidhub-saas-jtbg-y-udxepva-ni4x4t",
 	"main": "worker/index.ts",
@@ -14,20 +14,18 @@
 	"observability": {
 		"enabled": true
 	},
-    "durable_objects": {
-      "bindings": [
-        {
-          "name": "GlobalDurableObject",
-          "class_name": "GlobalDurableObject"
-        }
-      ]
-    },
-    "migrations": [
-      {
-        "tag": "v1",
-        "new_sqlite_classes": [
-          "GlobalDurableObject"
-        ]
-      }
-    ]
+	"r2_buckets": [
+		{
+			"binding": "BUCKET",
+			"bucket_name": "masjidhub-bucket"
+		}
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "masjidhub-db",
+			"database_id": "5cea6147-9483-4e16-8f7a-9242f83580d8",
+			"migrations_dir": "drizzle/migrations"
+		}
+	]
 }

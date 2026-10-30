@@ -1,25 +1,55 @@
-// Making changes to this file is **STRICTLY** forbidden. Please add your routes in `userRoutes.ts` file.
-
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { sql } from 'drizzle-orm';
 import { Env } from './core-utils';
+import { getDb } from './db';
 import { userRoutes } from './user-routes';
 export * from './core-utils';
 
 export type ClientErrorReport = { message: string; url: string; timestamp: string } & Record<string, unknown>;
 
-type Variables = {
+export type AppVariables = {
   subdomain: string | null;
-}
+};
 
-const app = new Hono<{ Bindings: Env, Variables: Variables }>();
+export const app = new Hono<{ Bindings: Env, Variables: AppVariables }>();
 
 app.use('*', logger());
 
 app.use('/api/*', cors({ origin: '*', allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowHeaders: ['Content-Type', 'Authorization'] }));
 
-app.get('/api/health', (c) => c.json({ success: true, data: { status: 'healthy', timestamp: new Date().toISOString() }}));
+app.get('/api/health', async (c) => {
+  try {
+    const db = getDb(c.env);
+    if ('all' in db && typeof (db as any).all === 'function') {
+      await (db as any).all(sql`SELECT 1`);
+    } else if ('run' in db && typeof (db as any).run === 'function') {
+      await (db as any).run(sql`SELECT 1`);
+    } else {
+      await db.run(sql`SELECT 1`);
+    }
+    return c.json({
+      success: true,
+      data: {
+        status: 'healthy',
+        database: 'connected',
+        timestamp: Date.now(),
+      },
+    });
+  } catch (error: any) {
+    console.error('[HEALTH CHECK FAILED]', error);
+    return c.json({
+      success: false,
+      data: {
+        status: 'unhealthy',
+        database: 'disconnected',
+        error: error?.message || 'Database connectivity error',
+        timestamp: Date.now(),
+      },
+    }, 500);
+  }
+});
 
 app.post('/api/client-errors', async (c) => {
   try {
@@ -31,11 +61,6 @@ app.post('/api/client-errors', async (c) => {
     return c.json({ success: false, error: 'Failed to process' }, 500);
   }
 });
-
-app.notFound((c) => c.json({ success: false, error: 'Not Found' }, 404));
-app.onError((err, c) => { console.error(`[ERROR] ${err}`); return c.json({ success: false, error: 'Internal Server Error' }, 500); });
-
-console.log(`Server is running`)
 
 // Middleware to extract tenant from subdomain
 app.use('/api/*', async (c, next) => {
@@ -62,6 +87,7 @@ app.use('/api/*', async (c, next) => {
 // Register user routes statically
 userRoutes(app);
 
+// Default Cloudflare Worker Exported Handler
 export default {
   async fetch(request, env, ctx) {
     return app.fetch(request, env, ctx);

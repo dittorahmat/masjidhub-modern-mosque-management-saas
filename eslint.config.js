@@ -40,6 +40,7 @@ export default tseslint.config(
       'import/no-unresolved': ['error', { 
         ignore: ['cloudflare:workers', 'agents'] 
       }],
+      'max-lines': ['error', { max: 600, skipComments: true, skipBlankLines: true }],
 
       // CHANGED: Replaced the flawed rule with a more intelligent one.
       "no-restricted-syntax": [
@@ -72,6 +73,14 @@ export default tseslint.config(
     files: ['src/components/ui/**/*.{ts,tsx}'],
     rules: {
       'react-refresh/only-export-components': 'off',
+      'max-lines': 'off',
+    },
+  },
+  // Ignore max-lines for errorReporter or mock data / schemas if they exceed 600 lines
+  {
+    files: ['src/lib/errorReporter.ts', 'worker/db/schema.ts', 'shared/mock-data.ts'],
+    rules: {
+      'max-lines': 'off',
     },
   },
 )

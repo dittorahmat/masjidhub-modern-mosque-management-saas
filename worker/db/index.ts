@@ -10,7 +10,7 @@ export type AppDb = DrizzleD1Database<typeof schema> | BetterSQLite3Database<typ
 export interface DbContextEnv {
   DB?: D1Database;
   DATABASE_PATH?: string;
-  [key: string]: unknown;
+  [key: string]: any;
 }
 
 export type DbInput = D1Database | DbContextEnv | null | undefined;

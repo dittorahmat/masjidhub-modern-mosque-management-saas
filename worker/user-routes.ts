@@ -1,9 +1,10 @@
 import { getStorage } from "./storage";
 import { Hono } from "hono";
 import type { Env } from './core-utils';
+import { getDb, schema } from "./db";
+import { eq, or } from "drizzle-orm";
+import { seedDatabase } from "./db/seed";
 import {
-  UserEntity,
-  TenantEntity,
   TransactionEntity,
   InventoryItemEntity,
   EventEntity,
@@ -25,7 +26,7 @@ import {
   StatementLogEntity,
   MonthlyPrayerScheduleEntity
 } from "./entities";
-import type { UserRole, ZisTransaction, DailyPrayer } from "@shared/types";
+import type { UserRole, ZisTransaction, DailyPrayer, Tenant, AppUser } from "@shared/types";
 import { ok, bad, notFound } from './core-utils';
 import { streamChatResponse, parseBankStatement } from "./ai-logic";
 import { streamText } from 'hono/streaming';
@@ -37,6 +38,78 @@ const isValidHex = (color: string) => /^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/.test(
 
 // Helper for Data Normalization
 const normalizeText = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+// Cache check for DB seeding to avoid redundant seed executions in warm worker invocations
+let isDbSeeded = false;
+async function ensureDbInitialized(env: Env) {
+  if (isDbSeeded) return;
+  try {
+    const db = getDb(env);
+    const existing = await db.select().from(schema.tenants).limit(1);
+    if (existing.length === 0) {
+      await seedDatabase({ envOrD1: env, verbose: false, autoMigrateLocal: true });
+    }
+    isDbSeeded = true;
+  } catch (e) {
+    // If table doesn't exist yet in local fallback, try seeding
+    try {
+      await seedDatabase({ envOrD1: env, verbose: false, autoMigrateLocal: true });
+      isDbSeeded = true;
+    } catch (seedErr) {
+      console.warn('Notice: Failed initializing/seeding database:', seedErr);
+    }
+  }
+}
+
+export function mapTenantRow(row: typeof schema.tenants.$inferSelect): Tenant {
+  return {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    ownerId: row.ownerId,
+    // Note: D1 stores Unix seconds; frontend expects milliseconds
+    createdAt: row.createdAt > 1e11 ? row.createdAt : row.createdAt * 1000,
+    address: row.address ?? undefined,
+    city: row.city ?? undefined,
+    latitude: row.latitude ?? undefined,
+    longitude: row.longitude ?? undefined,
+    timezone: row.timezone ?? 'Asia/Jakarta',
+    legalDocUrl: row.legalDocUrl ?? undefined,
+    logoUrl: row.logoUrl ?? undefined,
+    bannerUrl: row.bannerUrl ?? undefined,
+    runningText: row.runningText ?? undefined,
+    bankInfo: row.bankInfo ?? undefined,
+    bankAccounts: (row.bankAccounts as Tenant['bankAccounts']) ?? undefined,
+    dkmStructure: (row.dkmStructure as Tenant['dkmStructure']) ?? undefined,
+    prayerCalculationMethod: row.prayerCalculationMethod ?? 'KEMENAG',
+    socialLinks: (row.socialLinks as Tenant['socialLinks']) ?? undefined,
+    bio: row.bio ?? undefined,
+    status: row.status,
+    aiEnabled: !!row.aiEnabled,
+    selectedPersona: (row.selectedPersona as Tenant['selectedPersona']) ?? 'marbot_muda',
+    kioskRunningText: row.kioskRunningText ?? '',
+    kioskPrayerMode: row.kioskPrayerMode ?? 'silent',
+    sholatDuration: row.sholatDuration ?? 15,
+    iqomahMinutes: (row.iqomahMinutes as Tenant['iqomahMinutes']) ?? {
+      fajr: 12,
+      dhuhr: 10,
+      asr: 10,
+      maghrib: 7,
+      isha: 10,
+    },
+  };
+}
+
+export function mapUserRow(row: typeof schema.users.$inferSelect): AppUser {
+  return {
+    id: row.id,
+    name: row.name,
+    email: row.email,
+    role: row.role as UserRole,
+    tenantIds: (row.tenantIds as string[]) || (row.tenantId ? [row.tenantId] : []),
+    isBanned: !!row.isBanned,
+  };
+}
 
 // Mock payment processing function
 async function processZisPayment(transaction: any, paymentMethod: string, amount: number) {
@@ -51,14 +124,21 @@ async function processZisPayment(transaction: any, paymentMethod: string, amount
 }
 
 export function userRoutes(app: Hono<any>) {
-  const getTenantBySlug = async (env: Env, slug: string) => {
-    await TenantEntity.ensureSeed(env);
-    await UserEntity.ensureSeed(env);
-    const { items } = await TenantEntity.list(env);
-    return items.find(t => t.slug === slug);
+  const getTenantBySlug = async (env: Env, slug: string): Promise<Tenant | null> => {
+    await ensureDbInitialized(env);
+    const db = getDb(env);
+    const normalizedSlug = slug.toLowerCase().trim();
+    const rows = await db
+      .select()
+      .from(schema.tenants)
+      .where(eq(schema.tenants.slug, normalizedSlug))
+      .limit(1);
+
+    if (rows.length === 0) return null;
+    return mapTenantRow(rows[0]);
   };
 
-  const getTenantBySlugOrSubdomain = async (c: any, env: Env) => {
+  const getTenantBySlugOrSubdomain = async (c: any, env: Env): Promise<Tenant | null> => {
     const slug = c.req.param('slug');
     if (slug) return await getTenantBySlug(env, slug);
     const subdomain = c.get('subdomain');
@@ -68,32 +148,215 @@ export function userRoutes(app: Hono<any>) {
 
   // --- PUBLIC & AUTH ---
   app.get('/api/check-subdomain/:slug', async (c) => {
-    await TenantEntity.ensureSeed(c.env);
-    const { items } = await TenantEntity.list(c.env);
-    const exists = items.some(t => t.slug === c.req.param('slug').toLowerCase().replace(/[^a-z0-9-]/g, ''));
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const slug = c.req.param('slug').toLowerCase().replace(/[^a-z0-9-]/g, '');
+    const rows = await db
+      .select()
+      .from(schema.tenants)
+      .where(eq(schema.tenants.slug, slug))
+      .limit(1);
+
+    const exists = rows.length > 0;
     return ok(c, { available: !exists, slug: c.req.param('slug') });
   });
 
   app.post('/api/auth/register', async (c) => {
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
     const { name, email, mosqueName, slug, address } = await c.req.json();
     const tenantId = crypto.randomUUID();
     const userId = crypto.randomUUID();
-    const tenant = await TenantEntity.create(c.env, { id: tenantId, name: mosqueName, slug: slug.toLowerCase().replace(/[^a-z0-9-]/g, ''), ownerId: userId, createdAt: Date.now(), address, status: 'pending', selectedPersona: 'marbot_muda', kioskRunningText: "", kioskPrayerMode: 'silent', iqomahMinutes: { fajr: 12, dhuhr: 10, asr: 10, maghrib: 7, isha: 10 } });
-    const user = await UserEntity.create(c.env, { id: userId, name, email, role: 'dkm_admin', tenantIds: [tenantId] });
+    const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '');
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    const defaultIqomah = { fajr: 12, dhuhr: 10, asr: 10, maghrib: 7, isha: 10 };
+
+    await db.insert(schema.tenants).values({
+      id: tenantId,
+      name: mosqueName,
+      slug: cleanSlug,
+      ownerId: userId,
+      createdAt: nowSec,
+      updatedAt: nowSec,
+      address,
+      status: 'pending',
+      selectedPersona: 'marbot_muda',
+      kioskRunningText: "",
+      kioskPrayerMode: 'silent',
+      sholatDuration: 15,
+      iqomahMinutes: defaultIqomah,
+    });
+
+    await db.insert(schema.users).values({
+      id: userId,
+      tenantId: tenantId,
+      tenantIds: [tenantId],
+      name,
+      email,
+      role: 'dkm_admin',
+      isActive: true,
+      isBanned: false,
+      createdAt: nowSec,
+      updatedAt: nowSec,
+    });
+
+    const tenant = mapTenantRow({
+      id: tenantId,
+      name: mosqueName,
+      slug: cleanSlug,
+      ownerId: userId,
+      createdAt: nowSec,
+      updatedAt: nowSec,
+      address,
+      city: null,
+      phone: null,
+      email: null,
+      latitude: null,
+      longitude: null,
+      timezone: 'Asia/Jakarta',
+      bannerUrl: null,
+      logoUrl: null,
+      legalDocUrl: null,
+      runningText: null,
+      bankInfo: null,
+      bankAccounts: null,
+      dkmStructure: null,
+      prayerCalculationMethod: 'KEMENAG',
+      socialLinks: null,
+      bio: null,
+      status: 'pending',
+      aiEnabled: false,
+      selectedPersona: 'marbot_muda',
+      kioskRunningText: "",
+      kioskPrayerMode: 'silent',
+      sholatDuration: 15,
+      iqomahMinutes: defaultIqomah,
+    });
+
+    const user: AppUser = {
+      id: userId,
+      name,
+      email,
+      role: 'dkm_admin',
+      tenantIds: [tenantId],
+      isBanned: false,
+    };
+
     return ok(c, { user, tenant });
   });
 
+  // Alias route for register-mosque
+  app.post('/api/auth/register-mosque', async (c) => {
+    return app.fetch(new Request(c.req.url.replace('/api/auth/register-mosque', '/api/auth/register'), {
+      method: 'POST',
+      headers: c.req.raw.headers,
+      body: JSON.stringify(await c.req.json()),
+    }), c.env, c.executionCtx);
+  });
+
   app.post('/api/auth/login', async (c) => {
-    await TenantEntity.ensureSeed(c.env);
-    await UserEntity.ensureSeed(c.env);
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
     const { email } = await c.req.json();
-    const { items: users } = await UserEntity.list(c.env);
-    let user = users.find(u => u.email === email);
-    if (!user) {
+
+    const users = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.email, email))
+      .limit(1);
+
+    let user: AppUser;
+    if (users.length > 0) {
+      user = mapUserRow(users[0]);
+    } else {
       const role: UserRole = email === 'admin@masjidhub.com' ? 'superadmin_platform' : 'dkm_admin';
       user = { id: crypto.randomUUID(), name: "Demo User", email, role, tenantIds: ['t1'] };
     }
     return ok(c, { user });
+  });
+
+  // Auth me endpoint
+  app.get('/api/auth/me', async (c) => {
+    await ensureDbInitialized(c.env);
+    const email = c.req.query('email');
+    const userId = c.req.query('id');
+    const db = getDb(c.env);
+
+    if (!email && !userId) {
+      return bad(c, 'Query parameter email or id is required');
+    }
+
+    const whereClause = email
+      ? eq(schema.users.email, email)
+      : eq(schema.users.id, userId!);
+
+    const users = await db.select().from(schema.users).where(whereClause).limit(1);
+    if (users.length === 0) {
+      return notFound(c, 'User not found');
+    }
+    return ok(c, { user: mapUserRow(users[0]) });
+  });
+
+  // Demo users endpoint
+  app.get('/api/auth/demo-users', async (c) => {
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const users = await db.select().from(schema.users);
+    return ok(c, users.map(mapUserRow));
+  });
+
+  // Tenants list or create endpoint
+  app.get('/api/tenants', async (c) => {
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const rows = await db.select().from(schema.tenants);
+    return ok(c, rows.map(mapTenantRow));
+  });
+
+  app.post('/api/tenants', async (c) => {
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const body = await c.req.json();
+    const tenantId = body.id || crypto.randomUUID();
+    const cleanSlug = (body.slug || body.name || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    await db.insert(schema.tenants).values({
+      id: tenantId,
+      name: body.name,
+      slug: cleanSlug,
+      ownerId: body.ownerId || 'u1',
+      address: body.address,
+      city: body.city,
+      phone: body.phone,
+      email: body.email,
+      latitude: body.latitude,
+      longitude: body.longitude,
+      timezone: body.timezone || 'Asia/Jakarta',
+      bannerUrl: body.bannerUrl,
+      logoUrl: body.logoUrl,
+      legalDocUrl: body.legalDocUrl,
+      runningText: body.runningText,
+      bankInfo: body.bankInfo,
+      bankAccounts: body.bankAccounts,
+      dkmStructure: body.dkmStructure,
+      prayerCalculationMethod: body.prayerCalculationMethod || 'KEMENAG',
+      socialLinks: body.socialLinks,
+      bio: body.bio,
+      status: body.status || 'active',
+      aiEnabled: body.aiEnabled ?? false,
+      selectedPersona: body.selectedPersona || 'marbot_muda',
+      kioskRunningText: body.kioskRunningText || '',
+      kioskPrayerMode: body.kioskPrayerMode || 'silent',
+      sholatDuration: body.sholatDuration || 15,
+      iqomahMinutes: body.iqomahMinutes || { fajr: 12, dhuhr: 10, asr: 10, maghrib: 7, isha: 10 },
+      createdAt: nowSec,
+      updatedAt: nowSec,
+    });
+
+    const rows = await db.select().from(schema.tenants).where(eq(schema.tenants.id, tenantId)).limit(1);
+    return ok(c, mapTenantRow(rows[0]));
   });
 
   // --- CONFIG & UTILS ---
@@ -415,8 +678,11 @@ export function userRoutes(app: Hono<any>) {
   app.get('/api/:slug/members', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await UserEntity.list(c.env);
-    return ok(c, items.filter(u => u.tenantIds.includes(tenant.id)));
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const allUsers = await db.select().from(schema.users);
+    const mapped = allUsers.map(mapUserRow);
+    return ok(c, mapped.filter(u => u.tenantIds.includes(tenant.id)));
   });
 
   // --- PRAYER SCHEDULE HUB ---
@@ -512,39 +778,69 @@ export function userRoutes(app: Hono<any>) {
 
   // --- SUPER ADMIN ---
   app.get('/api/super/summary', async (c) => {
-    await TenantEntity.ensureSeed(c.env);
-    const { items: tenants } = await TenantEntity.list(c.env);
-    const { items: users } = await UserEntity.list(c.env);
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const [tenantsList, usersList] = await Promise.all([
+      db.select().from(schema.tenants),
+      db.select().from(schema.users),
+    ]);
     const { items: txs } = await TransactionEntity.list(c.env);
     const { items: events } = await EventEntity.list(c.env);
-    return ok(c, { totalTenants: tenants.length, totalUsers: users.length, totalBalance: txs.reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0), activeEvents: events.filter(e => e.date > Date.now()).length, pendingApprovals: tenants.filter(t => t.status === 'pending').length });
+    return ok(c, {
+      totalTenants: tenantsList.length,
+      totalUsers: usersList.length,
+      totalBalance: txs.reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0),
+      activeEvents: events.filter(e => e.date > Date.now()).length,
+      pendingApprovals: tenantsList.filter(t => t.status === 'pending').length,
+    });
   });
 
   app.get('/api/super/tenants', async (c) => {
-    await TenantEntity.ensureSeed(c.env);
-    const { items: tenants } = await TenantEntity.list(c.env);
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const [tenantsList, usersList] = await Promise.all([
+      db.select().from(schema.tenants),
+      db.select().from(schema.users),
+    ]);
     const { items: txs } = await TransactionEntity.list(c.env);
-    const { items: users } = await UserEntity.list(c.env);
-    return ok(c, tenants.map(t => ({ ...t, totalBalance: txs.filter(tx => tx.tenantId === t.id).reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0), memberCount: users.filter(u => u.tenantIds.includes(t.id)).length, eventCount: 0 })));
+    const mappedUsers = usersList.map(mapUserRow);
+    const mappedTenants = tenantsList.map(mapTenantRow);
+
+    return ok(c, mappedTenants.map(t => ({
+      ...t,
+      totalBalance: txs.filter(tx => tx.tenantId === t.id).reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0),
+      memberCount: mappedUsers.filter(u => u.tenantIds.includes(t.id)).length,
+      eventCount: 0,
+    })));
   });
 
   app.get('/api/super/users', async (c) => {
-    const { items: users } = await UserEntity.list(c.env);
-    return ok(c, users);
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const usersList = await db.select().from(schema.users);
+    return ok(c, usersList.map(mapUserRow));
   });
 
   app.post('/api/super/tenants/:id/approve', async (c) => {
-    const inst = new TenantEntity(c.env, c.req.param('id'));
-    if (!(await inst.exists())) return notFound(c, 'Tenant not found');
-    await inst.patch({ status: 'active' });
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const tenantId = c.req.param('id');
+    const existing = await db.select().from(schema.tenants).where(eq(schema.tenants.id, tenantId)).limit(1);
+    if (existing.length === 0) return notFound(c, 'Tenant not found');
+
+    await db.update(schema.tenants).set({ status: 'active', updatedAt: Math.floor(Date.now() / 1000) }).where(eq(schema.tenants.id, tenantId));
     return ok(c, { success: true });
   });
 
   app.post('/api/super/tenants/:id/toggle-ai', async (c) => {
-    const inst = new TenantEntity(c.env, c.req.param('id'));
-    if (!(await inst.exists())) return notFound(c, 'Tenant not found');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const tenantId = c.req.param('id');
     const { enabled } = await c.req.json();
-    await inst.patch({ aiEnabled: enabled });
+    const existing = await db.select().from(schema.tenants).where(eq(schema.tenants.id, tenantId)).limit(1);
+    if (existing.length === 0) return notFound(c, 'Tenant not found');
+
+    await db.update(schema.tenants).set({ aiEnabled: enabled, updatedAt: Math.floor(Date.now() / 1000) }).where(eq(schema.tenants.id, tenantId));
     return ok(c, { success: true, aiEnabled: enabled });
   });
 

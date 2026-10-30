@@ -13,7 +13,7 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
 ---
 
 ## 2. Standardized Timestamps
-- **Epoch Milliseconds:** All `createdAt`, `updatedAt`, `timestamp`, `date`, and other temporal values must be standardized to epoch milliseconds (`Date.now()`).
+- **Epoch Milliseconds:** All `createdAt`, `updatedAt`, `timestamp`, `date`, and other temporal values must be standardized to epoch milliseconds (`Date.now()`). Never use unix seconds (`Math.floor(Date.now() / 1000)`) in insert/update queries.
 - **Defensive Mappers:** Because SQLite default values may use unix seconds (`unixepoch()`), all data mappers (located in `worker/routes/common.ts`) must use `toTimestampMs(val)` or check `val > 1e11 ? val : val * 1000` before exposing to the frontend.
 - **UI Date Safety:** Never allow raw Unix seconds to reach frontend components formatting with `new Date(val)` or `format(val, ...)` to prevent "Jan 1, 1970" rendering bugs.
 
@@ -27,7 +27,7 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
 ---
 
 ## 4. Modular Route Architecture & Anti-Monolith Policy
-- **STRICT FILE SIZE CAP (Max 400-500 LOC per file):** No route handler or utility file may exceed ~500 lines of code. Monolithic files like the legacy 3,200+ LOC `worker/user-routes.ts` are strictly forbidden. If a file grows beyond 400 LOC, proactively decompose it into sub-modules (e.g. `finance/ocr.ts`, `finance/transactions.ts`).
+- **STRICT FILE SIZE CAP (Max 400-500 LOC per file):** No route handler, page, or utility file may exceed ~500 lines of code. Monolithic files like the legacy 3,200+ LOC `worker/user-routes.ts` are strictly forbidden. If a file grows beyond 400 LOC, proactively decompose it into sub-modules (e.g. `finance/ocr.ts`, `finance/transactions.ts`).
 - **Aggregator Pattern Only:** The main `worker/user-routes.ts` is strictly a top-level aggregator (under ~100 LOC) that mounts sub-routers. NEVER add business logic, raw SQL, or route handler bodies directly into `user-routes.ts`.
 - **Domain Separation:** Place all route handlers into domain modules under `worker/routes/`:
   - `auth.ts` - Login, registration, session `/me`, demo users.
@@ -35,17 +35,24 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
   - `finance.ts` - Financial transactions, OCR bank statements, summaries, report card.
   - `zis.ts` - Zakat/Infaq/Shadaqah transactions, Mustahik management, distribution.
   - `operations.ts` - Inventory items, community events, QR attendance, prayer schedules.
-  - `content.ts` - Blog, forum moderation, DKM visual organization, AI chatbot, storage.
+  - `content.ts` - Blog, forum moderation, DKM visual organization, AI chatbot, storage, rekaman kajian.
   - `super-admin.ts` - Platform admin dashboards, tenant approvals, feature toggles.
   - `common.ts` - Shared mappers, timestamp utilities, tenant resolution helpers.
-- **Frontend Component Hygiene:** The same anti-monolith rule applies to frontend pages (`src/pages/*`). Break complex views with multiple tabs or modals into subcomponents under `src/components/` instead of dumping all JSX and state into a single multi-thousand-line page file.
+- **Frontend Component Hygiene:** The same anti-monolith rule applies to frontend pages (`src/pages/*`). Break complex views with multiple tabs or modals into subcomponents under `src/components/<feature>/` (e.g., `src/components/qris/`, `src/components/kajian/`) instead of dumping all JSX, state, and dialogs into a single monolithic page file.
 
 ---
 
-## 5. Active Health Checks
+## 5. Code Hygiene, Shared Utilities & Scope Discipline
+- **Zero Scope Creep on Commits:** Never stage or commit extraneous tooling files, agent frameworks (e.g. `.agents/skills/*`, `.qwen/`), or scratch transcripts into application feature commits. Feature commits must only include production code and tests.
+- **Centralized Shared Utilities:** Common media or external service helpers (such as `extractYoutubeVideoId`, URL parsers, and data formatting) must live in `shared/` (e.g. `shared/youtube.ts`) rather than duplicating regex and utility functions across frontend and backend.
+- **Endpoint Authorization:** Any mutations on tenant configuration (e.g. `PUT /api/:slug/settings`) must enforce tenant ownership/membership verification.
+
+---
+
+## 6. Active Health Checks
 - The `/api/health` endpoint must actively verify database connectivity with a live query (`SELECT 1`) and report `{ success: true, data: { status: 'healthy', database: 'connected', timestamp: Date.now() } }`.
 
 ---
 
-## 6. Documentation Integrity
+## 7. Documentation Integrity
 - **No Documentation Drift:** When modifying backend architectures, configuration scripts, or API contracts, immediately synchronize `GEMINI.md`, `README.md`, and `docs/architecture-backend.md`.

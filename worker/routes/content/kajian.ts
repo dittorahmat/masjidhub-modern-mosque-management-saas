@@ -6,28 +6,11 @@ import {
   ensureDbInitialized,
   mapKajianVideoRow,
   getTenantBySlugOrSubdomain,
+  toTimestampMs,
 } from "../common";
+import { extractYoutubeVideoId, getYoutubeThumbnailUrl } from "../../../shared/youtube";
 
-export function extractYoutubeVideoId(url: string): string | null {
-  if (!url) return null;
-  // Patterns supported:
-  // - https://www.youtube.com/watch?v=VIDEO_ID
-  // - https://youtu.be/VIDEO_ID
-  // - https://www.youtube.com/embed/VIDEO_ID
-  // - https://www.youtube.com/live/VIDEO_ID
-  // - https://www.youtube.com/shorts/VIDEO_ID
-  // - VIDEO_ID directly (11 chars)
-  const trimmed = url.trim();
-  const regExp = /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|live\/|shorts\/))([\w-]{11})/;
-  const match = trimmed.match(regExp);
-  if (match && match[1]) {
-    return match[1];
-  }
-  if (/^[\w-]{11}$/.test(trimmed)) {
-    return trimmed;
-  }
-  return null;
-}
+export { extractYoutubeVideoId };
 
 export function registerKajianRoutes(app: Hono<any>) {
   // GET all kajian videos for a tenant
@@ -68,15 +51,14 @@ export function registerKajianRoutes(app: Hono<any>) {
     }
 
     const videoIdRecord = body.id || crypto.randomUUID();
-    const thumbnailUrl = body.thumbnailUrl?.trim() || `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+    const thumbnailUrl = body.thumbnailUrl?.trim() || getYoutubeThumbnailUrl(videoId);
 
-    // Handle publishedAt if provided (number or ISO string)
-    let publishedAtSec: number | null = null;
+    // Standardize to epoch milliseconds (Date.now()) per AGENTS.md §2
+    let publishedAtMs: number | null = null;
     if (body.publishedAt) {
       const pubNum = typeof body.publishedAt === 'string' ? new Date(body.publishedAt).getTime() : Number(body.publishedAt);
       if (!isNaN(pubNum)) {
-        // Store as unix seconds or epoch ms safely normalized
-        publishedAtSec = pubNum > 1e11 ? Math.floor(pubNum / 1000) : pubNum;
+        publishedAtMs = toTimestampMs(pubNum);
       }
     }
 
@@ -91,7 +73,7 @@ export function registerKajianRoutes(app: Hono<any>) {
       duration: body.duration?.trim() || null,
       category: body.category?.trim() || 'kajian_rutin',
       thumbnailUrl,
-      publishedAt: publishedAtSec,
+      publishedAt: publishedAtMs,
     });
 
     const [created] = await db

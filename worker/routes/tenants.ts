@@ -96,7 +96,7 @@ export function registerTenantRoutes(app: Hono<any>) {
     const db = getDb(c.env);
 
     const updateData: Partial<typeof schema.tenants.$inferInsert> = {
-      updatedAt: Math.floor(Date.now() / 1000)
+      updatedAt: Date.now()
     };
 
     if (body.name !== undefined) updateData.name = body.name;
@@ -164,7 +164,7 @@ export function registerTenantRoutes(app: Hono<any>) {
     const user = mapUserRow(existing[0]);
     if (!user.tenantIds.includes(tenant.id)) return notFound(c, 'User not found in this tenant');
 
-    await db.update(schema.users).set({ isBanned: true, updatedAt: Math.floor(Date.now() / 1000) }).where(eq(schema.users.id, userId));
+    await db.update(schema.users).set({ isBanned: true, updatedAt: Date.now() }).where(eq(schema.users.id, userId));
     return ok(c, { success: true, message: 'User banned successfully' });
   });
 
@@ -180,7 +180,7 @@ export function registerTenantRoutes(app: Hono<any>) {
     const user = mapUserRow(existing[0]);
     if (!user.tenantIds.includes(tenant.id)) return notFound(c, 'User not found in this tenant');
 
-    await db.update(schema.users).set({ isBanned: false, updatedAt: Math.floor(Date.now() / 1000) }).where(eq(schema.users.id, userId));
+    await db.update(schema.users).set({ isBanned: false, updatedAt: Date.now() }).where(eq(schema.users.id, userId));
     return ok(c, { success: true, message: 'User unbanned successfully' });
   });
 }

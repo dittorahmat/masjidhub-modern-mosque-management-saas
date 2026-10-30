@@ -10,6 +10,8 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "lint": "eslint --cache -f json --quiet .",
+    "test": "bun test test/db-roundtrip.test.ts",
+    "test:db": "bun test test/db-roundtrip.test.ts",
     "preview": "bun run build && vite preview --host 0.0.0.0 --port ${PORT:-4173}",
     "deploy": "bun run build && wrangler deploy",
     "cf-typegen": "wrangler types",

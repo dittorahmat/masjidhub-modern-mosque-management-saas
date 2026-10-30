@@ -36,6 +36,7 @@ export function ChatWindow({ slug, mosqueName }: ChatWindowProps) {
     // Hide hint after 10 seconds
     const timer = setTimeout(() => setShowHint(false), 10000);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug]);
 
   const handleSend = () => {

@@ -71,6 +71,9 @@ temp/
 # Bun lock file
 bun.lockb
 
+# SQLite local database
+data/
+
 # Uploads directory (local storage fallback)
 uploads/
 

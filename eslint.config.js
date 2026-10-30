@@ -38,7 +38,7 @@ export default tseslint.config(
       'import/named': 'error',
       'import/default': 'error',
       'import/no-unresolved': ['error', { 
-        ignore: ['cloudflare:workers', 'agents'] 
+        ignore: ['cloudflare:workers', 'agents', 'bun:test', 'bun:sqlite'] 
       }],
       'max-lines': ['error', { max: 600, skipComments: true, skipBlankLines: true }],
 

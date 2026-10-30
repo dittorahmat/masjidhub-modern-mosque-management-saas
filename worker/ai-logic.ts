@@ -69,7 +69,7 @@ export async function* streamChatResponse(
     apiKey: apiKey,
   });
 
-  const model = 'gemini-2.5-flash-lite';
+  const model = 'gemini-flash-lite-latest';
   const systemInstruction = getSystemInstruction(context);
 
   const contents = [
@@ -84,14 +84,6 @@ export async function* streamChatResponse(
     systemInstruction: {
       parts: [{ text: systemInstruction }]
     },
-    thinkingConfig: {
-      thinkingBudget: 0,
-    },
-    tools: [
-      {
-        googleSearch: {} 
-      }
-    ],
   };
 
   const response = await ai.models.generateContentStream({
@@ -149,7 +141,7 @@ ATURAN PARSING KHUSUS BANK INDONESIA:
 HASIL HARUS BERUPA JSON ARRAY SAJA. JANGAN ADA TEKS LAIN. JANGAN ADA BLOCK MARKDOWN.`;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash-lite',
+    model: 'gemini-flash-lite-latest',
     contents: [
       {
         role: 'user',

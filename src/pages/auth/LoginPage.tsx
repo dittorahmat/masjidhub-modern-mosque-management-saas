@@ -37,12 +37,14 @@ export default function LoginPage() {
         description: 'Gunakan akun demo untuk mengeksplorasi fitur platform.'
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (isDemoMode) {
       setEmail(demoEmails[selectedRole]);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRole, isDemoMode]);
 
   const handleLogin = async (e: React.FormEvent) => {

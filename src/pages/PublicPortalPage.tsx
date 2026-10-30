@@ -83,7 +83,7 @@ export default function PublicPortalPage() {
 
   if (loadingTenant) {
     return (
-      <div className="h-screen flex items-center justify-center bg-stone-50">
+      <div className="h-[100dvh] flex items-center justify-center bg-stone-50">
         <div className="flex flex-col items-center gap-4">
           <Landmark className="h-12 w-12 text-primary animate-pulse" />
           <p className="text-muted-foreground font-medium">Menyiapkan portal masjid...</p>
@@ -94,7 +94,7 @@ export default function PublicPortalPage() {
 
   if (!tenant) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center text-center p-4 space-y-4">
+      <div className="h-[100dvh] flex flex-col items-center justify-center text-center p-4 space-y-4">
         <p className="text-xl font-display font-bold">Portal tidak ditemukan.</p>
         <Link to="/"><Button variant="outline" className="min-h-[44px]">Kembali ke Beranda</Button></Link>
       </div>
@@ -106,15 +106,15 @@ export default function PublicPortalPage() {
   const khutbahArchive = schedules.filter(s => s.khutbahTopic);
 
   return (
-    <div className="min-h-screen bg-[#fafafa] font-sans text-slate-900 pb-12">
+    <div className="min-h-[100dvh] bg-[#fafafa] font-sans text-slate-900 pb-12">
       {/* Top Bar with Running Text */}
       <div className="bg-primary text-white py-2 overflow-hidden whitespace-nowrap relative z-[60]">
-        <div className="inline-block animate-marquee-fast px-4 font-bold text-xs sm:text-sm uppercase tracking-wider">
-          📢 {tenant.runningText || "Selamat datang di Portal Digital " + tenant.name + " - Mari makmurkan masjid bersama-sama."} 
+        <div className="inline-block animate-marquee-fast px-4 font-bold text-xs sm:text-sm font-medium">
+           {tenant.runningText || "Selamat datang di Portal Digital " + tenant.name + " - Mari makmurkan masjid bersama-sama."} 
           &nbsp;&nbsp;&nbsp;&nbsp; | &nbsp;&nbsp;&nbsp;&nbsp;
-          🕌 Jadwal Shalat Update Setiap Hari 
+         Jadwal Shalat Terintegrasi 
           &nbsp;&nbsp;&nbsp;&nbsp; | &nbsp;&nbsp;&nbsp;&nbsp;
-          ✨ Zakat & Infaq dapat dilakukan via QRIS
+         Zakat & Infaq Terverifikasi via QRIS
         </div>
       </div>
 
@@ -163,7 +163,7 @@ export default function PublicPortalPage() {
               <Button 
                 size="lg" 
                 onClick={() => setDonationOpen(true)}
-                className="rounded-full min-h-[48px] h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg shadow-xl shadow-primary/20 gap-2 w-full sm:w-auto"
+                className="rounded-full min-h-[48px] h-12 sm:h-14 px-6 sm:px-8 text-base sm:text-lg   gap-2 w-full sm:w-auto"
               >
                 <Heart className="h-5 w-5 fill-current" /> Infaq Sekarang
               </Button>
@@ -184,7 +184,7 @@ export default function PublicPortalPage() {
               <img 
                 src={tenant.logoUrl || "https://placehold.co/400x400?text=" + tenant.name} 
                 alt={tenant.name}
-                className="relative w-full aspect-square object-cover rounded-3xl sm:rounded-[3rem] shadow-2xl border-4 sm:border-8 border-white"
+                className="relative w-full aspect-square object-cover rounded-3xl sm:rounded-[3rem]  border-4 sm:border-8 border-white"
               />
             </div>
           </div>
@@ -285,7 +285,7 @@ export default function PublicPortalPage() {
 
               <Button 
                 onClick={() => setDonationOpen(true)}
-                className="w-full bg-white text-primary hover:bg-white/95 rounded-2xl min-h-[48px] h-12 font-bold shadow-lg shadow-black/10 text-sm sm:text-base"
+                className="w-full bg-white text-primary hover:bg-white/95 rounded-2xl min-h-[48px] h-12 font-bold   text-sm sm:text-base"
               >
                 Sumbang Sekarang (Pilih Nominal)
               </Button>
@@ -302,7 +302,7 @@ export default function PublicPortalPage() {
             </div>
             <div className="grid md:grid-cols-2 gap-6 sm:gap-8">
               {fundraisingEvents.map(event => (
-                <Card key={event.id} className="rounded-2xl sm:rounded-[2rem] overflow-hidden border-none shadow-sm bg-white group hover:shadow-xl transition-all">
+                <Card key={event.id} className="rounded-2xl sm:rounded-[2rem] overflow-hidden border-none shadow-sm bg-white group hover: transition-all">
                   <div className="h-52 sm:h-64 overflow-hidden relative">
                     <img 
                       src={event.imageUrl || "https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80"} 
@@ -346,7 +346,7 @@ export default function PublicPortalPage() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-8">
               {members.sort((a,b) => a.order - b.order).map(member => (
                 <div key={member.id} className="text-center space-y-3 group p-2">
-                  <div className="w-24 h-24 sm:w-36 sm:h-36 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden border-2 sm:border-4 border-white shadow-lg group-hover:scale-105 transition-transform duration-300">
+                  <div className="w-24 h-24 sm:w-36 sm:h-36 md:w-40 md:h-40 mx-auto rounded-full overflow-hidden border-2 sm:border-4 border-white  group-hover:scale-105 transition-transform duration-300">
                     {member.imageUrl ? (
                       <img src={member.imageUrl} alt={member.name} className="w-full h-full object-cover" />
                     ) : (

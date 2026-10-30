@@ -176,7 +176,7 @@ export default function PrayerSchedulePage() {
                               <button 
                                 onClick={() => toggleLock(s)}
                                 className={cn(
-                                  "flex items-center gap-1.5 font-mono font-black text-base px-3 py-1 rounded-full transition-all",
+                                  "flex items-center gap-1.5 tabular-nums font-black text-base px-3 py-1 rounded-full transition-all",
                                   s.isLocked ? "text-amber-700 bg-amber-50" : "text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
                                 )}
                               >

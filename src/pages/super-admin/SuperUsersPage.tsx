@@ -77,7 +77,7 @@ export default function SuperUsersPage() {
                   </TableCell>
                   <TableCell>{getRoleBadge(user.role)}</TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="font-mono">{user.tenantIds?.length || 0}</Badge>
+                    <Badge variant="secondary" className="tabular-nums">{user.tenantIds?.length || 0}</Badge>
                   </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="sm">Audit Logs</Button>

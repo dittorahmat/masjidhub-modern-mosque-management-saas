@@ -140,7 +140,7 @@ export default function KnowledgeManagementPage() {
                     />
                     <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
                       <p className="text-[10px] text-amber-800 leading-relaxed font-medium">
-                        💡 <strong>Situs Terpercaya:</strong> Gunakan format <code className="bg-amber-100 px-1 rounded">REFERENSI: domain.com, domain.id</code> untuk membatasi sumber pencarian AI.
+                         <strong>Situs Terpercaya:</strong> Gunakan format <code className="bg-amber-100 px-1 rounded">REFERENSI: domain.com, domain.id</code> untuk membatasi sumber pencarian AI.
                       </p>
                     </div>
                   </div>

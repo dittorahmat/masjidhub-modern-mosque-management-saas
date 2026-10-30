@@ -1,80 +1,135 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { MarketingLayout } from '@/components/layout/MarketingLayout';
 import { Button } from '@/components/ui/button';
-import { ArrowRight, Heart, Shield, LayoutDashboard, Calendar, Landmark, CheckCircle2, Star, Database, MessageSquare, Smartphone, Lock, Wallet, Users, Zap, Sparkles } from 'lucide-react';
+import { ArrowRight, Heart, Shield, LayoutDashboard, Calendar, Landmark, CheckCircle2, Star, Database, MessageSquare, Smartphone, Lock, Wallet, Users, Zap, Compass, Calculator } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 export function LandingPage() {
+  // One Live Thing: Simulator Zakat & Estimasi Kas Mandiri
+  const [infaqBulanan, setInfaqBulanan] = useState<number>(5000000);
+  const alokasiOperasional = Math.round(infaqBulanan * 0.4);
+  const alokasiKesejahteraan = Math.round(infaqBulanan * 0.35);
+  const alokasiPemberdayaan = Math.round(infaqBulanan * 0.25);
+
   return (
     <MarketingLayout>
       {/* Hero Section */}
-      <section className="py-24 md:py-40 overflow-hidden relative">
-        <div className="absolute top-0 right-0 w-1/2 h-1/2 bg-emerald-50/50 rounded-full blur-[120px] -z-10" />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-20 items-center relative">
+      <section className="py-20 md:py-32 overflow-hidden relative border-b border-stone-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-16 items-center">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="space-y-10"
+            transition={{ duration: 0.6 }}
+            className="space-y-8"
           >
-            <nav className="flex items-center gap-2 text-primary/60 font-black text-[10px] uppercase tracking-[0.4em]">
-              <Sparkles className="h-3 w-3" />
-              <span>The Mosque OS</span>
-            </nav>
-            <h1 className="text-6xl md:text-8xl font-display font-black leading-[0.9] tracking-tighter italic text-slate-900">
-              Modernisasi <span className="text-primary underline decoration-stone-200 underline-offset-[16px]">Masjid</span> Untuk Ummat.
+            <div className="inline-flex items-center gap-2 text-stone-600 font-bold text-xs font-medium bg-stone-100 px-3 py-1.5 rounded-md">
+              <Compass className="h-3.5 w-3.5 text-emerald-700" />
+              <span>Sistem Manajemen Masjid Terbuka</span>
+            </div>
+            
+            <h1 className="text-5xl md:text-7xl font-display font-black leading-[1.05] tracking-tight text-slate-900">
+              Modernisasi Operasional Masjid Nusantara.
             </h1>
-            <p className="text-2xl text-muted-foreground leading-relaxed max-w-xl font-medium">
-              Portal digital yang aman, transparan, dan terhubung langsung untuk kemaslahatan masjid di seluruh Indonesia.
+            
+            <p className="text-xl text-stone-600 leading-relaxed max-w-xl">
+              Platform multi-tenant untuk transparansi kas, pencatatan mustahik, jadwal kajian, dan portal publik resmi jamaah.
             </p>
-            <div className="flex flex-wrap gap-6">
+            
+            <div className="flex flex-wrap gap-4 pt-2">
               <Link to="/register">
-                <Button size="lg" className="h-20 px-12 text-xl rounded-full font-black shadow-2xl shadow-primary/30 hover:scale-105 transition-transform bg-primary">
-                  Daftar Sekarang <ArrowRight className="ml-3 h-6 w-6" />
+                <Button size="lg" className="h-14 px-8 text-base rounded-xl font-bold bg-emerald-700 hover:bg-emerald-800 text-white">
+                  Daftarkan Masjid <ArrowRight className="ml-2 h-5 w-5" />
                 </Button>
               </Link>
               <Link to="/login?demo=true">
-                <Button size="lg" variant="outline" className="h-20 px-12 text-xl rounded-full border-2 font-black hover:bg-stone-50 transition-all">
-                  Coba Demo
+                <Button size="lg" variant="outline" className="h-14 px-8 text-base rounded-xl border border-stone-300 font-bold hover:bg-stone-50">
+                  Coba Demo Langsung
                 </Button>
               </Link>
             </div>
           </motion.div>
+
+          {/* One Live Thing: Simulator Transparansi Kas Masjid */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, rotate: 2 }}
-            animate={{ opacity: 1, scale: 1, rotate: 0 }}
-            transition={{ duration: 1, ease: "easeOut" }}
-            className="relative"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="rounded-3xl border border-stone-200 bg-white p-8 space-y-6"
           >
-            <div className="relative rounded-[3.5rem] overflow-hidden shadow-[30px_30px_0px_0px_rgba(5,150,105,0.05)] border-2 border-stone-100">
-              <img
-                src="https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&q=80&w=1000"
-                alt="Masjid Community"
-                className="object-cover aspect-[4/3]"
-              />
-              <div className="absolute bottom-10 left-10 right-10 bg-white/95 backdrop-blur-xl p-8 rounded-[2.5rem] border-2 border-white shadow-2xl flex items-center justify-between">
-                <div>
-                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.3em] mb-1">Infaq Terkumpul</p>
-                  <p className="text-4xl font-display font-black italic tracking-tighter tabular-nums text-slate-900">Rp 14.250.000</p>
-                </div>
-                <div className="h-16 w-16 bg-primary rounded-3xl flex items-center justify-center text-white shadow-xl shadow-primary/20">
-                  <Wallet className="h-8 w-8" />
-                </div>
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100">
+              <div className="space-y-1">
+                <span className="text-xs font-bold font-medium text-stone-500">Live Simulator</span>
+                <h3 className="text-xl font-display font-bold text-slate-900">Perhitungan Alokasi Infaq Ummat</h3>
+              </div>
+              <div className="h-10 w-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-700">
+                <Calculator className="h-5 w-5" />
               </div>
             </div>
+
+            <div className="space-y-3">
+              <div className="flex justify-between items-center text-sm font-medium">
+                <span className="text-stone-600">Simulasi Infaq Bulanan:</span>
+                <span className="font-bold text-slate-900 tabular-nums text-lg">Rp {infaqBulanan.toLocaleString('id-ID')}</span>
+              </div>
+              <input
+                type="range"
+                min="1000000"
+                max="50000000"
+                step="500000"
+                value={infaqBulanan}
+                aria-label="Simulasi infaq bulanan masjid"
+                onChange={(e) => setInfaqBulanan(Number(e.target.value))}
+                className="w-full h-2 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-emerald-700"
+              />
+              <div className="flex justify-between text-xs text-stone-600 tabular-nums">
+                <span>Rp 1 Jt</span>
+                <span>Rp 25 Jt</span>
+                <span>Rp 50 Jt</span>
+              </div>
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-stone-50 border border-stone-100">
+                <div>
+                  <p className="text-xs font-medium text-stone-500">Operasional & Kebersihan (40%)</p>
+                  <p className="text-sm font-bold text-slate-900 tabular-nums">Rp {alokasiOperasional.toLocaleString('id-ID')}</p>
+                </div>
+                <span className="text-xs bg-white px-2.5 py-1 rounded border border-stone-200 text-stone-600 font-medium">Rutin</span>
+              </div>
+
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-stone-50 border border-stone-100">
+                <div>
+                  <p className="text-xs font-medium text-stone-500">Santunan Mustahik & Dhuafa (35%)</p>
+                  <p className="text-sm font-bold text-slate-900 tabular-nums">Rp {alokasiKesejahteraan.toLocaleString('id-ID')}</p>
+                </div>
+                <span className="text-xs bg-white px-2.5 py-1 rounded border border-stone-200 text-stone-600 font-medium">Sosial</span>
+              </div>
+
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-stone-50 border border-stone-100">
+                <div>
+                  <p className="text-xs font-medium text-stone-500">Kajian & Dakwah Jamaah (25%)</p>
+                  <p className="text-sm font-bold text-slate-900 tabular-nums">Rp {alokasiPemberdayaan.toLocaleString('id-ID')}</p>
+                </div>
+                <span className="text-xs bg-white px-2.5 py-1 rounded border border-stone-200 text-stone-600 font-medium">Dakwah</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-stone-500 italic pt-1">
+              *Tiap masjid dapat mengatur persentase pos anggaran kas secara mandiri melalui modul keuangan.
+            </p>
           </motion.div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="bg-stone-100/50 border-y-2 border-stone-200/40 py-20">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-12">
-            <StatItem value="150+" label="Masjid Terdaftar" />
-            <StatItem value="12k+" label="Jamaah Aktif" />
-            <StatItem value="Rp 2.4M" label="Total Transaksi" />
-            <StatItem value="100%" label="Keamanan Data" />
+      {/* Highlights Section (Substantive capabilities over invented proof) */}
+      <section className="bg-stone-50 border-b border-stone-200 py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <StatItem value="Multi-Tenant" label="Subdomain Resmi Per Masjid" />
+            <StatItem value="D1 + SQLite" label="Penyimpanan Data Terisolasi" />
+            <StatItem value="QRIS Dinamis" label="Infaq Digital Tanpa Rekening Pribadi" />
+            <StatItem value="Kiosk Display" label="Mode Layar TV Masjid & Jadwal Shalat" />
           </div>
         </div>
       </section>
@@ -83,7 +138,7 @@ export function LandingPage() {
       <section id="features" className="py-40 bg-[#fdfcfb]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-32 space-y-6">
-            <nav className="inline-flex items-center gap-2 text-primary/60 font-black text-[10px] uppercase tracking-[0.4em]">
+            <nav className="inline-flex items-center gap-2 text-primary font-medium text-xs">
               <Zap className="h-3 w-3" />
               <span>Full Stack Ecosystem</span>
             </nav>
@@ -127,33 +182,29 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="bg-slate-900 py-40 text-white relative overflow-hidden">
-        <motion.div 
-          animate={{ rotate: 360 }}
-          transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-          className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.05)_0%,transparent_70%)] opacity-50"
-        />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center mb-32">
-            <h2 className="text-6xl md:text-7xl font-display font-black tracking-tighter italic">Suara <span className="text-emerald-400">Pengurus.</span></h2>
+      {/* Operational Pillars (Substance over invented testimonials) */}
+      <section className="bg-slate-900 py-28 text-white relative">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16 space-y-3">
+            <h2 className="text-4xl md:text-5xl font-display font-bold tracking-tight">Tiga Pilar Tata Kelola Modern</h2>
+            <p className="text-stone-400 text-lg max-w-2xl mx-auto">Prinsip akuntansi syariah, keterbukaan informasi publik, dan kemudahan akses seluruh jamaah.</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-10">
-            <TestimonialCard
-              quote="MasjidHub memudahkan kami melaporkan infaq harian ke jamaah secara transparan. Kepercayaan meningkat pesat."
-              author="H. Ahmad Syarif"
-              role="Ketua DKM Masjid Al-Hikmah"
-            />
-            <TestimonialCard
-              quote="Fitur inventarisnya sangat membantu. Kami tidak pernah lagi lupa jadwal pemeliharaan sound system."
-              author="Ustadz Mansyur"
-              role="Sekretaris Masjid An-Nur"
-            />
-            <TestimonialCard
-              quote="Sebagai amil, modul ZIS sangat membantu pencatatan zakat fitrah. Data tersusun rapi dan sangat aman."
-              author="Bpk. Ridwan"
-              role="Amil Zakat Masjid Jami"
-            />
+          <div className="grid md:grid-cols-3 gap-8">
+            <div className="p-8 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-4">
+              <div className="text-emerald-400 font-bold text-xs tracking-wider">01 / AKUNTABILITAS KAS</div>
+              <h3 className="text-xl font-bold text-white">Pencatatan Multi-Rekening Real-Time</h3>
+              <p className="text-stone-300 text-sm leading-relaxed">Setiap transaksi infaq terpisah antara kas operasional, dana yatim, dan kas pembangunan tanpa percampuran saldo.</p>
+            </div>
+            <div className="p-8 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-4">
+              <div className="text-emerald-400 font-bold text-xs tracking-wider">02 / KEMUDAHAN JAMAAH</div>
+              <h3 className="text-xl font-bold text-white">Portal & Kiosk Informasi Terbuka</h3>
+              <p className="text-stone-300 text-sm leading-relaxed">Jadwal kajian, display countdown shalat masjid, dan unduhan laporan kas PDF bulanan dapat diakses langsung oleh jamaah.</p>
+            </div>
+            <div className="p-8 rounded-2xl bg-slate-800/60 border border-slate-700/60 space-y-4">
+              <div className="text-emerald-400 font-bold text-xs tracking-wider">03 / KEDAULATAN DATA</div>
+              <h3 className="text-xl font-bold text-white">Isolasi Multi-Tenant Mandiri</h3>
+              <p className="text-stone-300 text-sm leading-relaxed">Database terisolasi per tenant masjid. Data mustahik dan identitas muzakki terjaga kerahasiaannya dengan aman.</p>
+            </div>
           </div>
         </div>
       </section>
@@ -167,7 +218,7 @@ export function LandingPage() {
           </div>
           <div className="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto">
             <motion.div whileHover={{ y: -10 }} className="illustrative-card p-12 border-primary border-4 relative text-left hover:shadow-none hover:translate-y-0">
-              <div className="absolute -top-5 left-10 bg-primary text-white px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] shadow-xl">Most Helpful</div>
+              <div className="absolute -top-5 left-10 bg-primary text-white px-6 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] ">Most Helpful</div>
               <h3 className="text-4xl font-display font-black mb-4 tracking-tight italic text-slate-900">Free Tier</h3>
               <p className="text-muted-foreground text-lg mb-8 font-medium italic leading-relaxed">Sempurna untuk masjid yang baru memulai perjalanan digitalisasi.</p>
               <div className="text-6xl font-display font-black mb-12 tracking-tighter text-slate-900">Rp 0 <span className="text-lg font-black text-stone-300 uppercase tracking-widest ml-2">Legacy</span></div>
@@ -178,7 +229,7 @@ export function LandingPage() {
                 <li className="flex items-center gap-4 text-base font-bold text-slate-700"><CheckCircle2 className="h-5 w-5 text-emerald-500" /> Forum Ummat</li>
               </ul>
               <Link to="/register" className="block">
-                <Button className="w-full h-20 rounded-full text-xl font-black shadow-2xl shadow-primary/20 bg-primary">Daftar Sekarang</Button>
+                <Button className="w-full h-20 rounded-full text-xl font-black   bg-primary">Daftar Sekarang</Button>
               </Link>
             </motion.div>
             <motion.div whileHover={{ y: -10 }} className="illustrative-card p-12 opacity-80 text-left border-dashed hover:shadow-none hover:translate-y-0">
@@ -207,7 +258,7 @@ export function LandingPage() {
           </p>
           <div className="flex flex-wrap justify-center gap-8 pt-12">
             <Link to="/register">
-              <Button size="lg" variant="secondary" className="h-20 px-16 text-2xl rounded-full font-black shadow-[0_20px_50px_rgba(0,0,0,0.2)] hover:scale-105 transition-transform text-primary">
+              <Button size="lg" variant="secondary" className="h-20 px-16 text-2xl rounded-full font-black  hover:scale-105 transition-transform text-primary">
                 Mulai Gratis
               </Button>
             </Link>
@@ -225,9 +276,9 @@ export function LandingPage() {
 
 function StatItem({ value, label }: { value: string, label: string }) {
   return (
-    <div className="space-y-2 text-center">
-      <p className="text-6xl font-display font-black text-primary tracking-tighter italic leading-none">{value}</p>
-      <p className="text-[10px] text-muted-foreground font-black uppercase tracking-[0.3em]">{label}</p>
+    <div className="space-y-1.5 text-center">
+      <p className="text-2xl md:text-3xl font-display font-bold text-slate-900 tracking-tight">{value}</p>
+      <p className="text-xs text-stone-500 font-medium">{label}</p>
     </div>
   );
 }
@@ -238,7 +289,7 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode, titl
       whileHover={{ y: -8 }}
       className="illustrative-card p-12 space-y-8 group transition-all duration-500 border-none shadow-none hover:shadow-none hover:translate-y-0"
     >
-      <div className="bg-stone-50 w-20 h-20 rounded-3xl flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-all duration-500 shadow-sm border-2 border-stone-100/50">
+      <div className="bg-stone-50 w-20 h-20 rounded-3xl flex items-center justify-center group-hover:bg-primary/10 group-hover:text-primary transition-all duration-500 border-2 border-stone-100/50">
         {icon}
       </div>
       <div className="space-y-4 text-left">
@@ -246,18 +297,5 @@ function FeatureCard({ icon, title, description }: { icon: React.ReactNode, titl
         <p className="text-muted-foreground text-lg leading-relaxed font-medium">{description}</p>
       </div>
     </motion.div>
-  );
-}
-
-function TestimonialCard({ quote, author, role }: { quote: string, author: string, role: string }) {
-  return (
-    <div className="bg-white/5 border-2 border-white/10 p-12 rounded-[3.5rem] space-y-8 backdrop-blur-md hover:bg-white/10 transition-colors duration-500">
-      <Star className="h-10 w-10 text-amber-400 fill-amber-400" />
-      <p className="text-2xl italic font-display font-bold leading-relaxed text-emerald-50">"{quote}"</p>
-      <div className="pt-8 border-t border-white/10 text-left">
-        <p className="font-black text-xl tracking-tight italic">{author}</p>
-        <p className="text-emerald-400 text-[10px] font-black uppercase tracking-[0.2em] mt-1">{role}</p>
-      </div>
-    </div>
   );
 }

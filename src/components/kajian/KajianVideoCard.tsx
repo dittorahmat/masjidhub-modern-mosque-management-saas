@@ -24,7 +24,7 @@ export function KajianVideoCard({
   const thumbUrl = video.thumbnailUrl || (video.youtubeVideoId ? getYoutubeThumbnailUrl(video.youtubeVideoId) : '');
 
   return (
-    <Card className="group overflow-hidden border-stone-200/80 bg-white hover:shadow-xl transition-all duration-300 hover:-translate-y-1 rounded-2xl flex flex-col">
+    <Card className="group overflow-hidden border-stone-200/80 bg-white hover: transition-all duration-300 hover:-translate-y-1 rounded-2xl flex flex-col">
       {/* Thumbnail Banner */}
       <div className="relative aspect-video w-full bg-stone-900 overflow-hidden cursor-pointer" onClick={() => onPlay(video)}>
         {thumbUrl ? (
@@ -42,14 +42,14 @@ export function KajianVideoCard({
 
         {/* Dark Overlay with Play Icon on Hover */}
         <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-colors flex items-center justify-center">
-          <div className="w-12 h-12 rounded-full bg-rose-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+          <div className="w-12 h-12 rounded-full bg-rose-600/90 text-white flex items-center justify-center  group-hover:scale-110 transition-transform">
             <Play className="w-6 h-6 fill-white ml-0.5" />
           </div>
         </div>
 
         {/* Duration Badge */}
         {video.duration && (
-          <div className="absolute bottom-2.5 right-2.5 bg-black/80 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded font-mono font-medium flex items-center gap-1 shadow">
+          <div className="absolute bottom-2.5 right-2.5 bg-black/80 backdrop-blur-sm text-white text-xs px-2 py-0.5 rounded tabular-nums font-medium flex items-center gap-1">
             <Clock className="w-3 h-3 text-stone-300" />
             <span>{video.duration}</span>
           </div>

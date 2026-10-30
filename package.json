@@ -11,7 +11,7 @@
     "typecheck": "tsc -b",
     "check:size": "bun run scripts/check-file-size.ts",
     "check:touch": "bun run scripts/check-touch-targets.ts",
-    "validate": "bun run typecheck && bun run check:size && bun run check:touch",
+    "validate": "bun run typecheck && bun run check:size && bun run check:touch && bun run check:taste",
     "lint": "eslint --cache -f json --quiet .",
     "test": "bun test test/db-roundtrip.test.ts",
     "test:db": "bun test test/db-roundtrip.test.ts",
@@ -24,7 +24,8 @@
     "db:seed": "bun worker/db/seed.ts",
     "db:seed:local": "bun worker/db/seed.ts",
     "db:seed:d1": "bun worker/db/seed.ts --local-d1",
-    "db:generate-sql": "bun worker/db/generate-seed-sql.ts"
+    "db:generate-sql": "bun worker/db/generate-seed-sql.ts",
+    "check:taste": "bun run scripts/check-frontend-taste.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

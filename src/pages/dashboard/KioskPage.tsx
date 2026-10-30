@@ -130,7 +130,7 @@ export default function KioskPage() {
     <div
       className={cn(
         "bg-[#fdfcfb] font-sans overflow-hidden flex flex-col p-10 gap-10 select-none",
-        isMobileViewport ? "w-[1920px] h-[1080px] origin-top-left shrink-0" : "h-screen w-full"
+        isMobileViewport ? "w-[1920px] h-[1080px] origin-top-left shrink-0" : "h-[100dvh] w-full"
       )}
       style={isMobileViewport ? { transform: `scale(${scale})` } : undefined}
     >
@@ -165,7 +165,7 @@ export default function KioskPage() {
           {/* Top Header */}
           <header className="flex justify-between items-center bg-white p-10 rounded-[3.5rem] shadow-[10px_10px_0px_0px_rgba(0,0,0,0.03)] border-2 border-stone-100">
             <div className="flex items-center gap-8">
-              <div className="bg-emerald-600 p-6 rounded-[2rem] shadow-2xl shadow-emerald-600/30">
+              <div className="bg-emerald-600 p-6 rounded-[2rem]  ">
                 <Landmark className="h-12 w-12 text-white" />
               </div>
               <div className="space-y-1">
@@ -179,7 +179,7 @@ export default function KioskPage() {
               </div>
             </div>
             <div className="text-right flex flex-col items-end">
-              <p className="text-8xl font-mono font-black text-emerald-700 tabular-nums leading-none tracking-tighter">
+              <p className="text-8xl tabular-nums font-black text-emerald-700 tabular-nums leading-none tracking-tighter">
                 {format(now, 'HH:mm:ss')}
               </p>
               <div className="flex items-center gap-3 mt-4 text-stone-500 font-bold text-2xl italic">
@@ -220,7 +220,7 @@ export default function KioskPage() {
                       className={cn('h-1 w-8 mx-auto rounded-full', isActive ? 'bg-white/30' : 'bg-stone-100')}
                     />
                   </div>
-                  <p className="text-7xl md:text-8xl font-mono font-black tabular-nums tracking-tighter leading-none">
+                  <p className="text-7xl md:text-8xl tabular-nums font-black tabular-nums tracking-tighter leading-none">
                     {s?.time || '--:--'}
                   </p>
                   <div className="text-center space-y-1">
@@ -241,10 +241,10 @@ export default function KioskPage() {
 
           {/* Middle Ribbon: Financial Transparency & Info */}
           <section className="grid grid-cols-3 gap-8">
-            <div className="col-span-2 bg-slate-900 text-white p-8 rounded-[3rem] flex items-center justify-between shadow-2xl relative overflow-hidden group">
+            <div className="col-span-2 bg-slate-900 text-white p-8 rounded-[3rem] flex items-center justify-between  relative overflow-hidden group">
               <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-32 -mt-32 group-hover:scale-150 transition-transform duration-1000" />
               <div className="flex items-center gap-6 relative z-10">
-                <div className="p-4 bg-emerald-500 rounded-2xl shadow-lg shadow-emerald-500/20">
+                <div className="p-4 bg-emerald-500 rounded-2xl  ">
                   <TrendingUp className="h-8 w-8 text-slate-900" />
                 </div>
                 <div className="space-y-1">
@@ -277,16 +277,16 @@ export default function KioskPage() {
 
           {/* Footer / Running Text */}
           <footer className="bg-white border-2 border-stone-100 p-6 rounded-[2.5rem] flex items-center gap-8 overflow-hidden shadow-sm">
-            <div className="bg-slate-900 text-white px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-[0.3em] shrink-0 shadow-lg">
+            <div className="bg-slate-900 text-white px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-[0.3em] shrink-0 ">
               Warta Jumaat
             </div>
             <div className="flex-1 overflow-hidden whitespace-nowrap">
               <div className="inline-block animate-marquee font-black text-2xl text-slate-800 italic tracking-tight uppercase">
                 {tenant?.kioskRunningText || tenant?.runningText || 'Selamat datang di ' + (tenant?.name || 'MasjidHub')}
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                🕌 Mari makmurkan masjid kita bersama demi keberkahan ummat.
+                 Mari makmurkan masjid kita bersama demi keberkahan ummat.
                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; | &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                ✨ Update Kajian Ahad Subuh: "Fiqh Muamalah Modern" bersama Ustadz Dr. Ahmad Hidayat.
+                 Update Kajian Ahad Subuh: "Fiqh Muamalah Modern" bersama Ustadz Dr. Ahmad Hidayat.
               </div>
             </div>
           </footer>
@@ -307,13 +307,13 @@ export default function KioskPage() {
               transition={{ duration: 20, repeat: Infinity, ease: 'linear' }}
               className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.1)_0%,transparent_70%)]"
             />
-            <div className="bg-white/10 p-12 rounded-full mb-12 border border-white/20 relative z-10 shadow-2xl">
+            <div className="bg-white/10 p-12 rounded-full mb-12 border border-white/20 relative z-10 ">
               <Volume2 className="h-24 w-24 text-white animate-pulse" />
             </div>
             <h2 className="text-6xl font-display font-black mb-6 uppercase tracking-tighter italic text-emerald-400 relative z-10">
               Iqomah {PRAYER_NAMES[activePrayer as keyof typeof PRAYER_NAMES]}
             </h2>
-            <div className="text-[18rem] font-mono font-black leading-none tabular-nums shadow-emerald-500/50 drop-shadow-[0_35px_35px_rgba(16,185,129,0.3)] relative z-10">
+            <div className="text-[18rem] tabular-nums font-black leading-none tabular-nums  drop-shadow-[0_35px_35px_rgba(16,185,129,0.3)] relative z-10">
               {Math.floor(iqomahCountdown / 60)}:{String(iqomahCountdown % 60).padStart(2, '0')}
             </div>
             <p className="text-3xl text-emerald-200/60 font-display font-medium mt-12 italic relative z-10 max-w-3xl text-center leading-relaxed">
@@ -328,7 +328,7 @@ export default function KioskPage() {
   // If viewed on mobile, wrap with aspect-ratio locked TV preview container & header notice
   if (isMobileViewport) {
     return (
-      <div className="min-h-screen w-full bg-slate-950 flex flex-col text-white overflow-x-hidden">
+      <div className="min-h-[100dvh] w-full bg-slate-950 flex flex-col text-white overflow-x-hidden">
         {/* Mobile Preview Notice Header */}
         <div className="h-14 px-4 bg-slate-900 border-b border-white/10 flex items-center justify-between shrink-0 z-20">
           <div className="flex items-center gap-2 min-w-0">
@@ -356,7 +356,7 @@ export default function KioskPage() {
           style={{ height: `calc(100vh - 56px)` }}
         >
           <div
-            className="relative shadow-2xl rounded-2xl overflow-hidden border border-white/20 bg-black shrink-0"
+            className="relative  rounded-2xl overflow-hidden border border-white/20 bg-black shrink-0"
             style={{
               width: `${BASE_WIDTH * scale}px`,
               height: `${BASE_HEIGHT * scale}px`,

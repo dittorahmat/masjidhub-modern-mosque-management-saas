@@ -79,47 +79,39 @@ export function OverviewPage() {
   return (
     <div className="space-y-12 pb-10">
       {/* Refined Header (Issue #2: Distill) */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-stone-200/60 pb-10"
-      >
-        <div className="space-y-4">
-          <nav className="flex items-center gap-2 text-muted-foreground/60 font-bold text-[10px] uppercase tracking-[0.3em]">
-            <Sparkles className="h-3 w-3 text-primary/40" />
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-stone-200 pb-8">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-stone-500 font-medium text-xs">
             <span>Sistem Manajemen Masjid</span>
-            <ChevronRight className="h-3 w-3" />
-            <span className="text-primary/60">Ringkasan Eksekutif</span>
-          </nav>
-          
-          <div className="space-y-2">
-            <h1 className="text-5xl md:text-7xl font-display font-black tracking-tighter italic leading-none">
-              Ahlan wa Sahlan, <span className="text-primary underline decoration-stone-200 underline-offset-[12px]">{userName?.split(' ')[0] || 'Admin'}</span>
-            </h1>
-            <p className="text-muted-foreground text-xl font-medium max-w-2xl">
-              Laporan terkini untuk <span className="text-foreground font-bold">{tenantName}</span>. 
-              <span className="hidden md:inline"> Hari ini adalah waktu yang baik untuk mengoptimalkan program jamaah.</span>
-            </p>
+            <span>/</span>
+            <span className="text-emerald-800 font-semibold">{tenantName}</span>
           </div>
+          
+          <h1 className="text-3xl md:text-4xl font-display font-bold tracking-tight text-slate-900">
+            Ringkasan Eksekutif
+          </h1>
+          <p className="text-stone-500 text-sm">
+            Status keuangan, kehadiran jamaah, dan operasional terkini per hari ini.
+          </p>
         </div>
         
-        <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-3">
           <Link to={`/portal/${slug}`} target="_blank">
-            <Button variant="outline" className="rounded-full border-2 h-14 px-8 gap-3 font-bold shadow-sm hover:shadow-md transition-all text-base">
-              Portal Publik <ArrowUpRight className="h-5 w-5" />
+            <Button variant="outline" className="rounded-xl border border-stone-300 h-11 px-5 gap-2 font-medium text-sm">
+              Portal Publik <ArrowUpRight className="h-4 w-4" />
             </Button>
           </Link>
-          <Button className="rounded-full h-14 px-10 font-bold gap-3 shadow-xl shadow-primary/20 text-base">
-            <TrendingUp className="h-5 w-5" /> Laporan PDF
+          <Button className="rounded-xl h-11 px-6 font-medium gap-2 text-sm bg-emerald-700 hover:bg-emerald-800 text-white">
+            <TrendingUp className="h-4 w-4" /> Export Laporan
           </Button>
         </div>
-      </motion.div>
+      </div>
 
       {/* Financial Insights Section (ATM) */}
       {insights.length > 0 && (
         <div className="grid md:grid-cols-2 gap-4">
           {insights.map((insight, idx) => (
-            <Alert key={idx} variant={insight.type === 'danger' ? 'destructive' : 'default'} className="rounded-3xl border-2 bg-white shadow-sm border-amber-100 bg-amber-50/30">
+            <Alert key={idx} variant={insight.type === 'danger' ? 'destructive' : 'default'} className="rounded-3xl border-2 bg-white  border-amber-100 bg-amber-50/30">
               <AlertCircle className={`h-5 w-5 ${insight.type === 'danger' ? 'text-red-500' : 'text-amber-500'}`} />
               <AlertTitle className="font-bold text-lg mb-1">{insight.title}</AlertTitle>
               <AlertDescription className="text-muted-foreground font-medium">
@@ -181,7 +173,7 @@ export function OverviewPage() {
                 <CardDescription className="text-base font-medium">Analisis pemasukan infaq dan biaya operasional</CardDescription>
               </div>
               <div className="flex gap-2 p-1 bg-stone-100 rounded-xl">
-                 <Button size="sm" variant="ghost" className="rounded-lg font-bold text-xs h-8 px-4 bg-white shadow-sm">Mingguan</Button>
+                 <Button size="sm" variant="ghost" className="rounded-lg font-bold text-xs h-8 px-4 bg-white ">Mingguan</Button>
                  <Button size="sm" variant="ghost" className="rounded-lg font-bold text-xs h-8 px-4">Bulanan</Button>
               </div>
             </div>
@@ -246,12 +238,12 @@ export function OverviewPage() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-[2.5rem] border-none shadow-sm bg-primary text-white p-8 relative overflow-hidden group">
+          <Card className="rounded-[2.5rem] border-none  bg-primary text-white p-8 relative overflow-hidden group">
             <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700" />
             <div className="relative z-10 space-y-4">
                <h3 className="text-2xl font-black italic">Upgrade Ke Pro</h3>
                <p className="text-primary-foreground/80 font-medium">Dapatkan fitur Custom Domain & Multi-User untuk DKM Anda.</p>
-               <Button className="w-full bg-white text-primary hover:bg-stone-100 rounded-2xl h-12 font-bold shadow-xl shadow-black/20">
+               <Button className="w-full bg-white text-primary hover:bg-stone-100 rounded-2xl h-12 font-bold ">
                  Pelajari Paket Pro
                </Button>
             </div>
@@ -262,44 +254,29 @@ export function OverviewPage() {
   );
 }
 
-function StatCard({ title, value, icon, trend, trendType, color, delay }: any) {
-  const colorMap: any = {
-    primary: "bg-primary/10 text-primary border-primary/20",
-    blue: "bg-blue-50 text-blue-600 border-blue-100",
-    amber: "bg-amber-50 text-amber-600 border-amber-100",
-    emerald: "bg-emerald-50 text-emerald-600 border-emerald-100"
-  };
-
+function StatCard({ title, value, icon, trend }: any) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.5, ease: "easeOut" }}
-      whileHover={{ y: -8, transition: { duration: 0.2 } }}
-      className="illustrative-card p-6 flex flex-col justify-between group cursor-default"
-    >
-      <div className="flex justify-between items-start mb-4">
-        <div className={`p-4 rounded-2xl ${colorMap[color]} group-hover:scale-110 transition-transform duration-300`}>
+    <div className="rounded-2xl border border-stone-200 bg-white p-5 flex flex-col justify-between">
+      <div className="flex justify-between items-start mb-3">
+        <span className="text-xs font-semibold text-stone-500">{title}</span>
+        <div className="text-stone-400">
           {icon}
         </div>
-        {trend && (
-          <Badge variant="secondary" className="rounded-full font-bold text-[10px] px-3 py-1 bg-stone-100 text-stone-600">
-            {trend}
-          </Badge>
-        )}
       </div>
       <div className="space-y-1">
-        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.2em]">{title}</p>
-        <p className="text-3xl font-black italic tracking-tighter text-slate-900">{value}</p>
+        <p className="text-2xl font-bold tracking-tight text-slate-900 tabular-nums">{value}</p>
+        {trend && (
+          <p className="text-xs text-stone-500 font-medium">{trend}</p>
+        )}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
 function ActivityItem({ icon, title, time, value }: any) {
   return (
     <div className="flex items-center gap-4 group cursor-pointer">
-      <div className="p-3 bg-stone-50 rounded-2xl group-hover:bg-white group-hover:shadow-md transition-all">
+      <div className="p-3 bg-stone-50 rounded-2xl group-hover:bg-white transition-all">
         {icon}
       </div>
       <div className="flex-1 min-w-0">

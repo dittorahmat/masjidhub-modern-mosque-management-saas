@@ -2,12 +2,84 @@
 
 MasjidHub is a comprehensive, multi-tenant SaaS platform designed to modernize mosque operations, finance, inventory, and community events with role-based access control.
 
-## Quickstart
+## Quickstart & Cara Menjalankan Aplikasi
 
-1.  **Clone the repository**
-2.  **Install dependencies**: `bun install`
-3.  **Run development server**: `bun run dev`
-4.  **Deploy to Cloudflare**: `bun run deploy`
+Aplikasi ini mendukung **Dual-Deployment**: dapat berjalan di **Cloudflare Workers (Edge + D1 + R2)** maupun standalone di **VPS / Docker / On-Premise (Node.js / Bun + SQLite + Local Storage)**.
+
+### Persyaratan Awal (Prerequisites)
+- [Bun](https://bun.sh/) (disarankan) atau Node.js v20+
+- Salin konfigurasi environment:
+  ```bash
+  cp .env.example .env
+  ```
+- *Opsional (untuk fitur AI OCR Bank Statement & Chatbot):* Masukkan `GEMINI_API_KEY` di file `.env`.
+
+---
+
+### Opsi 1: Menjalankan di VPS / Server On-Premise (SQLite + Standalone)
+
+Cocok untuk hosting mandiri di VPS (Ubuntu, Debian, dll.), Docker container, atau server on-premise masjid.
+
+1. **Install dependencies:**
+   ```bash
+   bun install
+   # atau jika menggunakan npm: npm install
+   ```
+
+2. **Migrasi & Seed database SQLite awal:**
+   ```bash
+   bun run db:seed:local
+   ```
+   *Perintah ini akan membuat database SQLite di `./data/sqlite.db` serta mengisi data default masjid `al-hikmah` dan 5 user demo.*
+
+3. **Build frontend & server:**
+   ```bash
+   bun run build
+   ```
+
+4. **Jalankan server production:**
+   ```bash
+   # Menjalankan via Bun (Recommended):
+   bun run start
+
+   # Atau via Node.js:
+   npm run start:node
+   ```
+   Aplikasi akan berjalan di `http://localhost:3000` (atau sesuai `PORT` di `.env`).
+
+---
+
+### Opsi 2: Menjalankan di Cloudflare Workers (D1 + R2)
+
+Cocok untuk serverless edge deployment Cloudflare dengan database D1 terdistribusi dan object storage R2.
+
+1. **Install dependencies:**
+   ```bash
+   bun install
+   ```
+
+2. **Jalankan local development:**
+   ```bash
+   bun run dev
+   ```
+
+3. **Apply migrasi & seed ke Cloudflare D1:**
+   ```bash
+   # Migrasi ke D1 lokal simulasi:
+   npx wrangler d1 migrations apply masjidhub-db --local
+   bun run db:seed:d1
+
+   # Migrasi ke D1 remote production:
+   npx wrangler d1 migrations apply masjidhub-db --remote
+   bun run db:seed:d1 --remote
+   ```
+
+4. **Deploy ke Cloudflare Workers:**
+   ```bash
+   bun run deploy
+   ```
+
+---
 
 ## Key Features
 
@@ -99,9 +171,14 @@ masjidhub-saas/
 -   **Tailwind CSS**: Utility-first styling with a custom "Illustrative" theme (Emerald/Amber palette).
 
 #### Backend
--   **Hono**: A small, fast web framework for Cloudflare Workers.
--   **Durable Objects (DO)**: Provides strongly consistent storage. We use a single `GlobalDurableObject` binding as a KV-like engine, abstracted by an `IndexedEntity` library.
--   **Entities**: Data models like `TenantEntity` and `ZisTransactionEntity` encapsulate storage logic and index management.
+-   **Hono**: Framework web ultra-ringan dan cepat yang cross-runtime (berjalan di Cloudflare Workers maupun Node.js / Bun).
+-   **Database (Drizzle ORM & SQLite / D1)**:
+    - Di Cloudflare Workers menggunakan **Cloudflare D1** (`drizzle-orm/d1`).
+    - Di VPS / On-Premise menggunakan **SQLite** lokal (`better-sqlite3` di `./data/sqlite.db`).
+-   **Storage**:
+    - Di Cloudflare Workers menggunakan **Cloudflare R2** (`BUCKET`).
+    - Di VPS / On-Premise otomatis fallback ke **Local Filesystem** (`./uploads`).
+-   **AI Engine (Gemini 2.5 Flash Lite)**: Otomasi OCR pembaca rekening koran / bukti mutasi bank Indonesia dan AI chatbot asisten masjid.
 
 #### Multi-Tenancy
 -   **Isolation**: Each mosque (tenant) is identified by a unique `slug`.

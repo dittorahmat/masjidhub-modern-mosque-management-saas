@@ -42,7 +42,7 @@ export function DashboardLayout() {
   // 404 Guard
   if (isError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6 text-center">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background p-6 text-center">
         <div className="max-w-md w-full space-y-6 illustrative-card p-10">
           <SearchX className="h-16 w-16 text-muted-foreground mx-auto" />
           <h1 className="text-2xl font-display font-bold">Masjid Tidak Ditemukan</h1>
@@ -57,7 +57,7 @@ export function DashboardLayout() {
   // Loading state
   if (isFetching && !tenantName) {
     return (
-      <div className="h-screen flex flex-col items-center justify-center p-8 space-y-6">
+      <div className="h-[100dvh] flex flex-col items-center justify-center p-8 space-y-6">
         <div className="space-y-2 text-center">
           <Skeleton className="h-10 w-64 mx-auto" />
           <Skeleton className="h-4 w-48 mx-auto" />
@@ -75,7 +75,7 @@ export function DashboardLayout() {
   const hasAccess = slug === 'al-hikmah' || (currentTenantId && userTenantIds.includes(currentTenantId));
   if (currentTenantId && !hasAccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background p-6">
         <div className="max-w-md w-full text-center space-y-6 illustrative-card p-10 border-destructive">
           <ShieldAlert className="h-16 w-16 text-destructive mx-auto" />
           <h1 className="text-2xl font-display font-bold">Akses Ditolak</h1>
@@ -89,7 +89,7 @@ export function DashboardLayout() {
   }
   if (tenantStatus === 'pending') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-6">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background p-6">
         <div className="max-w-md w-full text-center space-y-6 illustrative-card p-10">
           <div className="w-20 h-20 bg-amber-100 rounded-full flex items-center justify-center mx-auto text-amber-600">
             <Clock className="h-10 w-10" />

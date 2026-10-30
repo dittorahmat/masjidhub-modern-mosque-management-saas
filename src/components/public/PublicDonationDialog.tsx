@@ -80,7 +80,7 @@ export function PublicDonationDialog({
             <div className="flex items-center justify-between text-xs">
               <Label className="font-bold text-slate-700">Pilih Nominal Infaq</Label>
               {activeAmount && activeAmount > 0 ? (
-                <span className="font-mono font-bold text-primary">
+                <span className="tabular-nums font-bold text-primary">
                   Rp {activeAmount.toLocaleString('id-ID')}
                 </span>
               ) : null}
@@ -159,7 +159,7 @@ export function PublicDonationDialog({
                 {copied ? "Tersalin" : "Salin No. Rekening"}
               </Button>
             </div>
-            <p className="text-xs sm:text-sm font-mono font-bold text-slate-800 break-words">
+            <p className="text-xs sm:text-sm tabular-nums font-bold text-slate-800 break-words">
               {tenant.bankInfo || "Bank Syariah Indonesia (BSI) - Konfirmasi ke Pengurus DKM"}
             </p>
             {tenant.bankAccounts && tenant.bankAccounts.length > 0 && (

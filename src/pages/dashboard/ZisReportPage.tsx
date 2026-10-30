@@ -133,8 +133,8 @@ export default function ZisReportPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <Card className="illustrative-card">
                 <CardContent className="p-6 flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-full bg-emerald-100 flex items-center justify-center">
-                    <TrendingUp className="h-6 w-6 text-emerald-600" />
+                  <div className="text-stone-400">
+                    <TrendingUp className="h-6 w-6" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total Transaksi</p>
@@ -145,8 +145,8 @@ export default function ZisReportPage() {
 
               <Card className="illustrative-card">
                 <CardContent className="p-6 flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center">
-                    <FileText className="h-6 w-6 text-blue-600" />
+                  <div className="text-stone-400">
+                    <FileText className="h-6 w-6" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Total Nominal</p>
@@ -157,8 +157,8 @@ export default function ZisReportPage() {
 
               <Card className="illustrative-card">
                 <CardContent className="p-6 flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-full bg-amber-100 flex items-center justify-center">
-                    <BarChart3 className="h-6 w-6 text-amber-600" />
+                  <div className="text-stone-400">
+                    <BarChart3 className="h-6 w-6" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Zakat Fitrah</p>
@@ -169,8 +169,8 @@ export default function ZisReportPage() {
 
               <Card className="illustrative-card">
                 <CardContent className="p-6 flex items-center gap-4">
-                  <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
-                    <PieChart className="h-6 w-6 text-purple-600" />
+                  <div className="text-stone-400">
+                    <PieChart className="h-6 w-6" />
                   </div>
                   <div>
                     <p className="text-sm text-muted-foreground">Infaq & Shadaqah</p>

@@ -27,7 +27,7 @@ export function AppLayout({
   return (
     <SidebarProvider defaultOpen={false}>
       <AppSidebar />
-      <SidebarInset className={cn("min-h-screen flex flex-col pb-16 md:pb-0", className)}>
+      <SidebarInset className={cn("min-h-[100dvh] flex flex-col pb-16 md:pb-0", className)}>
         {/* Mobile Header (< 768px) */}
         <MobileHeader onOpenMenu={() => setMobileMenuOpen(true)} />
 

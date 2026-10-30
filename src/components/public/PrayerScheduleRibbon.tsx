@@ -29,7 +29,7 @@ export function PrayerScheduleRibbon({ schedules }: PrayerScheduleRibbonProps) {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.08 * idx }}
-              className="min-w-[130px] sm:min-w-[140px] md:min-w-0 flex-1 snap-center bg-slate-900/95 backdrop-blur-xl text-white p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-[2rem] shadow-xl border border-white/10 flex flex-col items-center justify-center space-y-2 group hover:bg-primary transition-all duration-300 cursor-default shrink-0"
+              className="min-w-[130px] sm:min-w-[140px] md:min-w-0 flex-1 snap-center bg-slate-900/95 backdrop-blur-xl text-white p-4 sm:p-6 md:p-8 rounded-2xl sm:rounded-[2rem]  border border-white/10 flex flex-col items-center justify-center space-y-2 group hover:bg-primary transition-all duration-300 cursor-default shrink-0"
             >
               <div className="flex items-center gap-1.5 text-slate-400 group-hover:text-white/80 transition-colors">
                 <Clock className="h-3 w-3 sm:hidden" />
@@ -38,7 +38,7 @@ export function PrayerScheduleRibbon({ schedules }: PrayerScheduleRibbonProps) {
                 </span>
               </div>
 
-              <span className="text-2xl sm:text-3xl md:text-5xl font-mono font-black tracking-tighter tabular-nums">
+              <span className="text-2xl sm:text-3xl md:text-5xl font-bold tracking-tight tabular-nums">
                 {sched?.time || '--:--'}
               </span>
 

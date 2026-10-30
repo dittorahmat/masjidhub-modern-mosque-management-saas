@@ -138,6 +138,27 @@ export interface Tenant {
   bannerUrl?: string;
   runningText?: string;
   bankInfo?: string;
+  bankAccounts?: Array<{
+    bankName: string;
+    accountNumber: string;
+    holderName: string;
+    isPrimary?: boolean;
+    qrCodeUrl?: string;
+  }>;
+  dkmStructure?: Array<{
+    position: string;
+    name: string;
+    phone?: string;
+    photoUrl?: string;
+  }>;
+  prayerCalculationMethod?: string;
+  socialLinks?: {
+    instagram?: string;
+    youtube?: string;
+    facebook?: string;
+    whatsapp?: string;
+    website?: string;
+  };
   bio?: string;
   status: 'active' | 'pending' | 'suspended';
   aiEnabled?: boolean;
@@ -309,7 +330,9 @@ export interface Mustahik {
   phone?: string;
   address?: string;
   category: 'fakir' | 'miskin' | 'amil' | 'mualaf' | 'gharim' | 'riqab' | 'musafir' | 'other';
+  familyMembers?: number;
   status: 'active' | 'inactive' | 'completed';
+  assistanceReceived?: number;
   registrationDate: number;
   lastAssistanceDate?: number;
   notes?: string;

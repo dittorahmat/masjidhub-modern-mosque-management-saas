@@ -28,7 +28,8 @@ import type {
   ChatMessage,
   Ustadz,
   OrganizationMember,
-  Notification
+  Notification,
+  KajianVideo
 } from "@shared/types";
 
 // Cache check for DB seeding to avoid redundant seed executions in warm worker invocations
@@ -94,6 +95,7 @@ export function mapTenantRow(row: typeof schema.tenants.$inferSelect): Tenant {
     timezone: row.timezone ?? 'Asia/Jakarta',
     legalDocUrl: row.legalDocUrl ?? undefined,
     logoUrl: row.logoUrl ?? undefined,
+    qrisImageUrl: row.qrisImageUrl || '/qris-masjid.jpeg',
     bannerUrl: row.bannerUrl ?? undefined,
     runningText: row.runningText ?? undefined,
     bankInfo: row.bankInfo ?? undefined,
@@ -440,3 +442,20 @@ export const getTenantBySlugOrSubdomain = async (c: any, env: Env): Promise<Tena
   if (subdomain) return await getTenantBySlug(env, subdomain);
   return null;
 };
+
+export function mapKajianVideoRow(row: typeof schema.kajianVideos.$inferSelect): KajianVideo {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    title: row.title,
+    ustadzName: row.ustadzName ?? undefined,
+    youtubeUrl: row.youtubeUrl,
+    youtubeVideoId: row.youtubeVideoId,
+    description: row.description ?? undefined,
+    duration: row.duration ?? undefined,
+    category: row.category ?? undefined,
+    thumbnailUrl: row.thumbnailUrl ?? undefined,
+    publishedAt: row.publishedAt ? toTimestampMs(row.publishedAt) : undefined,
+    createdAt: toTimestampMs(row.createdAt),
+  };
+}

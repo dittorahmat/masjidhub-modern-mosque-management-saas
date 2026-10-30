@@ -56,6 +56,7 @@ export function registerTenantRoutes(app: Hono<any>) {
       timezone: body.timezone || 'Asia/Jakarta',
       bannerUrl: body.bannerUrl,
       logoUrl: body.logoUrl,
+      qrisImageUrl: body.qrisImageUrl,
       legalDocUrl: body.legalDocUrl,
       runningText: body.runningText,
       bankInfo: body.bankInfo,

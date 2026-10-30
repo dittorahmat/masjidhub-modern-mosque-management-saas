@@ -26,6 +26,7 @@ export default function PublicPortalPage() {
   const { slug } = useParams();
   const user = useAppStore(s => s.user);
   const [copied, setCopied] = useState(false);
+  const [donationOpen, setDonationOpen] = useState(false);
 
   const { data: tenant, isLoading: loadingTenant } = useQuery({
     queryKey: ['tenants', slug],
@@ -53,6 +54,26 @@ export default function PublicPortalPage() {
       setCopied(true);
       toast.success('Informasi rekening disalin');
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const qrisUrl = tenant?.qrisImageUrl || '/qris-masjid.jpeg';
+
+  const handleDownloadQris = async () => {
+    try {
+      const response = await fetch(qrisUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `qris-${tenant?.slug || 'masjid'}.jpeg`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success('QRIS berhasil diunduh');
+    } catch {
+      window.open(qrisUrl, '_blank');
     }
   };
 
@@ -206,27 +227,133 @@ export default function PublicPortalPage() {
           <Card className="rounded-[2rem] border-none shadow-sm bg-primary text-white p-8 md:p-10 flex flex-col justify-between overflow-hidden relative">
              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-16 -mt-16" />
              <div className="space-y-6 relative z-10">
-                <div className="inline-flex p-3 bg-white/10 rounded-2xl">
-                  <Wallet className="h-6 w-6" />
+                <div className="flex items-center justify-between">
+                  <div className="inline-flex p-3 bg-white/10 rounded-2xl">
+                    <Wallet className="h-6 w-6" />
+                  </div>
+                  <Badge variant="secondary" className="bg-white/20 text-white hover:bg-white/30 border-none px-3 py-1 text-xs font-semibold">
+                    QRIS & Transfer
+                  </Badge>
                 </div>
                 <h2 className="text-3xl font-display font-bold">Infaq & Shadaqah</h2>
                 <p className="text-primary-foreground/80 leading-relaxed">
-                  Bantu operasional masjid dengan donasi terbaik Anda.
+                  Bantu operasional dan kegiatan dakwah masjid dengan donasi terbaik Anda melalui QRIS resmi atau rekening.
                 </p>
+
+                {/* QRIS Preview Card */}
+                <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-md flex items-center gap-4">
+                  <div className="w-20 h-20 bg-stone-50 rounded-xl overflow-hidden border border-stone-200 shrink-0 p-1 flex items-center justify-center">
+                    <img 
+                      src={qrisUrl} 
+                      alt="QRIS Donasi" 
+                      className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-transform"
+                      onClick={() => setDonationOpen(true)}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-primary uppercase tracking-wider">Scan QRIS Nasional</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{tenant.name}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => setDonationOpen(true)}
+                        className="h-7 text-xs px-2.5 rounded-lg border-primary/20 text-primary hover:bg-primary/5"
+                      >
+                        Lihat QRIS
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={handleDownloadQris}
+                        className="h-7 text-xs px-2 rounded-lg text-slate-600 hover:text-slate-900 gap-1"
+                      >
+                        <Download className="h-3 w-3" /> Unduh
+                      </Button>
+                    </div>
+                  </div>
+                </div>
              </div>
-             <div className="mt-8 space-y-4 relative z-10">
+
+             <div className="mt-6 space-y-4 relative z-10">
                 <div className="p-4 bg-white/10 rounded-2xl border border-white/20 flex justify-between items-center group cursor-pointer hover:bg-white/20 transition-all" onClick={handleCopyBank}>
                   <div className="truncate pr-4">
-                    <p className="text-[10px] uppercase font-bold text-primary-foreground/60 mb-1">No. Rekening</p>
-                    <code className="text-sm font-mono font-bold">{tenant.bankInfo || 'Segera Hadir'}</code>
+                    <p className="text-[10px] uppercase font-bold text-primary-foreground/60 mb-1">No. Rekening Masjid</p>
+                    <code className="text-sm font-mono font-bold">{tenant.bankInfo || "Bank Syariah Indonesia (BSI) - Hubungi DKM"}</code>
                   </div>
                   <Button size="icon" variant="ghost" className="shrink-0 hover:bg-transparent text-white">
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
-                <Button className="w-full bg-white text-primary hover:bg-white/90 rounded-2xl h-12 font-bold shadow-lg shadow-black/10">
-                   Sumbang Sekarang
-                </Button>
+
+                <Dialog open={donationOpen} onOpenChange={setDonationOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="w-full bg-white text-primary hover:bg-white/90 rounded-2xl h-12 font-bold shadow-lg shadow-black/10">
+                       Sumbang Sekarang (QRIS)
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="rounded-[2.5rem] border-none p-8 max-w-md bg-white">
+                    <DialogHeader className="text-center sm:text-center space-y-2">
+                      <DialogTitle className="text-2xl font-display font-bold">Donasi & Infaq Masjid</DialogTitle>
+                      <CardDescription className="text-sm font-medium">
+                        Pindai kode QRIS di bawah ini menggunakan aplikasi mobile banking atau e-wallet apa saja (GoPay, OVO, Dana, LinkAja, BCA, BSI, Mandiri, dll).
+                      </CardDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-6 pt-4">
+                      {/* QRIS Image Display */}
+                      <div className="bg-stone-50 border border-stone-200 rounded-3xl p-6 flex flex-col items-center justify-center text-center">
+                        <div className="w-56 h-56 bg-white p-2 rounded-2xl shadow-sm border border-stone-100 flex items-center justify-center">
+                          <img 
+                            src={qrisUrl} 
+                            alt={`QRIS ${tenant.name}`} 
+                            className="w-full h-full object-contain rounded-xl"
+                          />
+                        </div>
+                        <p className="mt-3 font-display font-bold text-base text-slate-800">{tenant.name}</p>
+                        <p className="text-xs text-muted-foreground">NMID / Standar Pembayaran QRIS Nasional</p>
+                      </div>
+
+                      {/* Download Button */}
+                      <Button 
+                        onClick={handleDownloadQris}
+                        variant="outline" 
+                        className="w-full rounded-2xl h-12 font-bold gap-2 border-stone-200 hover:bg-stone-50"
+                      >
+                        <Download className="h-4 w-4 text-primary" /> Unduh Gambar QRIS
+                      </Button>
+
+                      {/* Bank Info Fallback */}
+                      <div className="rounded-2xl border border-stone-200 bg-stone-50/50 p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Transfer Bank Manual</span>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={handleCopyBank}
+                            className="h-7 text-xs px-2 gap-1 font-bold text-primary"
+                          >
+                            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                            {copied ? "Tersalin" : "Salin Rekening"}
+                          </Button>
+                        </div>
+                        <p className="text-sm font-mono font-bold text-slate-800 break-words">
+                          {tenant.bankInfo || "Bank Syariah Indonesia (BSI) - Konfirmasi ke Pengurus DKM"}
+                        </p>
+                        {tenant.bankAccounts && tenant.bankAccounts.length > 0 && (
+                          <div className="space-y-1.5 pt-2 border-t border-stone-200">
+                            {tenant.bankAccounts.map((acc, idx) => (
+                              <div key={idx} className="text-xs flex justify-between text-slate-600">
+                                <span className="font-medium">{acc.bankName}: {acc.accountNumber}</span>
+                                <span className="text-muted-foreground">a.n. {acc.holderName}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
              </div>
           </Card>
         </div>

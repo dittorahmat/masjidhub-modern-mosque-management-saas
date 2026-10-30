@@ -135,6 +135,7 @@ export interface Tenant {
   timezone?: string;
   legalDocUrl?: string;
   logoUrl?: string;
+  qrisImageUrl?: string;
   bannerUrl?: string;
   runningText?: string;
   bankInfo?: string;
@@ -361,4 +362,20 @@ export interface TenantWithStats extends Tenant {
   memberCount: number;
   totalBalance: number;
   eventCount: number;
+}
+
+
+export interface KajianVideo {
+  id: string;
+  tenantId: string;
+  title: string;
+  ustadzName?: string;
+  youtubeUrl: string;
+  youtubeVideoId: string;
+  description?: string;
+  duration?: string;
+  category?: string;
+  thumbnailUrl?: string;
+  publishedAt?: number;
+  createdAt: number;
 }

@@ -69,6 +69,7 @@ export async function seedDatabase(options: SeedOptions = {}) {
       longitude: t.longitude,
       timezone: t.timezone || 'Asia/Jakarta',
       logoUrl: t.logoUrl,
+      qrisImageUrl: t.qrisImageUrl || '/qris-masjid.jpeg',
       bannerUrl: t.bannerUrl,
       runningText: t.runningText,
       bankInfo: t.bankInfo,
@@ -211,6 +212,41 @@ export async function seedDatabase(options: SeedOptions = {}) {
     }).onConflictDoNothing();
   }
   if (verbose) console.log(`✓ Seeded ${MOCK_MONTHLY_PRAYER_SCHEDULES.length} monthly prayer schedule(s)`);
+
+  // 9. Kajian Videos
+  const defaultKajianVideos = [
+    {
+      id: 'kv-1',
+      tenantId: 't1',
+      title: 'Tafsir Surat Al-Fatihah & Makna Shalat Khusyu',
+      ustadzName: 'Ustadz Adi Hidayat, Lc., M.A.',
+      youtubeUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+      youtubeVideoId: 'dQw4w9WgXcQ',
+      description: 'Penjelasan mendalam tentang tafsir surat Al-Fatihah dan rahasia meraih kekhusyuan dalam shalat berjamaah.',
+      duration: '45:20',
+      category: 'kajian_rutin',
+      thumbnailUrl: 'https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg',
+      publishedAt: Math.floor(Date.now() / 1000) - 86400 * 3,
+    },
+    {
+      id: 'kv-2',
+      tenantId: 't1',
+      title: 'Fiqih Muamalah: Adab Berdagang & Menghindari Riba',
+      ustadzName: 'Ustadz Dr. Erwandi Tarmizi, M.A.',
+      youtubeUrl: 'https://www.youtube.com/watch?v=kJQP7kiw5Fk',
+      youtubeVideoId: 'kJQP7kiw5Fk',
+      description: 'Panduan fiqih muamalah kontemporer bagi para pelaku usaha muslim dan jamaah masjid.',
+      duration: '1 jam 12 mnt',
+      category: 'fiqih',
+      thumbnailUrl: 'https://img.youtube.com/vi/kJQP7kiw5Fk/hqdefault.jpg',
+      publishedAt: Math.floor(Date.now() / 1000) - 86400 * 7,
+    }
+  ];
+
+  for (const kv of defaultKajianVideos) {
+    await db.insert(schema.kajianVideos).values(kv).onConflictDoNothing();
+  }
+  if (verbose) console.log(`✓ Seeded ${defaultKajianVideos.length} kajian video(s)`);
 
   if (verbose) {
     console.log('✅ Seeding completed successfully!');

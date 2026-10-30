@@ -2,27 +2,35 @@ import { getStorage } from "./storage";
 import { Hono } from "hono";
 import type { Env } from './core-utils';
 import { getDb, schema } from "./db";
-import { eq, or, and, desc, sql } from "drizzle-orm";
+import { eq, or, and, desc, asc, sql } from "drizzle-orm";
 import { seedDatabase } from "./db/seed";
-import {
-  InventoryItemEntity,
-  EventEntity,
-  EventRegistrationEntity,
-  ForumPostEntity,
-  PrayerScheduleEntity,
-  NotificationEntity,
-  ChatRoomEntity,
-  ChatMessageEntity,
-  UstadzEntity,
-  ChatSessionEntity,
-  KnowledgeSnippetEntity,
-  BlogPostEntity,
-  PageSectionEntity,
-  MediaItemEntity,
-  AIChatMessageEntity,
-  MonthlyPrayerScheduleEntity
-} from "./entities";
-import type { UserRole, ZisTransaction, DailyPrayer, Tenant, AppUser, Transaction, Mustahik, StatementLog } from "@shared/types";
+import type {
+  UserRole,
+  ZisTransaction,
+  DailyPrayer,
+  Tenant,
+  AppUser,
+  Transaction,
+  Mustahik,
+  StatementLog,
+  InventoryItem,
+  Event,
+  EventRegistration,
+  ForumPost,
+  PrayerSchedule,
+  MonthlyPrayerSchedule,
+  ChatSession,
+  AIChatMessage,
+  BlogPost,
+  MediaItem,
+  PageSection,
+  KnowledgeSnippet,
+  ChatRoom,
+  ChatMessage,
+  Ustadz,
+  OrganizationMember,
+  Notification
+} from "@shared/types";
 import { ok, bad, notFound } from './core-utils';
 import { streamChatResponse, parseBankStatement } from "./ai-logic";
 import { streamText } from 'hono/streaming';
@@ -167,6 +175,233 @@ export function mapStatementLogRow(row: typeof schema.statementLogs.$inferSelect
     fileName: row.fileName,
     processedAt: row.processedAt > 1e11 ? row.processedAt : row.processedAt * 1000,
     transactionCount: row.transactionCount,
+  };
+}
+
+export function mapInventoryItemRow(row: typeof schema.inventoryItems.$inferSelect): InventoryItem {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    name: row.name,
+    quantity: row.quantity,
+    condition: row.condition,
+    location: row.location,
+    lastMaintenance: row.lastMaintenance ? (row.lastMaintenance > 1e11 ? row.lastMaintenance : row.lastMaintenance * 1000) : undefined,
+    maintenanceIntervalDays: row.maintenanceIntervalDays ?? undefined,
+    nextMaintenanceDate: row.nextMaintenanceDate ? (row.nextMaintenanceDate > 1e11 ? row.nextMaintenanceDate : row.nextMaintenanceDate * 1000) : undefined,
+  };
+}
+
+export function mapEventRow(row: typeof schema.events.$inferSelect): Event {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    title: row.title,
+    description: row.description,
+    date: row.date > 1e11 ? row.date : row.date * 1000,
+    location: row.location,
+    capacity: row.capacity,
+    currentRegistrations: row.currentRegistrations,
+    speaker: row.speaker ?? undefined,
+    minDonation: row.minDonation ?? undefined,
+    imageUrl: row.imageUrl ?? row.bannerUrl ?? undefined,
+    isFundraising: !!row.isFundraising,
+    targetAmount: row.targetAmount ?? undefined,
+    collectedAmount: row.collectedAmount ?? 0,
+  };
+}
+
+export function mapEventRegistrationRow(row: typeof schema.eventRegistrations.$inferSelect): EventRegistration {
+  return {
+    id: row.id,
+    eventId: row.eventId,
+    tenantId: row.tenantId,
+    name: row.name || row.attendeeName,
+    email: row.email || row.attendeeEmail || '',
+    phone: row.phone || row.attendeePhone || '',
+    registeredAt: row.registeredAt > 1e11 ? row.registeredAt : row.registeredAt * 1000,
+  };
+}
+
+export function mapMonthlyPrayerScheduleRow(row: typeof schema.monthlyPrayerSchedules.$inferSelect): MonthlyPrayerSchedule {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    year: row.year,
+    month: row.month,
+    days: (row.days as Record<string, DailyPrayer>) || {},
+  };
+}
+
+export function mapPrayerScheduleRow(row: typeof schema.prayerSchedules.$inferSelect): PrayerSchedule {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    date: row.date ?? undefined,
+    day: row.day,
+    prayerTime: row.prayerTime,
+    time: row.time,
+    imamName: row.imamName ?? undefined,
+    khatibName: row.khatibName ?? undefined,
+    khutbahTopic: row.khutbahTopic ?? undefined,
+    khutbahFileUrl: row.khutbahFileUrl ?? undefined,
+    isLocked: !!row.isLocked,
+  };
+}
+
+export function mapChatSessionRow(row: typeof schema.chatSessions.$inferSelect): ChatSession {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    userId: row.userId ?? null,
+    isAnonymous: !!row.isAnonymous,
+    sessionSalt: row.sessionSalt,
+    status: row.status,
+    createdAt: row.createdAt > 1e11 ? row.createdAt : row.createdAt * 1000,
+    lastActivityAt: row.lastActivityAt > 1e11 ? row.lastActivityAt : row.lastActivityAt * 1000,
+  };
+}
+
+export function mapAIChatMessageRow(row: typeof schema.aiChatMessages.$inferSelect): AIChatMessage {
+  return {
+    id: row.id,
+    sessionId: row.sessionId,
+    tenantId: row.tenantId,
+    senderRole: row.senderRole,
+    text: row.text,
+    timestamp: row.timestamp > 1e11 ? row.timestamp : row.timestamp * 1000,
+    metadata: (row.metadata as AIChatMessage['metadata']) ?? undefined,
+  };
+}
+
+export function mapBlogPostRow(row: typeof schema.blogPosts.$inferSelect): BlogPost {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    slug: row.slug,
+    title: row.title,
+    content: row.content,
+    authorId: row.authorId,
+    category: row.category,
+    status: row.status,
+    createdAt: row.createdAt > 1e11 ? row.createdAt : row.createdAt * 1000,
+    updatedAt: row.updatedAt > 1e11 ? row.updatedAt : row.updatedAt * 1000,
+  };
+}
+
+export function mapMediaItemRow(row: typeof schema.mediaItems.$inferSelect): MediaItem {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    cloudinaryUrl: row.cloudinaryUrl,
+    fileName: row.fileName,
+    fileType: row.fileType,
+    eventTag: row.eventTag ?? null,
+    isWatermarked: !!row.isWatermarked,
+    createdAt: row.createdAt > 1e11 ? row.createdAt : row.createdAt * 1000,
+  };
+}
+
+export function mapForumPostRow(row: typeof schema.forumPosts.$inferSelect): ForumPost {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    authorId: row.authorId,
+    authorName: row.authorName,
+    category: row.category,
+    title: row.title,
+    content: row.content,
+    createdAt: row.createdAt > 1e11 ? row.createdAt : row.createdAt * 1000,
+    isPinned: !!row.isPinned,
+    isBanned: !!row.isBanned,
+    likeCount: row.likeCount ?? 0,
+    commentCount: row.commentCount ?? 0,
+  };
+}
+
+export function mapPageSectionRow(row: typeof schema.pageSections.$inferSelect): PageSection {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    type: row.type,
+    order: row.order,
+    config: (row.config as Record<string, unknown>) || {},
+    isVisible: !!row.isVisible,
+    updatedAt: row.updatedAt > 1e11 ? row.updatedAt : row.updatedAt * 1000,
+  };
+}
+
+export function mapKnowledgeSnippetRow(row: typeof schema.knowledgeSnippets.$inferSelect): KnowledgeSnippet {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    content: row.content,
+    priority: row.priority,
+    expirationDate: row.expirationDate ? (row.expirationDate > 1e11 ? row.expirationDate : row.expirationDate * 1000) : null,
+    createdAt: row.createdAt > 1e11 ? row.createdAt : row.createdAt * 1000,
+  };
+}
+
+export function mapChatRoomRow(row: typeof schema.chatRooms.$inferSelect): ChatRoom {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    name: row.name,
+    participants: (row.participants as string[]) || [],
+    createdAt: row.createdAt > 1e11 ? row.createdAt : row.createdAt * 1000,
+    lastMessageAt: row.lastMessageAt ? (row.lastMessageAt > 1e11 ? row.lastMessageAt : row.lastMessageAt * 1000) : undefined,
+    lastMessage: row.lastMessage ?? undefined,
+  };
+}
+
+export function mapChatMessageRow(row: typeof schema.chatMessages.$inferSelect): ChatMessage {
+  return {
+    id: row.id,
+    chatRoomId: row.chatRoomId,
+    senderId: row.senderId,
+    senderName: row.senderName,
+    message: row.message,
+    timestamp: row.timestamp > 1e11 ? row.timestamp : row.timestamp * 1000,
+    readBy: (row.readBy as string[]) ?? undefined,
+  };
+}
+
+export function mapUstadzRow(row: typeof schema.ustadzList.$inferSelect): Ustadz {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    name: row.name,
+    specialization: row.specialization,
+    bio: row.bio ?? undefined,
+    isActive: !!row.isActive,
+    createdAt: row.createdAt > 1e11 ? row.createdAt : row.createdAt * 1000,
+  };
+}
+
+export function mapOrganizationMemberRow(row: typeof schema.organizationMembers.$inferSelect): OrganizationMember {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    name: row.name,
+    role: row.role,
+    imageUrl: row.imageUrl ?? undefined,
+    order: row.order,
+    bio: row.bio ?? undefined,
+    socialLinks: (row.socialLinks as OrganizationMember['socialLinks']) ?? undefined,
+  };
+}
+
+export function mapNotificationRow(row: typeof schema.notifications.$inferSelect): Notification {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    userId: row.userId ?? undefined,
+    title: row.title,
+    message: row.message,
+    type: row.type,
+    createdAt: row.createdAt > 1e11 ? row.createdAt : row.createdAt * 1000,
+    readAt: row.readAt ? (row.readAt > 1e11 ? row.readAt : row.readAt * 1000) : undefined,
+    isBroadcast: !!row.isBroadcast,
   };
 }
 
@@ -437,6 +672,9 @@ export function userRoutes(app: Hono<any>) {
   app.post('/api/:slug/chat/init', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
     const { userId, isAnonymous } = await c.req.json();
     const sessionId = crypto.randomUUID();
     const sessionSalt = generateSessionSalt();
@@ -445,8 +683,26 @@ export function userRoutes(app: Hono<any>) {
       const secret = c.env.INTERNAL_SECRET_KEY || 'default_secret_key';
       finalUserId = await generateShadowId(secret, `${finalUserId}:${tenant.id}:${sessionSalt}`);
     }
-    const session = await ChatSessionEntity.create(c.env, { id: sessionId, tenantId: tenant.id, userId: finalUserId, isAnonymous, sessionSalt, status: 'active', createdAt: Date.now(), lastActivityAt: Date.now() });
-    return ok(c, session);
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    await db.insert(schema.chatSessions).values({
+      id: sessionId,
+      tenantId: tenant.id,
+      userId: finalUserId,
+      isAnonymous: !!isAnonymous,
+      sessionSalt,
+      status: 'active',
+      createdAt: nowSec,
+      lastActivityAt: nowSec,
+    });
+
+    const rows = await db
+      .select()
+      .from(schema.chatSessions)
+      .where(and(eq(schema.chatSessions.id, sessionId), eq(schema.chatSessions.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapChatSessionRow(rows[0]));
   });
 
   app.post('/api/:slug/chat/send', async (c) => {
@@ -455,18 +711,65 @@ export function userRoutes(app: Hono<any>) {
     const { message, sessionId, history } = await c.req.json();
     const apiKey = c.env.GEMINI_API_KEY;
     if (!apiKey) return bad(c, 'AI configuration missing');
-    await AIChatMessageEntity.create(c.env, { id: crypto.randomUUID(), sessionId, tenantId: tenant.id, senderRole: 'user', text: message, timestamp: Date.now() });
-    const { items: allSnippets } = await KnowledgeSnippetEntity.list(c.env);
-    const tenantSnippetsRaw = allSnippets.filter(s => s.tenantId === tenant.id);
-    const tenantSnippets = tenantSnippetsRaw.map(s => s.content);
-    const trustedDomains = tenantSnippetsRaw.filter(s => s.content.toUpperCase().startsWith("REFERENSI:")).map(s => s.content.split(":")[1]?.trim()).flatMap(d => d ? d.split(",").map(i => i.trim()) : []).filter(Boolean);
-    const sessionInst = new ChatSessionEntity(c.env, sessionId);
-    await sessionInst.patch({ lastActivityAt: Date.now() });
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const userMsgId = crypto.randomUUID();
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    await db.insert(schema.aiChatMessages).values({
+      id: userMsgId,
+      sessionId,
+      tenantId: tenant.id,
+      senderRole: 'user',
+      text: message,
+      timestamp: nowSec,
+    });
+
+    const snippetsRows = await db
+      .select()
+      .from(schema.knowledgeSnippets)
+      .where(eq(schema.knowledgeSnippets.tenantId, tenant.id))
+      .orderBy(desc(schema.knowledgeSnippets.priority), desc(schema.knowledgeSnippets.createdAt));
+
+    const tenantSnippets = snippetsRows.map(s => s.content);
+    const trustedDomains = snippetsRows
+      .filter(s => s.content.toUpperCase().startsWith("REFERENSI:"))
+      .map(s => s.content.split(":")[1]?.trim())
+      .flatMap(d => d ? d.split(",").map(i => i.trim()) : [])
+      .filter(Boolean);
+
+    await db
+      .update(schema.chatSessions)
+      .set({ lastActivityAt: Math.floor(Date.now() / 1000) })
+      .where(and(eq(schema.chatSessions.id, sessionId), eq(schema.chatSessions.tenantId, tenant.id)));
+
     return streamText(c, async (stream) => {
       let accumulatedText = "";
-      const responseStream = streamChatResponse(apiKey, message, { mosqueName: tenant.name, snippets: tenantSnippets, fileUris: [], persona: tenant.selectedPersona || 'marbot_muda', trustedDomains }, history);
-      for await (const chunk of responseStream) { accumulatedText += chunk; await stream.write(chunk); }
-      await AIChatMessageEntity.create(c.env, { id: crypto.randomUUID(), sessionId, tenantId: tenant.id, senderRole: 'ai', text: accumulatedText, timestamp: Date.now() });
+      const responseStream = streamChatResponse(
+        apiKey,
+        message,
+        {
+          mosqueName: tenant.name,
+          snippets: tenantSnippets,
+          fileUris: [],
+          persona: tenant.selectedPersona || 'marbot_muda',
+          trustedDomains,
+        },
+        history
+      );
+      for await (const chunk of responseStream) {
+        accumulatedText += chunk;
+        await stream.write(chunk);
+      }
+      await db.insert(schema.aiChatMessages).values({
+        id: crypto.randomUUID(),
+        sessionId,
+        tenantId: tenant.id,
+        senderRole: 'ai',
+        text: accumulatedText,
+        timestamp: Math.floor(Date.now() / 1000),
+      });
     });
   });
 
@@ -474,8 +777,16 @@ export function userRoutes(app: Hono<any>) {
   app.get('/api/:slug/knowledge/files', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await MediaItemEntity.list(c.env);
-    return ok(c, items.filter(m => m.tenantId === tenant.id && m.fileType === 'application/pdf'));
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.mediaItems)
+      .where(and(eq(schema.mediaItems.tenantId, tenant.id), eq(schema.mediaItems.fileType, 'application/pdf')))
+      .orderBy(desc(schema.mediaItems.createdAt));
+
+    return ok(c, rows.map(mapMediaItemRow));
   });
 
   app.post('/api/:slug/knowledge/upload', async (c) => {
@@ -485,15 +796,58 @@ export function userRoutes(app: Hono<any>) {
     const file = body['file'] as File;
     if (!file || file.type !== 'application/pdf') return bad(c, 'Only PDF allowed');
     if (file.size > 50 * 1024 * 1024) return bad(c, 'File too large');
-    const media = await MediaItemEntity.create(c.env, { id: crypto.randomUUID(), tenantId: tenant.id, cloudinaryUrl: "", fileName: file.name, fileType: file.type, eventTag: 'knowledge_base', isWatermarked: false, createdAt: Date.now() });
-    return ok(c, media);
+
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const mediaId = crypto.randomUUID();
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    let storageUrl = "";
+    let r2Key: string | null = null;
+    try {
+      const storage = getStorage(c.env);
+      const buffer = await file.arrayBuffer();
+      r2Key = `knowledge/${tenant.id}/${mediaId}-${file.name}`;
+      const uploadRes = await storage.put(r2Key, buffer, { contentType: file.type });
+      storageUrl = uploadRes.url;
+    } catch (e) {
+      console.warn('Storage upload fallback:', e);
+    }
+
+    await db.insert(schema.mediaItems).values({
+      id: mediaId,
+      tenantId: tenant.id,
+      cloudinaryUrl: storageUrl,
+      r2Key,
+      fileName: file.name,
+      fileType: file.type,
+      eventTag: 'knowledge_base',
+      isWatermarked: false,
+      createdAt: nowSec,
+    });
+
+    const rows = await db
+      .select()
+      .from(schema.mediaItems)
+      .where(and(eq(schema.mediaItems.id, mediaId), eq(schema.mediaItems.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapMediaItemRow(rows[0]));
   });
 
   app.get('/api/:slug/knowledge/snippets', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await KnowledgeSnippetEntity.list(c.env);
-    return ok(c, items.filter(s => s.tenantId === tenant.id).sort((a, b) => b.createdAt - a.createdAt));
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.knowledgeSnippets)
+      .where(eq(schema.knowledgeSnippets.tenantId, tenant.id))
+      .orderBy(desc(schema.knowledgeSnippets.createdAt));
+
+    return ok(c, rows.map(mapKnowledgeSnippetRow));
   });
 
   app.post('/api/:slug/knowledge/snippets', async (c) => {
@@ -501,49 +855,145 @@ export function userRoutes(app: Hono<any>) {
     if (!tenant) return notFound(c, 'Tenant not found');
     const body = await c.req.json();
     if (body.content?.length > 2000) return bad(c, 'Snippet too long');
-    const snippet = await KnowledgeSnippetEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id, createdAt: Date.now() });
-    return ok(c, snippet);
+
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const snippetId = body.id || crypto.randomUUID();
+    const nowSec = Math.floor(Date.now() / 1000);
+    const rawExp = body.expirationDate;
+    const expVal = rawExp ? (rawExp > 1e11 ? Math.floor(rawExp / 1000) : rawExp) : null;
+
+    await db.insert(schema.knowledgeSnippets).values({
+      id: snippetId,
+      tenantId: tenant.id,
+      content: body.content,
+      priority: Number(body.priority || 0),
+      expirationDate: expVal,
+      createdAt: nowSec,
+    });
+
+    const rows = await db
+      .select()
+      .from(schema.knowledgeSnippets)
+      .where(and(eq(schema.knowledgeSnippets.id, snippetId), eq(schema.knowledgeSnippets.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapKnowledgeSnippetRow(rows[0]));
   });
 
   // --- AI CHAT MANAGEMENT ---
   app.get('/api/:slug/chat/sessions', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await ChatSessionEntity.list(c.env);
-    return ok(c, items.filter(s => s.tenantId === tenant.id).sort((a, b) => b.lastActivityAt - a.lastActivityAt));
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.chatSessions)
+      .where(eq(schema.chatSessions.tenantId, tenant.id))
+      .orderBy(desc(schema.chatSessions.lastActivityAt));
+
+    return ok(c, rows.map(mapChatSessionRow));
   });
 
   app.get('/api/:slug/chat/sessions/:id/messages', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
-    const { items: messages } = await AIChatMessageEntity.list(c.env);
-    return ok(c, messages.filter(m => m.sessionId === c.req.param('id') && m.tenantId === tenant.id).sort((a, b) => a.timestamp - b.timestamp).slice(-100));
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const sessionId = c.req.param('id');
+
+    const rows = await db
+      .select()
+      .from(schema.aiChatMessages)
+      .where(and(eq(schema.aiChatMessages.sessionId, sessionId), eq(schema.aiChatMessages.tenantId, tenant.id)))
+      .orderBy(asc(schema.aiChatMessages.timestamp))
+      .limit(100);
+
+    return ok(c, rows.map(mapAIChatMessageRow));
   });
 
   app.post('/api/:slug/chat/sessions/:id/reply', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
     const { text } = await c.req.json();
-    const msg = await AIChatMessageEntity.create(c.env, { id: crypto.randomUUID(), sessionId: c.req.param('id'), tenantId: tenant.id, senderRole: 'admin', text, timestamp: Date.now() });
-    const sessionInst = new ChatSessionEntity(c.env, c.req.param('id'));
-    await sessionInst.patch({ lastActivityAt: Date.now() });
-    return ok(c, msg);
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const sessionId = c.req.param('id');
+    const msgId = crypto.randomUUID();
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    await db.insert(schema.aiChatMessages).values({
+      id: msgId,
+      sessionId,
+      tenantId: tenant.id,
+      senderRole: 'admin',
+      text,
+      timestamp: nowSec,
+    });
+
+    await db
+      .update(schema.chatSessions)
+      .set({ lastActivityAt: nowSec })
+      .where(and(eq(schema.chatSessions.id, sessionId), eq(schema.chatSessions.tenantId, tenant.id)));
+
+    const rows = await db
+      .select()
+      .from(schema.aiChatMessages)
+      .where(and(eq(schema.aiChatMessages.id, msgId), eq(schema.aiChatMessages.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapAIChatMessageRow(rows[0]));
   });
 
   // --- SMART CMS & BLOG ---
   app.get('/api/:slug/blog', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await BlogPostEntity.list(c.env);
-    return ok(c, items.filter(p => p.tenantId === tenant.id).sort((a, b) => b.createdAt - a.createdAt));
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.blogPosts)
+      .where(eq(schema.blogPosts.tenantId, tenant.id))
+      .orderBy(desc(schema.blogPosts.createdAt));
+
+    return ok(c, rows.map(mapBlogPostRow));
   });
 
   app.post('/api/:slug/blog', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
     const body = await c.req.json();
-    const post = await BlogPostEntity.create(c.env, { ...body, id: crypto.randomUUID(), tenantId: tenant.id, createdAt: Date.now(), updatedAt: Date.now() });
-    return ok(c, post);
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const postId = body.id || crypto.randomUUID();
+    const nowSec = Math.floor(Date.now() / 1000);
+    const postSlug = body.slug || normalizeText(body.title || 'post-' + postId.slice(0, 8));
+
+    await db.insert(schema.blogPosts).values({
+      id: postId,
+      tenantId: tenant.id,
+      slug: postSlug,
+      title: body.title || '',
+      content: body.content || '',
+      authorId: body.authorId || 'admin',
+      category: body.category || 'umum',
+      status: body.status || 'draft',
+      createdAt: nowSec,
+      updatedAt: nowSec,
+    });
+
+    const rows = await db
+      .select()
+      .from(schema.blogPosts)
+      .where(and(eq(schema.blogPosts.id, postId), eq(schema.blogPosts.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapBlogPostRow(rows[0]));
   });
 
   app.get('/api/quran/search', async (c) => {
@@ -563,8 +1013,16 @@ export function userRoutes(app: Hono<any>) {
   app.get('/api/:slug/page/sections', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await PageSectionEntity.list(c.env);
-    return ok(c, items.filter(s => s.tenantId === tenant.id).sort((a, b) => a.order - b.order));
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.pageSections)
+      .where(eq(schema.pageSections.tenantId, tenant.id))
+      .orderBy(asc(schema.pageSections.order));
+
+    return ok(c, rows.map(mapPageSectionRow));
   });
 
   app.post('/api/:slug/page/sections', async (c) => {
@@ -573,11 +1031,36 @@ export function userRoutes(app: Hono<any>) {
     const sections = await c.req.json();
     if (!Array.isArray(sections)) return bad(c, 'Invalid format');
     for (const s of sections) { if (s.config?.color && !isValidHex(s.config.color)) return bad(c, 'Invalid color'); }
-    const { items: existing } = await PageSectionEntity.list(c.env);
-    const toDelete = existing.filter(s => s.tenantId === tenant.id).map(s => s.id);
-    if (toDelete.length > 0) await PageSectionEntity.deleteMany(c.env, toDelete);
-    const created = await Promise.all(sections.map((s: any, index: number) => PageSectionEntity.create(c.env, { ...s, id: crypto.randomUUID(), tenantId: tenant.id, order: index, updatedAt: Date.now() })));
-    return ok(c, created);
+
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    // Delete existing sections for this tenant
+    await db
+      .delete(schema.pageSections)
+      .where(eq(schema.pageSections.tenantId, tenant.id));
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    for (let index = 0; index < sections.length; index++) {
+      const s = sections[index];
+      await db.insert(schema.pageSections).values({
+        id: s.id || crypto.randomUUID(),
+        tenantId: tenant.id,
+        type: s.type || 'hero',
+        order: index,
+        config: s.config || {},
+        isVisible: s.isVisible !== undefined ? !!s.isVisible : true,
+        updatedAt: nowSec,
+      });
+    }
+
+    const rows = await db
+      .select()
+      .from(schema.pageSections)
+      .where(eq(schema.pageSections.tenantId, tenant.id))
+      .orderBy(asc(schema.pageSections.order));
+
+    return ok(c, rows.map(mapPageSectionRow));
   });
 
   // --- FINANCE & ZIS ---
@@ -1401,26 +1884,579 @@ export function userRoutes(app: Hono<any>) {
     return ok(c, { success: true });
   });
 
+  // --- INVENTORY ---
   app.get('/api/:slug/inventory', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await InventoryItemEntity.list(c.env);
-    return ok(c, items.filter(i => i.tenantId === tenant.id));
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.inventoryItems)
+      .where(eq(schema.inventoryItems.tenantId, tenant.id))
+      .orderBy(desc(schema.inventoryItems.createdAt));
+
+    return ok(c, rows.map(mapInventoryItemRow));
   });
 
-  // --- EVENTS & FORUM ---
+  app.post('/api/:slug/inventory', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const itemId = body.id || crypto.randomUUID();
+    const nowSec = Math.floor(Date.now() / 1000);
+    const rawPurchaseDate = body.purchaseDate;
+    const purchaseDateVal = rawPurchaseDate ? (rawPurchaseDate > 1e11 ? Math.floor(rawPurchaseDate / 1000) : rawPurchaseDate) : null;
+    const rawLastMaint = body.lastMaintenance;
+    const lastMaintVal = rawLastMaint ? (rawLastMaint > 1e11 ? Math.floor(rawLastMaint / 1000) : rawLastMaint) : null;
+    const rawNextMaint = body.nextMaintenanceDate;
+    const nextMaintVal = rawNextMaint ? (rawNextMaint > 1e11 ? Math.floor(rawNextMaint / 1000) : rawNextMaint) : null;
+
+    await db.insert(schema.inventoryItems).values({
+      id: itemId,
+      tenantId: tenant.id,
+      name: body.name || '',
+      category: body.category || 'umum',
+      quantity: Number(body.quantity || 1),
+      condition: body.condition || 'good',
+      location: body.location || '',
+      purchaseDate: purchaseDateVal,
+      purchasePrice: body.purchasePrice !== undefined ? Number(body.purchasePrice) : null,
+      source: body.source ?? null,
+      notes: body.notes ?? null,
+      maintenanceLog: body.maintenanceLog ?? null,
+      lastMaintenance: lastMaintVal,
+      maintenanceIntervalDays: body.maintenanceIntervalDays !== undefined ? Number(body.maintenanceIntervalDays) : null,
+      nextMaintenanceDate: nextMaintVal,
+      createdAt: nowSec,
+    });
+
+    const rows = await db
+      .select()
+      .from(schema.inventoryItems)
+      .where(and(eq(schema.inventoryItems.id, itemId), eq(schema.inventoryItems.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapInventoryItemRow(rows[0]));
+  });
+
+  app.put('/api/:slug/inventory/:id', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db
+      .select()
+      .from(schema.inventoryItems)
+      .where(and(eq(schema.inventoryItems.id, id), eq(schema.inventoryItems.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Item not found');
+
+    const updateData: Partial<typeof schema.inventoryItems.$inferInsert> = {};
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.category !== undefined) updateData.category = body.category;
+    if (body.quantity !== undefined) updateData.quantity = Number(body.quantity);
+    if (body.condition !== undefined) updateData.condition = body.condition;
+    if (body.location !== undefined) updateData.location = body.location;
+    if (body.purchaseDate !== undefined) {
+      updateData.purchaseDate = body.purchaseDate ? (body.purchaseDate > 1e11 ? Math.floor(body.purchaseDate / 1000) : body.purchaseDate) : null;
+    }
+    if (body.purchasePrice !== undefined) updateData.purchasePrice = Number(body.purchasePrice);
+    if (body.source !== undefined) updateData.source = body.source;
+    if (body.notes !== undefined) updateData.notes = body.notes;
+    if (body.maintenanceLog !== undefined) updateData.maintenanceLog = body.maintenanceLog;
+    if (body.lastMaintenance !== undefined) {
+      updateData.lastMaintenance = body.lastMaintenance ? (body.lastMaintenance > 1e11 ? Math.floor(body.lastMaintenance / 1000) : body.lastMaintenance) : null;
+    }
+    if (body.maintenanceIntervalDays !== undefined) updateData.maintenanceIntervalDays = Number(body.maintenanceIntervalDays);
+    if (body.nextMaintenanceDate !== undefined) {
+      updateData.nextMaintenanceDate = body.nextMaintenanceDate ? (body.nextMaintenanceDate > 1e11 ? Math.floor(body.nextMaintenanceDate / 1000) : body.nextMaintenanceDate) : null;
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await db
+        .update(schema.inventoryItems)
+        .set(updateData)
+        .where(and(eq(schema.inventoryItems.id, id), eq(schema.inventoryItems.tenantId, tenant.id)));
+    }
+
+    const rows = await db
+      .select()
+      .from(schema.inventoryItems)
+      .where(and(eq(schema.inventoryItems.id, id), eq(schema.inventoryItems.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapInventoryItemRow(rows[0]));
+  });
+
+  app.delete('/api/:slug/inventory/:id', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db
+      .select()
+      .from(schema.inventoryItems)
+      .where(and(eq(schema.inventoryItems.id, id), eq(schema.inventoryItems.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Item not found');
+
+    await db
+      .delete(schema.inventoryItems)
+      .where(and(eq(schema.inventoryItems.id, id), eq(schema.inventoryItems.tenantId, tenant.id)));
+
+    return ok(c, { success: true });
+  });
+
+  // --- EVENTS & REGISTRATIONS ---
   app.get('/api/:slug/events', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await EventEntity.list(c.env);
-    return ok(c, items.filter(e => e.tenantId === tenant.id));
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.events)
+      .where(eq(schema.events.tenantId, tenant.id))
+      .orderBy(desc(schema.events.date));
+
+    return ok(c, rows.map(mapEventRow));
   });
 
+  app.post('/api/:slug/events', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const eventId = body.id || crypto.randomUUID();
+    const rawDate = body.date ?? Date.now();
+    const dateVal = rawDate > 1e11 ? Math.floor(rawDate / 1000) : rawDate;
+    const capacityVal = Number(body.capacity || body.maxCapacity || 0);
+    const currentRegs = Number(body.currentRegistrations || body.registeredCount || 0);
+
+    await db.insert(schema.events).values({
+      id: eventId,
+      tenantId: tenant.id,
+      title: body.title || '',
+      description: body.description || '',
+      speaker: body.speaker ?? null,
+      date: dateVal,
+      time: body.time ?? null,
+      location: body.location || '',
+      category: body.category || 'kajian',
+      bannerUrl: body.bannerUrl ?? body.imageUrl ?? null,
+      imageUrl: body.imageUrl ?? body.bannerUrl ?? null,
+      capacity: capacityVal,
+      maxCapacity: capacityVal,
+      currentRegistrations: currentRegs,
+      registeredCount: currentRegs,
+      isRegistrationOpen: body.isRegistrationOpen !== undefined ? !!body.isRegistrationOpen : true,
+      requireCheckIn: body.requireCheckIn !== undefined ? !!body.requireCheckIn : false,
+      minDonation: body.minDonation !== undefined ? Number(body.minDonation) : null,
+      isFundraising: body.isFundraising !== undefined ? !!body.isFundraising : false,
+      targetAmount: body.targetAmount !== undefined ? Number(body.targetAmount) : null,
+      collectedAmount: body.collectedAmount !== undefined ? Number(body.collectedAmount) : 0,
+      createdAt: Math.floor(Date.now() / 1000),
+    });
+
+    const rows = await db
+      .select()
+      .from(schema.events)
+      .where(and(eq(schema.events.id, eventId), eq(schema.events.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapEventRow(rows[0]));
+  });
+
+  app.put('/api/:slug/events/:id', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db
+      .select()
+      .from(schema.events)
+      .where(and(eq(schema.events.id, id), eq(schema.events.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Event not found');
+
+    const updateData: Partial<typeof schema.events.$inferInsert> = {};
+    if (body.title !== undefined) updateData.title = body.title;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.speaker !== undefined) updateData.speaker = body.speaker;
+    if (body.date !== undefined) {
+      updateData.date = body.date > 1e11 ? Math.floor(body.date / 1000) : body.date;
+    }
+    if (body.time !== undefined) updateData.time = body.time;
+    if (body.location !== undefined) updateData.location = body.location;
+    if (body.category !== undefined) updateData.category = body.category;
+    if (body.imageUrl !== undefined || body.bannerUrl !== undefined) {
+      updateData.imageUrl = body.imageUrl ?? body.bannerUrl;
+      updateData.bannerUrl = body.bannerUrl ?? body.imageUrl;
+    }
+    if (body.capacity !== undefined || body.maxCapacity !== undefined) {
+      const cap = Number(body.capacity ?? body.maxCapacity);
+      updateData.capacity = cap;
+      updateData.maxCapacity = cap;
+    }
+    if (body.currentRegistrations !== undefined || body.registeredCount !== undefined) {
+      const reg = Number(body.currentRegistrations ?? body.registeredCount);
+      updateData.currentRegistrations = reg;
+      updateData.registeredCount = reg;
+    }
+    if (body.isRegistrationOpen !== undefined) updateData.isRegistrationOpen = !!body.isRegistrationOpen;
+    if (body.requireCheckIn !== undefined) updateData.requireCheckIn = !!body.requireCheckIn;
+    if (body.minDonation !== undefined) updateData.minDonation = Number(body.minDonation);
+    if (body.isFundraising !== undefined) updateData.isFundraising = !!body.isFundraising;
+    if (body.targetAmount !== undefined) updateData.targetAmount = Number(body.targetAmount);
+    if (body.collectedAmount !== undefined) updateData.collectedAmount = Number(body.collectedAmount);
+
+    if (Object.keys(updateData).length > 0) {
+      await db
+        .update(schema.events)
+        .set(updateData)
+        .where(and(eq(schema.events.id, id), eq(schema.events.tenantId, tenant.id)));
+    }
+
+    const rows = await db
+      .select()
+      .from(schema.events)
+      .where(and(eq(schema.events.id, id), eq(schema.events.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapEventRow(rows[0]));
+  });
+
+  app.delete('/api/:slug/events/:id', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db
+      .select()
+      .from(schema.events)
+      .where(and(eq(schema.events.id, id), eq(schema.events.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Event not found');
+
+    await db
+      .delete(schema.events)
+      .where(and(eq(schema.events.id, id), eq(schema.events.tenantId, tenant.id)));
+
+    return ok(c, { success: true });
+  });
+
+  // Event Registrations & Check-In
+  app.get('/api/:slug/events/:id/registrations', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const eventId = c.req.param('id');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.eventRegistrations)
+      .where(and(eq(schema.eventRegistrations.eventId, eventId), eq(schema.eventRegistrations.tenantId, tenant.id)))
+      .orderBy(desc(schema.eventRegistrations.registeredAt));
+
+    return ok(c, rows.map(mapEventRegistrationRow));
+  });
+
+  app.post('/api/:slug/events/:id/register', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const eventId = c.req.param('id');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const eventRows = await db
+      .select()
+      .from(schema.events)
+      .where(and(eq(schema.events.id, eventId), eq(schema.events.tenantId, tenant.id)))
+      .limit(1);
+
+    if (eventRows.length === 0) return notFound(c, 'Event not found');
+    const currentEvent = eventRows[0];
+
+    const regId = body.id || crypto.randomUUID();
+    const nowSec = Math.floor(Date.now() / 1000);
+    const attendeeName = body.name || body.attendeeName || '';
+    const attendeeEmail = body.email || body.attendeeEmail || null;
+    const attendeePhone = body.phone || body.attendeePhone || null;
+
+    await db.insert(schema.eventRegistrations).values({
+      id: regId,
+      tenantId: tenant.id,
+      eventId,
+      attendeeName,
+      name: attendeeName,
+      attendeeEmail,
+      email: attendeeEmail,
+      attendeePhone,
+      phone: attendeePhone,
+      status: body.status || 'registered',
+      checkedInAt: null,
+      registeredAt: nowSec,
+      createdAt: nowSec,
+    });
+
+    const newCount = (currentEvent.currentRegistrations || 0) + 1;
+    await db
+      .update(schema.events)
+      .set({
+        currentRegistrations: newCount,
+        registeredCount: newCount,
+      })
+      .where(and(eq(schema.events.id, eventId), eq(schema.events.tenantId, tenant.id)));
+
+    const createdRows = await db
+      .select()
+      .from(schema.eventRegistrations)
+      .where(and(eq(schema.eventRegistrations.id, regId), eq(schema.eventRegistrations.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapEventRegistrationRow(createdRows[0]));
+  });
+
+  app.post('/api/:slug/events/:eventId/check-in', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const eventId = c.req.param('eventId');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const regId = body.registrationId || body.id;
+    if (!regId) return bad(c, 'Registration ID is required');
+
+    const regRows = await db
+      .select()
+      .from(schema.eventRegistrations)
+      .where(and(
+        eq(schema.eventRegistrations.id, regId),
+        eq(schema.eventRegistrations.eventId, eventId),
+        eq(schema.eventRegistrations.tenantId, tenant.id)
+      ))
+      .limit(1);
+
+    if (regRows.length === 0) return notFound(c, 'Registration not found');
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    await db
+      .update(schema.eventRegistrations)
+      .set({
+        status: 'attended',
+        checkedInAt: nowSec,
+      })
+      .where(and(
+        eq(schema.eventRegistrations.id, regId),
+        eq(schema.eventRegistrations.tenantId, tenant.id)
+      ));
+
+    const updatedRows = await db
+      .select()
+      .from(schema.eventRegistrations)
+      .where(and(eq(schema.eventRegistrations.id, regId), eq(schema.eventRegistrations.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapEventRegistrationRow(updatedRows[0]));
+  });
+
+  // --- FORUM ---
   app.get('/api/:slug/forum', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await ForumPostEntity.list(c.env);
-    return ok(c, items.filter(p => p.tenantId === tenant.id));
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.forumPosts)
+      .where(eq(schema.forumPosts.tenantId, tenant.id))
+      .orderBy(desc(schema.forumPosts.isPinned), desc(schema.forumPosts.createdAt));
+
+    return ok(c, rows.map(mapForumPostRow));
+  });
+
+  app.post('/api/:slug/forum', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const postId = body.id || crypto.randomUUID();
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    await db.insert(schema.forumPosts).values({
+      id: postId,
+      tenantId: tenant.id,
+      authorId: body.authorId || 'anon',
+      authorName: body.authorName || 'Jamaah',
+      category: body.category || 'diskusi',
+      title: body.title || '',
+      content: body.content || '',
+      isPinned: !!body.isPinned,
+      isBanned: !!body.isBanned,
+      likeCount: Number(body.likeCount || 0),
+      commentCount: Number(body.commentCount || 0),
+      createdAt: nowSec,
+    });
+
+    const rows = await db
+      .select()
+      .from(schema.forumPosts)
+      .where(and(eq(schema.forumPosts.id, postId), eq(schema.forumPosts.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapForumPostRow(rows[0]));
+  });
+
+  app.delete('/api/:slug/forum/:id', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db
+      .select()
+      .from(schema.forumPosts)
+      .where(and(eq(schema.forumPosts.id, id), eq(schema.forumPosts.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Post not found');
+
+    await db
+      .delete(schema.forumPosts)
+      .where(and(eq(schema.forumPosts.id, id), eq(schema.forumPosts.tenantId, tenant.id)));
+
+    return ok(c, { success: true });
+  });
+
+  app.post('/api/:slug/forum/:id/pin', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db
+      .select()
+      .from(schema.forumPosts)
+      .where(and(eq(schema.forumPosts.id, id), eq(schema.forumPosts.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Post not found');
+
+    await db
+      .update(schema.forumPosts)
+      .set({ isPinned: true })
+      .where(and(eq(schema.forumPosts.id, id), eq(schema.forumPosts.tenantId, tenant.id)));
+
+    const rows = await db
+      .select()
+      .from(schema.forumPosts)
+      .where(and(eq(schema.forumPosts.id, id), eq(schema.forumPosts.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapForumPostRow(rows[0]));
+  });
+
+  app.post('/api/:slug/forum/:id/unpin', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db
+      .select()
+      .from(schema.forumPosts)
+      .where(and(eq(schema.forumPosts.id, id), eq(schema.forumPosts.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Post not found');
+
+    await db
+      .update(schema.forumPosts)
+      .set({ isPinned: false })
+      .where(and(eq(schema.forumPosts.id, id), eq(schema.forumPosts.tenantId, tenant.id)));
+
+    const rows = await db
+      .select()
+      .from(schema.forumPosts)
+      .where(and(eq(schema.forumPosts.id, id), eq(schema.forumPosts.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapForumPostRow(rows[0]));
+  });
+
+  // User Management (for Forum moderation / banning)
+  app.get('/api/:slug/users', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const allUsers = await db.select().from(schema.users);
+    const mapped = allUsers.map(mapUserRow);
+    return ok(c, mapped.filter(u => u.tenantIds.includes(tenant.id)));
+  });
+
+  app.post('/api/:slug/users/:id/ban', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const userId = c.req.param('id');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+    if (existing.length === 0) return notFound(c, 'User not found');
+    const user = mapUserRow(existing[0]);
+    if (!user.tenantIds.includes(tenant.id)) return notFound(c, 'User not found in this tenant');
+
+    await db.update(schema.users).set({ isBanned: true, updatedAt: Math.floor(Date.now() / 1000) }).where(eq(schema.users.id, userId));
+    return ok(c, { success: true, message: 'User banned successfully' });
+  });
+
+  app.post('/api/:slug/users/:id/unban', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const userId = c.req.param('id');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db.select().from(schema.users).where(eq(schema.users.id, userId)).limit(1);
+    if (existing.length === 0) return notFound(c, 'User not found');
+    const user = mapUserRow(existing[0]);
+    if (!user.tenantIds.includes(tenant.id)) return notFound(c, 'User not found in this tenant');
+
+    await db.update(schema.users).set({ isBanned: false, updatedAt: Math.floor(Date.now() / 1000) }).where(eq(schema.users.id, userId));
+    return ok(c, { success: true, message: 'User unbanned successfully' });
   });
 
   app.get('/api/:slug/members', async (c) => {
@@ -1433,38 +2469,306 @@ export function userRoutes(app: Hono<any>) {
     return ok(c, mapped.filter(u => u.tenantIds.includes(tenant.id)));
   });
 
+  // --- ORGANIZATION MEMBERS ---
+  app.get('/api/:slug/organization', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.organizationMembers)
+      .where(eq(schema.organizationMembers.tenantId, tenant.id))
+      .orderBy(asc(schema.organizationMembers.order));
+
+    return ok(c, rows.map(mapOrganizationMemberRow));
+  });
+
+  app.post('/api/:slug/organization', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const memberId = body.id || crypto.randomUUID();
+
+    await db.insert(schema.organizationMembers).values({
+      id: memberId,
+      tenantId: tenant.id,
+      name: body.name || '',
+      role: body.role || '',
+      imageUrl: body.imageUrl ?? null,
+      order: Number(body.order || 0),
+      bio: body.bio ?? null,
+      socialLinks: body.socialLinks ?? null,
+    });
+
+    const rows = await db
+      .select()
+      .from(schema.organizationMembers)
+      .where(and(eq(schema.organizationMembers.id, memberId), eq(schema.organizationMembers.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapOrganizationMemberRow(rows[0]));
+  });
+
+  app.put('/api/:slug/organization/:id', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db
+      .select()
+      .from(schema.organizationMembers)
+      .where(and(eq(schema.organizationMembers.id, id), eq(schema.organizationMembers.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Member not found');
+
+    const updateData: Partial<typeof schema.organizationMembers.$inferInsert> = {};
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.role !== undefined) updateData.role = body.role;
+    if (body.imageUrl !== undefined) updateData.imageUrl = body.imageUrl;
+    if (body.order !== undefined) updateData.order = Number(body.order);
+    if (body.bio !== undefined) updateData.bio = body.bio;
+    if (body.socialLinks !== undefined) updateData.socialLinks = body.socialLinks;
+
+    if (Object.keys(updateData).length > 0) {
+      await db
+        .update(schema.organizationMembers)
+        .set(updateData)
+        .where(and(eq(schema.organizationMembers.id, id), eq(schema.organizationMembers.tenantId, tenant.id)));
+    }
+
+    const rows = await db
+      .select()
+      .from(schema.organizationMembers)
+      .where(and(eq(schema.organizationMembers.id, id), eq(schema.organizationMembers.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapOrganizationMemberRow(rows[0]));
+  });
+
+  app.delete('/api/:slug/organization/:id', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db
+      .select()
+      .from(schema.organizationMembers)
+      .where(and(eq(schema.organizationMembers.id, id), eq(schema.organizationMembers.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Member not found');
+
+    await db
+      .delete(schema.organizationMembers)
+      .where(and(eq(schema.organizationMembers.id, id), eq(schema.organizationMembers.tenantId, tenant.id)));
+
+    return ok(c, { success: true });
+  });
+
   // --- PRAYER SCHEDULE HUB ---
   app.get('/api/:slug/prayer-schedules', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
-    const { items: monthly } = await MonthlyPrayerScheduleEntity.list(c.env);
-    const tenantMonthly = monthly.filter(m => m.tenantId === tenant.id);
-    const allDaily: any[] = [];
-    tenantMonthly.forEach(m => {
-      Object.entries(m.days).forEach(([date, prayers]) => {
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    // 1. Fetch monthly schedules
+    const monthly = await db
+      .select()
+      .from(schema.monthlyPrayerSchedules)
+      .where(eq(schema.monthlyPrayerSchedules.tenantId, tenant.id));
+
+    const allDaily: PrayerSchedule[] = [];
+    monthly.forEach(m => {
+      const days = (m.days as Record<string, DailyPrayer>) || {};
+      Object.entries(days).forEach(([date, prayers]) => {
         const dayDate = new Date(date);
-        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const dayNames: PrayerSchedule['day'][] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
         const dayName = dayNames[dayDate.getDay()];
-        ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'].forEach(pt => {
-          allDaily.push({ id: `${m.id}:${date}:${pt}`, tenantId: tenant.id, date, day: dayName, prayerTime: pt, time: (prayers as any)[pt], imamName: prayers.imamName, isLocked: prayers.isLocked });
+        (['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'] as const).forEach(pt => {
+          allDaily.push({
+            id: `${m.id}:${date}:${pt}`,
+            tenantId: tenant.id,
+            date,
+            day: dayName,
+            prayerTime: pt,
+            time: (prayers as any)[pt],
+            imamName: prayers.imamName,
+            isLocked: prayers.isLocked,
+          });
         });
       });
     });
-    return ok(c, allDaily);
+
+    // 2. Fetch individual prayer schedules (if any)
+    const individual = await db
+      .select()
+      .from(schema.prayerSchedules)
+      .where(eq(schema.prayerSchedules.tenantId, tenant.id));
+
+    const mappedIndividual = individual.map(mapPrayerScheduleRow);
+    const combined = [...allDaily, ...mappedIndividual];
+
+    return ok(c, combined);
+  });
+
+  app.post('/api/:slug/prayer-schedules', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const scheduleId = body.id || crypto.randomUUID();
+
+    await db.insert(schema.prayerSchedules).values({
+      id: scheduleId,
+      tenantId: tenant.id,
+      date: body.date ?? null,
+      day: body.day || 'friday',
+      prayerTime: body.prayerTime || 'fajr',
+      time: body.time || '05:00',
+      imamName: body.imamName ?? null,
+      khatibName: body.khatibName ?? null,
+      khutbahTopic: body.khutbahTopic ?? null,
+      khutbahFileUrl: body.khutbahFileUrl ?? null,
+      isLocked: !!body.isLocked,
+    });
+
+    const rows = await db
+      .select()
+      .from(schema.prayerSchedules)
+      .where(and(eq(schema.prayerSchedules.id, scheduleId), eq(schema.prayerSchedules.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapPrayerScheduleRow(rows[0]));
   });
 
   app.put('/api/:slug/prayer-schedules/:id', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
     const body = await c.req.json();
-    const inst = new PrayerScheduleEntity(c.env, c.req.param('id'));
-    const state = await inst.getState();
-    if (!state || state.tenantId !== tenant.id) return notFound(c, 'Schedule not found');
-    const allowedFields = ['time', 'imamName', 'isLocked', 'date'];
-    const filteredBody: any = {};
-    allowedFields.forEach(f => { if (body[f] !== undefined) filteredBody[f] = body[f]; });
-    await inst.patch(filteredBody);
-    return ok(c, await inst.getState());
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    // Case A: ID is in composite format tenantId:YYYY-MM:YYYY-MM-DD:prayerTime
+    const parts = id.split(':');
+    if (parts.length >= 4) {
+      const monthId = `${parts[0]}:${parts[1]}`;
+      const dateKey = parts[2];
+      const prayerTime = parts[3] as 'fajr' | 'dhuhr' | 'asr' | 'maghrib' | 'isha';
+
+      const monthlyRows = await db
+        .select()
+        .from(schema.monthlyPrayerSchedules)
+        .where(and(eq(schema.monthlyPrayerSchedules.id, monthId), eq(schema.monthlyPrayerSchedules.tenantId, tenant.id)))
+        .limit(1);
+
+      if (monthlyRows.length > 0) {
+        const mRow = monthlyRows[0];
+        const days = { ...(mRow.days as Record<string, DailyPrayer>) };
+        const dayEntry = { ...(days[dateKey] || { fajr: '', dhuhr: '', asr: '', maghrib: '', isha: '' }) };
+
+        if (body.time !== undefined) {
+          (dayEntry as any)[prayerTime] = body.time;
+        }
+        if (body.imamName !== undefined) dayEntry.imamName = body.imamName;
+        if (body.isLocked !== undefined) dayEntry.isLocked = body.isLocked;
+
+        days[dateKey] = dayEntry;
+
+        await db
+          .update(schema.monthlyPrayerSchedules)
+          .set({ days, updatedAt: Math.floor(Date.now() / 1000) })
+          .where(and(eq(schema.monthlyPrayerSchedules.id, monthId), eq(schema.monthlyPrayerSchedules.tenantId, tenant.id)));
+
+        const dayDate = new Date(dateKey);
+        const dayNames: PrayerSchedule['day'][] = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const dayName = dayNames[dayDate.getDay()];
+
+        const updatedSchedule: PrayerSchedule = {
+          id,
+          tenantId: tenant.id,
+          date: dateKey,
+          day: dayName,
+          prayerTime,
+          time: (dayEntry as any)[prayerTime] || '',
+          imamName: dayEntry.imamName,
+          isLocked: dayEntry.isLocked,
+        };
+
+        return ok(c, updatedSchedule);
+      }
+    }
+
+    // Case B: Regular prayer_schedules table row
+    const existing = await db
+      .select()
+      .from(schema.prayerSchedules)
+      .where(and(eq(schema.prayerSchedules.id, id), eq(schema.prayerSchedules.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Schedule not found');
+
+    const updateData: Partial<typeof schema.prayerSchedules.$inferInsert> = {};
+    if (body.time !== undefined) updateData.time = body.time;
+    if (body.imamName !== undefined) updateData.imamName = body.imamName;
+    if (body.khatibName !== undefined) updateData.khatibName = body.khatibName;
+    if (body.khutbahTopic !== undefined) updateData.khutbahTopic = body.khutbahTopic;
+    if (body.khutbahFileUrl !== undefined) updateData.khutbahFileUrl = body.khutbahFileUrl;
+    if (body.isLocked !== undefined) updateData.isLocked = !!body.isLocked;
+    if (body.date !== undefined) updateData.date = body.date;
+    if (body.day !== undefined) updateData.day = body.day;
+    if (body.prayerTime !== undefined) updateData.prayerTime = body.prayerTime;
+
+    if (Object.keys(updateData).length > 0) {
+      await db
+        .update(schema.prayerSchedules)
+        .set(updateData)
+        .where(and(eq(schema.prayerSchedules.id, id), eq(schema.prayerSchedules.tenantId, tenant.id)));
+    }
+
+    const rows = await db
+      .select()
+      .from(schema.prayerSchedules)
+      .where(and(eq(schema.prayerSchedules.id, id), eq(schema.prayerSchedules.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapPrayerScheduleRow(rows[0]));
+  });
+
+  app.delete('/api/:slug/prayer-schedules/:id', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db
+      .select()
+      .from(schema.prayerSchedules)
+      .where(and(eq(schema.prayerSchedules.id, id), eq(schema.prayerSchedules.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Schedule not found');
+
+    await db
+      .delete(schema.prayerSchedules)
+      .where(and(eq(schema.prayerSchedules.id, id), eq(schema.prayerSchedules.tenantId, tenant.id)));
+
+    return ok(c, { success: true });
   });
 
   app.post('/api/:slug/prayer-schedules/sync-month', async (c) => {
@@ -1473,33 +2777,443 @@ export function userRoutes(app: Hono<any>) {
     if (!tenant.latitude || !tenant.longitude) return bad(c, 'Lokasi masjid belum diatur.');
     const { year, month } = await c.req.json();
     const monthId = `${tenant.id}:${year}-${String(month).padStart(2, '0')}`;
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
     try {
       const res = await fetch(`https://api.aladhan.com/v1/calendar?latitude=${tenant.latitude}&longitude=${tenant.longitude}&method=20&month=${month}&year=${year}`);
       const data: any = await res.json();
       if (data.code !== 200) throw new Error('API Error');
-      const prayerMap: any = { 'Fajr': 'fajr', 'Dhuhr': 'dhuhr', 'Asr': 'asr', 'Maghrib': 'maghrib', 'Isha': 'isha' };
-      const inst = new MonthlyPrayerScheduleEntity(c.env, monthId);
-      const existing = await inst.exists() ? await inst.getState() : null;
-      const days: Record<string, DailyPrayer> = existing ? { ...existing.days } : {};
+      const prayerMap: Record<string, string> = { 'Fajr': 'fajr', 'Dhuhr': 'dhuhr', 'Asr': 'asr', 'Maghrib': 'maghrib', 'Isha': 'isha' };
+
+      const existingRows = await db
+        .select()
+        .from(schema.monthlyPrayerSchedules)
+        .where(and(eq(schema.monthlyPrayerSchedules.id, monthId), eq(schema.monthlyPrayerSchedules.tenantId, tenant.id)))
+        .limit(1);
+
+      const existingState = existingRows.length > 0 ? (existingRows[0].days as Record<string, DailyPrayer>) : null;
+      const days: Record<string, DailyPrayer> = existingState ? { ...existingState } : {};
+
       for (const dayData of data.data) {
         const [d, m, y] = dayData.date.gregorian.date.split('-');
         const isoDate = `${y}-${m}-${d}`;
         if (days[isoDate]?.isLocked) continue;
         const daily: any = days[isoDate] || {};
-        for (const [apiName, internalName] of Object.entries(prayerMap)) { daily[internalName as string] = dayData.timings[apiName as string].split(' ')[0]; }
+        for (const [apiName, internalName] of Object.entries(prayerMap)) {
+          daily[internalName] = dayData.timings[apiName].split(' ')[0];
+        }
         days[isoDate] = daily;
       }
-      await MonthlyPrayerScheduleEntity.create(c.env, { id: monthId, tenantId: tenant.id, year, month, days });
+
+      const nowSec = Math.floor(Date.now() / 1000);
+      if (existingRows.length > 0) {
+        await db
+          .update(schema.monthlyPrayerSchedules)
+          .set({ days, updatedAt: nowSec })
+          .where(and(eq(schema.monthlyPrayerSchedules.id, monthId), eq(schema.monthlyPrayerSchedules.tenantId, tenant.id)));
+      } else {
+        await db.insert(schema.monthlyPrayerSchedules).values({
+          id: monthId,
+          tenantId: tenant.id,
+          year: Number(year),
+          month: Number(month),
+          days,
+          createdAt: nowSec,
+          updatedAt: nowSec,
+        });
+      }
+
       return ok(c, { success: true, monthId });
-    } catch (e) { return bad(c, 'Gagal sinkronisasi bulan ini.'); }
+    } catch (e) {
+      return bad(c, 'Gagal sinkronisasi bulan ini.');
+    }
+  });
+
+  // --- NOTIFICATIONS ---
+  app.get('/api/:slug/notifications', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.notifications)
+      .where(eq(schema.notifications.tenantId, tenant.id))
+      .orderBy(desc(schema.notifications.createdAt));
+
+    return ok(c, rows.map(mapNotificationRow));
+  });
+
+  app.get('/api/:slug/notifications/unread', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.notifications)
+      .where(and(eq(schema.notifications.tenantId, tenant.id), sql`${schema.notifications.readAt} IS NULL`))
+      .orderBy(desc(schema.notifications.createdAt));
+
+    return ok(c, rows.map(mapNotificationRow));
+  });
+
+  app.post('/api/:slug/notifications', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const notifId = body.id || crypto.randomUUID();
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    await db.insert(schema.notifications).values({
+      id: notifId,
+      tenantId: tenant.id,
+      userId: body.userId ?? null,
+      title: body.title || '',
+      message: body.message || '',
+      type: body.type || 'info',
+      isBroadcast: body.isBroadcast !== undefined ? !!body.isBroadcast : false,
+      readAt: null,
+      createdAt: nowSec,
+    });
+
+    const rows = await db
+      .select()
+      .from(schema.notifications)
+      .where(and(eq(schema.notifications.id, notifId), eq(schema.notifications.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapNotificationRow(rows[0]));
+  });
+
+  app.post('/api/:slug/notifications/:id/read', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db
+      .select()
+      .from(schema.notifications)
+      .where(and(eq(schema.notifications.id, id), eq(schema.notifications.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Notification not found');
+
+    const nowSec = Math.floor(Date.now() / 1000);
+    await db
+      .update(schema.notifications)
+      .set({ readAt: nowSec })
+      .where(and(eq(schema.notifications.id, id), eq(schema.notifications.tenantId, tenant.id)));
+
+    const rows = await db
+      .select()
+      .from(schema.notifications)
+      .where(and(eq(schema.notifications.id, id), eq(schema.notifications.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapNotificationRow(rows[0]));
+  });
+
+  app.delete('/api/:slug/notifications/:id', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db
+      .select()
+      .from(schema.notifications)
+      .where(and(eq(schema.notifications.id, id), eq(schema.notifications.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Notification not found');
+
+    await db
+      .delete(schema.notifications)
+      .where(and(eq(schema.notifications.id, id), eq(schema.notifications.tenantId, tenant.id)));
+
+    return ok(c, { success: true });
+  });
+
+  // --- USTADZ DIRECTORY ---
+  app.get('/api/:slug/ustadz', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.ustadzList)
+      .where(and(eq(schema.ustadzList.tenantId, tenant.id), eq(schema.ustadzList.isActive, true)))
+      .orderBy(asc(schema.ustadzList.name));
+
+    return ok(c, rows.map(mapUstadzRow));
+  });
+
+  app.post('/api/:slug/ustadz', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const ustadzId = body.id || crypto.randomUUID();
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    await db.insert(schema.ustadzList).values({
+      id: ustadzId,
+      tenantId: tenant.id,
+      name: body.name || '',
+      specialization: body.specialization || '',
+      bio: body.bio ?? null,
+      isActive: body.isActive !== undefined ? !!body.isActive : true,
+      createdAt: nowSec,
+    });
+
+    const rows = await db
+      .select()
+      .from(schema.ustadzList)
+      .where(and(eq(schema.ustadzList.id, ustadzId), eq(schema.ustadzList.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapUstadzRow(rows[0]));
+  });
+
+  app.put('/api/:slug/ustadz/:id', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db
+      .select()
+      .from(schema.ustadzList)
+      .where(and(eq(schema.ustadzList.id, id), eq(schema.ustadzList.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Ustadz not found');
+
+    const updateData: Partial<typeof schema.ustadzList.$inferInsert> = {};
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.specialization !== undefined) updateData.specialization = body.specialization;
+    if (body.bio !== undefined) updateData.bio = body.bio;
+    if (body.isActive !== undefined) updateData.isActive = !!body.isActive;
+
+    if (Object.keys(updateData).length > 0) {
+      await db
+        .update(schema.ustadzList)
+        .set(updateData)
+        .where(and(eq(schema.ustadzList.id, id), eq(schema.ustadzList.tenantId, tenant.id)));
+    }
+
+    const rows = await db
+      .select()
+      .from(schema.ustadzList)
+      .where(and(eq(schema.ustadzList.id, id), eq(schema.ustadzList.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapUstadzRow(rows[0]));
+  });
+
+  app.delete('/api/:slug/ustadz/:id', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const id = c.req.param('id');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const existing = await db
+      .select()
+      .from(schema.ustadzList)
+      .where(and(eq(schema.ustadzList.id, id), eq(schema.ustadzList.tenantId, tenant.id)))
+      .limit(1);
+
+    if (existing.length === 0) return notFound(c, 'Ustadz not found');
+
+    await db
+      .update(schema.ustadzList)
+      .set({ isActive: false })
+      .where(and(eq(schema.ustadzList.id, id), eq(schema.ustadzList.tenantId, tenant.id)));
+
+    return ok(c, { success: true });
+  });
+
+  // --- CHAT ROOMS & MESSAGES ---
+  app.get('/api/:slug/chat-rooms', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.chatRooms)
+      .where(eq(schema.chatRooms.tenantId, tenant.id))
+      .orderBy(desc(schema.chatRooms.lastMessageAt), desc(schema.chatRooms.createdAt));
+
+    return ok(c, rows.map(mapChatRoomRow));
+  });
+
+  app.post('/api/:slug/chat-rooms', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const roomId = body.id || crypto.randomUUID();
+    const nowSec = Math.floor(Date.now() / 1000);
+
+    await db.insert(schema.chatRooms).values({
+      id: roomId,
+      tenantId: tenant.id,
+      name: body.name || '',
+      participants: (body.participants as string[]) || [],
+      createdAt: nowSec,
+      lastMessageAt: nowSec,
+      lastMessage: body.lastMessage ?? null,
+    });
+
+    const rows = await db
+      .select()
+      .from(schema.chatRooms)
+      .where(and(eq(schema.chatRooms.id, roomId), eq(schema.chatRooms.tenantId, tenant.id)))
+      .limit(1);
+
+    return ok(c, mapChatRoomRow(rows[0]));
+  });
+
+  app.get('/api/:slug/chat-rooms/:roomId', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const roomId = c.req.param('roomId');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.chatRooms)
+      .where(and(eq(schema.chatRooms.id, roomId), eq(schema.chatRooms.tenantId, tenant.id)))
+      .limit(1);
+
+    if (rows.length === 0) return notFound(c, 'Chat room not found');
+
+    return ok(c, mapChatRoomRow(rows[0]));
+  });
+
+  app.get('/api/:slug/chat-rooms/:roomId/messages', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const roomId = c.req.param('roomId');
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    // Verify room belongs to tenant
+    const roomRows = await db
+      .select()
+      .from(schema.chatRooms)
+      .where(and(eq(schema.chatRooms.id, roomId), eq(schema.chatRooms.tenantId, tenant.id)))
+      .limit(1);
+
+    if (roomRows.length === 0) return notFound(c, 'Chat room not found');
+
+    const msgRows = await db
+      .select()
+      .from(schema.chatMessages)
+      .where(eq(schema.chatMessages.chatRoomId, roomId))
+      .orderBy(asc(schema.chatMessages.timestamp));
+
+    return ok(c, msgRows.map(mapChatMessageRow));
+  });
+
+  app.post('/api/:slug/chat-rooms/:roomId/messages', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+    const roomId = c.req.param('roomId');
+    const body = await c.req.json();
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    // Verify room belongs to tenant
+    const roomRows = await db
+      .select()
+      .from(schema.chatRooms)
+      .where(and(eq(schema.chatRooms.id, roomId), eq(schema.chatRooms.tenantId, tenant.id)))
+      .limit(1);
+
+    if (roomRows.length === 0) return notFound(c, 'Chat room not found');
+
+    const msgId = body.id || crypto.randomUUID();
+    const nowSec = Math.floor(Date.now() / 1000);
+    const msgText = body.message || '';
+
+    await db.insert(schema.chatMessages).values({
+      id: msgId,
+      chatRoomId: roomId,
+      senderId: body.senderId || 'anon',
+      senderName: body.senderName || 'Jamaah',
+      message: msgText,
+      timestamp: nowSec,
+      readBy: body.readBy ?? null,
+    });
+
+    const truncated = msgText.length > 50 ? msgText.substring(0, 50) + '...' : msgText;
+    await db
+      .update(schema.chatRooms)
+      .set({
+        lastMessageAt: nowSec,
+        lastMessage: truncated,
+      })
+      .where(and(eq(schema.chatRooms.id, roomId), eq(schema.chatRooms.tenantId, tenant.id)));
+
+    const createdRows = await db
+      .select()
+      .from(schema.chatMessages)
+      .where(eq(schema.chatMessages.id, msgId))
+      .limit(1);
+
+    return ok(c, mapChatMessageRow(createdRows[0]));
   });
 
   // --- MEDIA & SEARCH ---
   app.get('/api/:slug/media', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
-    const { items } = await MediaItemEntity.list(c.env);
-    return ok(c, items.filter(m => m.tenantId === tenant.id));
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+
+    const rows = await db
+      .select()
+      .from(schema.mediaItems)
+      .where(eq(schema.mediaItems.tenantId, tenant.id))
+      .orderBy(desc(schema.mediaItems.createdAt));
+
+    return ok(c, rows.map(mapMediaItemRow));
+  });
+
+  app.get('/api/:slug/qr-code', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+
+    const qrData = `masjidhub://${tenant.slug}`;
+    return ok(c, {
+      slug: tenant.slug,
+      name: tenant.name,
+      qrData,
+      url: `https://masjidhub.com/portal/${tenant.slug}`,
+    });
   });
 
   app.get('/api/:slug/finance/report-card', async (c) => {
@@ -1522,20 +3236,23 @@ export function userRoutes(app: Hono<any>) {
     await ensureDbInitialized(c.env);
     const db = getDb(c.env);
     const q = c.req.query('q')?.toLowerCase() || "";
-    const [txRows, inv, evs, posts, zisRows] = await Promise.all([
+    const [txRows, invRows, evRows, postRows, zisRows] = await Promise.all([
       db.select().from(schema.transactions).where(eq(schema.transactions.tenantId, tenant.id)),
-      InventoryItemEntity.list(c.env),
-      EventEntity.list(c.env),
-      ForumPostEntity.list(c.env),
+      db.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.tenantId, tenant.id)),
+      db.select().from(schema.events).where(eq(schema.events.tenantId, tenant.id)),
+      db.select().from(schema.forumPosts).where(eq(schema.forumPosts.tenantId, tenant.id)),
       db.select().from(schema.zisTransactions).where(eq(schema.zisTransactions.tenantId, tenant.id)),
     ]);
     const mappedTxs = txRows.map(mapTransactionRow);
+    const mappedInv = invRows.map(mapInventoryItemRow);
+    const mappedEvs = evRows.map(mapEventRow);
+    const mappedPosts = postRows.map(mapForumPostRow);
     const mappedZis = zisRows.map(mapZisTransactionRow);
     return ok(c, {
       transactions: mappedTxs.filter(t => t.description.toLowerCase().includes(q)),
-      inventory: inv.items.filter(i => i.tenantId === tenant.id && i.name.toLowerCase().includes(q)),
-      events: evs.items.filter(e => e.tenantId === tenant.id && e.title.toLowerCase().includes(q)),
-      forum: posts.items.filter(p => p.tenantId === tenant.id && p.title.toLowerCase().includes(q)),
+      inventory: mappedInv.filter(i => i.name.toLowerCase().includes(q) || i.location.toLowerCase().includes(q)),
+      events: mappedEvs.filter(e => e.title.toLowerCase().includes(q) || e.description.toLowerCase().includes(q)),
+      forum: mappedPosts.filter(p => p.title.toLowerCase().includes(q) || p.content.toLowerCase().includes(q)),
       zis: mappedZis.filter(z => z.description.toLowerCase().includes(q) || (z.muzakki_name && z.muzakki_name.toLowerCase().includes(q))),
     });
   });
@@ -1544,17 +3261,18 @@ export function userRoutes(app: Hono<any>) {
   app.get('/api/super/summary', async (c) => {
     await ensureDbInitialized(c.env);
     const db = getDb(c.env);
-    const [tenantsList, usersList, txsList, events] = await Promise.all([
+    const [tenantsList, usersList, txsList, eventsList] = await Promise.all([
       db.select().from(schema.tenants),
       db.select().from(schema.users),
       db.select().from(schema.transactions),
-      EventEntity.list(c.env),
+      db.select().from(schema.events),
     ]);
+    const nowSec = Math.floor(Date.now() / 1000);
     return ok(c, {
       totalTenants: tenantsList.length,
       totalUsers: usersList.length,
       totalBalance: txsList.reduce((acc, tx) => acc + (tx.type === 'income' ? tx.amount : -tx.amount), 0),
-      activeEvents: events.items.filter(e => e.date > Date.now()).length,
+      activeEvents: eventsList.filter(e => e.date > nowSec).length,
       pendingApprovals: tenantsList.filter(t => t.status === 'pending').length,
     });
   });

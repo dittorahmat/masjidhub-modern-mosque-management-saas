@@ -34,8 +34,10 @@ const SharedInboxPage = lazy(() => import('@/pages/dashboard/SharedInboxPage'));
 const KnowledgeManagementPage = lazy(() => import('@/pages/dashboard/KnowledgeManagementPage'));
 const PageBuilderPage = lazy(() => import('@/pages/dashboard/PageBuilderPage'));
 const BlogManagementPage = lazy(() => import('@/pages/dashboard/BlogManagementPage'));
+const KajianVideosPage = lazy(() => import('@/pages/dashboard/KajianVideosPage'));
 const MediaManagementPage = lazy(() => import('@/pages/dashboard/MediaManagementPage'));
 const ImportStatementPage = lazy(() => import('@/pages/dashboard/ImportStatementPage'));
+const QrisDonationPage = lazy(() => import('@/pages/dashboard/QrisDonationPage'));
 
 // Existing Management Modules
 const FinancePage = lazy(() => import('@/pages/dashboard/FinancePage'));
@@ -115,12 +117,14 @@ const router = createBrowserRouter([
       { path: "knowledge", element: <KnowledgeManagementPage /> },
       { path: "builder", element: <PageBuilderPage /> },
       { path: "blog", element: <BlogManagementPage /> },
+      { path: "kajian-videos", element: <KajianVideosPage /> },
       { path: "media", element: <MediaManagementPage /> },
       { path: "finance", element: <FinancePage /> },
       { path: "finance/import", element: <ImportStatementPage /> },
       { path: "zis", element: <ZisPage /> },
       { path: "zis/report", element: <ZisReportPage /> },
       { path: "zis/payment", element: <ZisPaymentPage /> },
+      { path: "qris", element: <QrisDonationPage /> },
       { path: "forum", element: <ForumPage /> },
       { path: "inventory", element: <InventoryPage /> },
       { path: "events", element: <EventsPage /> },

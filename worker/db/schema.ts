@@ -16,6 +16,7 @@ export const tenants = sqliteTable('tenants', {
   timezone: text('timezone').default('Asia/Jakarta'),
   bannerUrl: text('banner_url'),
   logoUrl: text('logo_url'),
+  qrisImageUrl: text('qris_image_url'),
   legalDocUrl: text('legal_doc_url'),
   runningText: text('running_text'),
   bankInfo: text('bank_info'),
@@ -408,5 +409,22 @@ export const notifications = sqliteTable('notifications', {
   type: text('type').$type<'info' | 'warning' | 'alert' | 'announcement'>().notNull().default('info'),
   isBroadcast: integer('is_broadcast', { mode: 'boolean' }).notNull().default(false),
   readAt: integer('read_at'),
+  createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
+});
+
+
+// 24. Kajian Videos
+export const kajianVideos = sqliteTable('kajian_videos', {
+  id: text('id').primaryKey(),
+  tenantId: text('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  ustadzName: text('ustadz_name'),
+  youtubeUrl: text('youtube_url').notNull(),
+  youtubeVideoId: text('youtube_video_id').notNull(),
+  description: text('description'),
+  duration: text('duration'),
+  category: text('category').default('kajian_rutin'),
+  thumbnailUrl: text('thumbnail_url'),
+  publishedAt: integer('published_at'),
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
 });

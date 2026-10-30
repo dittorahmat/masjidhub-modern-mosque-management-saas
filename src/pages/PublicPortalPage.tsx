@@ -5,7 +5,7 @@ import { api } from '@/lib/api-client';
 import { useAppStore } from '@/lib/store';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -13,19 +13,22 @@ import { Progress } from '@/components/ui/progress';
 import { 
   Landmark, Calendar, MapPin, Wallet, ArrowRight, 
   LayoutDashboard, Copy, Check, Home, User, 
-  Clock, Download, FileText, Share2, Heart
+  Clock, Download, FileText, Share2, Heart,
+  Video, Play, ExternalLink, Youtube
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
-import type { Tenant, Event, PrayerSchedule, OrganizationMember } from '@shared/types';
+import type { Tenant, Event, PrayerSchedule, OrganizationMember, KajianVideo } from '@shared/types';
 import { ChatWindow } from '@/components/features/ai/chat-window';
 
 export default function PublicPortalPage() {
   const { slug } = useParams();
   const user = useAppStore(s => s.user);
   const [copied, setCopied] = useState(false);
+  const [donationOpen, setDonationOpen] = useState(false);
+  const [activeKajianVideo, setActiveKajianVideo] = useState<KajianVideo | null>(null);
 
   const { data: tenant, isLoading: loadingTenant } = useQuery({
     queryKey: ['tenants', slug],
@@ -47,12 +50,38 @@ export default function PublicPortalPage() {
     queryFn: () => api<OrganizationMember[]>(`/api/${slug}/organization`)
   });
 
+  const { data: kajianVideos = [] } = useQuery({
+    queryKey: ['kajian-videos', slug],
+    queryFn: () => api<KajianVideo[]>(`/api/${slug}/kajian-videos`),
+    enabled: !!slug
+  });
+
   const handleCopyBank = () => {
     if (tenant?.bankInfo) {
       navigator.clipboard.writeText(tenant.bankInfo);
       setCopied(true);
       toast.success('Informasi rekening disalin');
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const qrisUrl = tenant?.qrisImageUrl || '/qris-masjid.jpeg';
+
+  const handleDownloadQris = async () => {
+    try {
+      const response = await fetch(qrisUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `qris-${tenant?.slug || 'masjid'}.jpeg`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success('QRIS berhasil diunduh');
+    } catch {
+      window.open(qrisUrl, '_blank');
     }
   };
 
@@ -206,27 +235,133 @@ export default function PublicPortalPage() {
           <Card className="rounded-[2rem] border-none shadow-sm bg-primary text-white p-8 md:p-10 flex flex-col justify-between overflow-hidden relative">
              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-16 -mt-16" />
              <div className="space-y-6 relative z-10">
-                <div className="inline-flex p-3 bg-white/10 rounded-2xl">
-                  <Wallet className="h-6 w-6" />
+                <div className="flex items-center justify-between">
+                  <div className="inline-flex p-3 bg-white/10 rounded-2xl">
+                    <Wallet className="h-6 w-6" />
+                  </div>
+                  <Badge variant="secondary" className="bg-white/20 text-white hover:bg-white/30 border-none px-3 py-1 text-xs font-semibold">
+                    QRIS & Transfer
+                  </Badge>
                 </div>
                 <h2 className="text-3xl font-display font-bold">Infaq & Shadaqah</h2>
                 <p className="text-primary-foreground/80 leading-relaxed">
-                  Bantu operasional masjid dengan donasi terbaik Anda.
+                  Bantu operasional dan kegiatan dakwah masjid dengan donasi terbaik Anda melalui QRIS resmi atau rekening.
                 </p>
+
+                {/* QRIS Preview Card */}
+                <div className="bg-white rounded-2xl p-4 text-slate-900 shadow-md flex items-center gap-4">
+                  <div className="w-20 h-20 bg-stone-50 rounded-xl overflow-hidden border border-stone-200 shrink-0 p-1 flex items-center justify-center">
+                    <img 
+                      src={qrisUrl} 
+                      alt="QRIS Donasi" 
+                      className="w-full h-full object-contain cursor-pointer hover:scale-105 transition-transform"
+                      onClick={() => setDonationOpen(true)}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-primary uppercase tracking-wider">Scan QRIS Nasional</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{tenant.name}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <Button 
+                        size="sm" 
+                        variant="outline" 
+                        onClick={() => setDonationOpen(true)}
+                        className="h-7 text-xs px-2.5 rounded-lg border-primary/20 text-primary hover:bg-primary/5"
+                      >
+                        Lihat QRIS
+                      </Button>
+                      <Button 
+                        size="sm" 
+                        variant="ghost" 
+                        onClick={handleDownloadQris}
+                        className="h-7 text-xs px-2 rounded-lg text-slate-600 hover:text-slate-900 gap-1"
+                      >
+                        <Download className="h-3 w-3" /> Unduh
+                      </Button>
+                    </div>
+                  </div>
+                </div>
              </div>
-             <div className="mt-8 space-y-4 relative z-10">
+
+             <div className="mt-6 space-y-4 relative z-10">
                 <div className="p-4 bg-white/10 rounded-2xl border border-white/20 flex justify-between items-center group cursor-pointer hover:bg-white/20 transition-all" onClick={handleCopyBank}>
                   <div className="truncate pr-4">
-                    <p className="text-[10px] uppercase font-bold text-primary-foreground/60 mb-1">No. Rekening</p>
-                    <code className="text-sm font-mono font-bold">{tenant.bankInfo || 'Segera Hadir'}</code>
+                    <p className="text-[10px] uppercase font-bold text-primary-foreground/60 mb-1">No. Rekening Masjid</p>
+                    <code className="text-sm font-mono font-bold">{tenant.bankInfo || "Bank Syariah Indonesia (BSI) - Hubungi DKM"}</code>
                   </div>
                   <Button size="icon" variant="ghost" className="shrink-0 hover:bg-transparent text-white">
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
                 </div>
-                <Button className="w-full bg-white text-primary hover:bg-white/90 rounded-2xl h-12 font-bold shadow-lg shadow-black/10">
-                   Sumbang Sekarang
-                </Button>
+
+                <Dialog open={donationOpen} onOpenChange={setDonationOpen}>
+                  <DialogTrigger asChild>
+                    <Button className="w-full bg-white text-primary hover:bg-white/90 rounded-2xl h-12 font-bold shadow-lg shadow-black/10">
+                       Sumbang Sekarang (QRIS)
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="rounded-[2.5rem] border-none p-8 max-w-md bg-white">
+                    <DialogHeader className="text-center sm:text-center space-y-2">
+                      <DialogTitle className="text-2xl font-display font-bold">Donasi & Infaq Masjid</DialogTitle>
+                      <CardDescription className="text-sm font-medium">
+                        Pindai kode QRIS di bawah ini menggunakan aplikasi mobile banking atau e-wallet apa saja (GoPay, OVO, Dana, LinkAja, BCA, BSI, Mandiri, dll).
+                      </CardDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-6 pt-4">
+                      {/* QRIS Image Display */}
+                      <div className="bg-stone-50 border border-stone-200 rounded-3xl p-6 flex flex-col items-center justify-center text-center">
+                        <div className="w-56 h-56 bg-white p-2 rounded-2xl shadow-sm border border-stone-100 flex items-center justify-center">
+                          <img 
+                            src={qrisUrl} 
+                            alt={`QRIS ${tenant.name}`} 
+                            className="w-full h-full object-contain rounded-xl"
+                          />
+                        </div>
+                        <p className="mt-3 font-display font-bold text-base text-slate-800">{tenant.name}</p>
+                        <p className="text-xs text-muted-foreground">NMID / Standar Pembayaran QRIS Nasional</p>
+                      </div>
+
+                      {/* Download Button */}
+                      <Button 
+                        onClick={handleDownloadQris}
+                        variant="outline" 
+                        className="w-full rounded-2xl h-12 font-bold gap-2 border-stone-200 hover:bg-stone-50"
+                      >
+                        <Download className="h-4 w-4 text-primary" /> Unduh Gambar QRIS
+                      </Button>
+
+                      {/* Bank Info Fallback */}
+                      <div className="rounded-2xl border border-stone-200 bg-stone-50/50 p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Transfer Bank Manual</span>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={handleCopyBank}
+                            className="h-7 text-xs px-2 gap-1 font-bold text-primary"
+                          >
+                            {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                            {copied ? "Tersalin" : "Salin Rekening"}
+                          </Button>
+                        </div>
+                        <p className="text-sm font-mono font-bold text-slate-800 break-words">
+                          {tenant.bankInfo || "Bank Syariah Indonesia (BSI) - Konfirmasi ke Pengurus DKM"}
+                        </p>
+                        {tenant.bankAccounts && tenant.bankAccounts.length > 0 && (
+                          <div className="space-y-1.5 pt-2 border-t border-stone-200">
+                            {tenant.bankAccounts.map((acc, idx) => (
+                              <div key={idx} className="text-xs flex justify-between text-slate-600">
+                                <span className="font-medium">{acc.bankName}: {acc.accountNumber}</span>
+                                <span className="text-muted-foreground">a.n. {acc.holderName}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </DialogContent>
+                </Dialog>
              </div>
           </Card>
         </div>
@@ -332,6 +467,121 @@ export default function PublicPortalPage() {
           </section>
         )}
 
+        {/* Kajian Videos Section */}
+        {kajianVideos.length > 0 && (
+          <section className="space-y-10">
+            <div className="text-center space-y-4">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-red-50 text-red-600 font-bold text-xs uppercase tracking-wider">
+                <Youtube className="h-4 w-4" /> Video Kajian YouTube
+              </div>
+              <h2 className="text-4xl md:text-5xl font-display font-bold">Rekaman Kajian Ilmiah</h2>
+              <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto">
+                Tonton rekaman ceramah, pengajian tafsir, dan kajian tematik dari asatidz masjid kami kapan saja.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {kajianVideos.map((video) => {
+                const thumb = video.thumbnailUrl || `https://img.youtube.com/vi/${video.youtubeVideoId}/hqdefault.jpg`;
+                return (
+                  <motion.div
+                    key={video.id}
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4 }}
+                  >
+                    <Card className="illustrative-card overflow-hidden h-full flex flex-col group p-0 border-none shadow-none hover:shadow-xl hover:translate-y-[-2px] transition-all bg-white rounded-3xl">
+                      {/* Video Thumbnail */}
+                      <div className="aspect-video w-full overflow-hidden relative bg-stone-900">
+                        <img
+                          src={thumb}
+                          alt={video.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          loading="lazy"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-70 group-hover:opacity-50 transition-opacity" />
+
+                        {/* Duration Badge */}
+                        {video.duration && (
+                          <div className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md text-white text-[11px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            <span>{video.duration}</span>
+                          </div>
+                        )}
+
+                        {/* Category Badge */}
+                        {video.category && (
+                          <div className="absolute top-3 left-3">
+                            <Badge className="bg-white/95 backdrop-blur-md text-stone-900 border-none font-bold text-[10px] px-2.5 py-1 rounded-full shadow-sm capitalize">
+                              {video.category.replace('_', ' ')}
+                            </Badge>
+                          </div>
+                        )}
+
+                        {/* Play Action Trigger */}
+                        <button
+                          onClick={() => setActiveKajianVideo(video)}
+                          aria-label={`Tonton ${video.title}`}
+                          className="absolute inset-0 flex items-center justify-center group/btn"
+                        >
+                          <div className="w-14 h-14 rounded-full bg-red-600 text-white flex items-center justify-center shadow-2xl group-hover/btn:scale-110 transition-transform duration-300">
+                            <Play className="h-6 w-6 fill-white ml-0.5" />
+                          </div>
+                        </button>
+                      </div>
+
+                      {/* Video Info */}
+                      <CardContent className="p-6 flex-1 flex flex-col justify-between space-y-4">
+                        <div className="space-y-2">
+                          <h3 className="font-display font-bold text-lg leading-snug line-clamp-2 group-hover:text-primary transition-colors">
+                            {video.title}
+                          </h3>
+
+                          {video.ustadzName && (
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-stone-600">
+                              <User className="h-3.5 w-3.5 text-primary" />
+                              <span className="truncate">{video.ustadzName}</span>
+                            </div>
+                          )}
+
+                          {video.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">
+                              {video.description}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Buttons */}
+                        <div className="pt-3 border-t flex items-center justify-between gap-2">
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => setActiveKajianVideo(video)}
+                            className="rounded-full text-xs font-bold gap-1.5 h-10 px-5 shadow-sm"
+                          >
+                            <Play className="h-3 w-3 fill-current" /> Tonton Video
+                          </Button>
+
+                          <a
+                            href={video.youtubeUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-500 hover:text-red-600 px-3 py-2 rounded-xl hover:bg-stone-50 transition-colors"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            <span>YouTube</span>
+                          </a>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
         {/* Regular Events Section */}
         <section className="space-y-12">
           <div className="text-center space-y-4">
@@ -351,6 +601,57 @@ export default function PublicPortalPage() {
           </div>
         </section>
       </main>
+
+      {/* Modal Video Player Kajian */}
+      <Dialog open={!!activeKajianVideo} onOpenChange={(open) => !open && setActiveKajianVideo(null)}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden rounded-3xl border-none bg-stone-950 text-white">
+          <DialogHeader className="p-6 pb-2 text-left">
+            <div className="flex items-center justify-between gap-4">
+              <Badge className="bg-red-600 text-white font-bold text-xs uppercase px-2.5 py-0.5">
+                {activeKajianVideo?.category?.replace('_', ' ') || 'Kajian'}
+              </Badge>
+              {activeKajianVideo && (
+                <a
+                  href={activeKajianVideo.youtubeUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-stone-400 hover:text-white flex items-center gap-1"
+                >
+                  Buka di YouTube <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
+            <DialogTitle className="text-xl md:text-2xl font-display font-bold mt-2 text-white">
+              {activeKajianVideo?.title}
+            </DialogTitle>
+            {activeKajianVideo?.ustadzName && (
+              <DialogDescription className="text-stone-300 font-semibold flex items-center gap-1.5 pt-1">
+                <User className="h-4 w-4 text-primary" /> {activeKajianVideo.ustadzName}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+
+          {/* YouTube Responsive Embed */}
+          <div className="relative aspect-video w-full bg-black">
+            {activeKajianVideo && (
+              <iframe
+                src={`https://www.youtube.com/embed/${activeKajianVideo.youtubeVideoId}?autoplay=1`}
+                title={activeKajianVideo.title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0 w-full h-full border-0"
+              />
+            )}
+          </div>
+
+          {activeKajianVideo?.description && (
+            <div className="p-6 pt-4 text-xs md:text-sm text-stone-400 leading-relaxed max-h-36 overflow-y-auto">
+              <p className="font-bold text-stone-200 mb-1">Ringkasan Materi:</p>
+              {activeKajianVideo.description}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Floating AI Chat Widget */}
       {tenant && (

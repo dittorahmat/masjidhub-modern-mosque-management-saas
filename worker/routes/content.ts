@@ -5,6 +5,7 @@ import { registerOrganizationRoutes } from "./content/organization";
 import { registerAIChatRoutes } from "./content/ai-chat";
 import { registerStorageRoutes } from "./content/storage";
 import { registerMiscRoutes } from "./content/misc";
+import { registerKajianRoutes } from "./content/kajian";
 
 export function registerContentRoutes(app: Hono<any>) {
   registerBlogRoutes(app);
@@ -13,6 +14,7 @@ export function registerContentRoutes(app: Hono<any>) {
   registerAIChatRoutes(app);
   registerStorageRoutes(app);
   registerMiscRoutes(app);
+  registerKajianRoutes(app);
 }
 
 export * from "./content/blog";
@@ -21,3 +23,4 @@ export * from "./content/organization";
 export * from "./content/ai-chat";
 export * from "./content/storage";
 export * from "./content/misc";
+export * from "./content/kajian";

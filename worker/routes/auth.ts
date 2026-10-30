@@ -62,6 +62,7 @@ export function registerAuthRoutes(app: Hono<any>) {
       timezone: 'Asia/Jakarta',
       bannerUrl: null,
       logoUrl: null,
+      qrisImageUrl: null,
       legalDocUrl: null,
       runningText: null,
       bankInfo: null,

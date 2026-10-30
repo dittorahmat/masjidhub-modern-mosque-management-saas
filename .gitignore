@@ -77,3 +77,10 @@ data/
 # Uploads directory (local storage fallback)
 uploads/
 
+
+# Agent skills, framework and scratch directories
+.agents/
+.agent/
+.qwen/
+.scratch/
+skills-lock.json

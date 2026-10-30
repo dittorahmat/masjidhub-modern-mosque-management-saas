@@ -26,8 +26,10 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
 
 ---
 
-## 4. Modular Route Architecture
-- **Keep Routers Modular:** The main `worker/user-routes.ts` is an aggregator. Place all route handlers into domain modules under `worker/routes/`:
+## 4. Modular Route Architecture & Anti-Monolith Policy
+- **STRICT FILE SIZE CAP (Max 400-500 LOC per file):** No route handler or utility file may exceed ~500 lines of code. Monolithic files like the legacy 3,200+ LOC `worker/user-routes.ts` are strictly forbidden. If a file grows beyond 400 LOC, proactively decompose it into sub-modules (e.g. `finance/ocr.ts`, `finance/transactions.ts`).
+- **Aggregator Pattern Only:** The main `worker/user-routes.ts` is strictly a top-level aggregator (under ~100 LOC) that mounts sub-routers. NEVER add business logic, raw SQL, or route handler bodies directly into `user-routes.ts`.
+- **Domain Separation:** Place all route handlers into domain modules under `worker/routes/`:
   - `auth.ts` - Login, registration, session `/me`, demo users.
   - `tenants.ts` - Subdomain check, tenant listing, member management.
   - `finance.ts` - Financial transactions, OCR bank statements, summaries, report card.
@@ -36,6 +38,7 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
   - `content.ts` - Blog, forum moderation, DKM visual organization, AI chatbot, storage.
   - `super-admin.ts` - Platform admin dashboards, tenant approvals, feature toggles.
   - `common.ts` - Shared mappers, timestamp utilities, tenant resolution helpers.
+- **Frontend Component Hygiene:** The same anti-monolith rule applies to frontend pages (`src/pages/*`). Break complex views with multiple tabs or modals into subcomponents under `src/components/` instead of dumping all JSX and state into a single multi-thousand-line page file.
 
 ---
 

@@ -43,7 +43,7 @@ export async function seedDatabase(options: SeedOptions = {}) {
   if (!isD1 && autoMigrateLocal) {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { migrate } = require('drizzle-orm/better-sqlite3/migrator');
+      const getModule = new Function('name', 'return import(name)'); const { migrate } = await getModule('drizzle-orm/better-sqlite3/migrator');
       const migrationsFolder = path.resolve(process.cwd(), 'drizzle', 'migrations');
       migrate(db, { migrationsFolder });
       if (verbose) console.log('✓ Local SQLite migrations checked/applied');

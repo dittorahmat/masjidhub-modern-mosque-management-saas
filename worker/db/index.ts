@@ -1,11 +1,8 @@
 import { drizzle as drizzleD1, type DrizzleD1Database } from 'drizzle-orm/d1';
-import { drizzle as drizzleBetterSqlite, type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import Database from 'better-sqlite3';
-import fs from 'node:fs';
-import path from 'node:path';
 import * as schema from './schema';
 
-export type AppDb = DrizzleD1Database<typeof schema> | BetterSQLite3Database<typeof schema>;
+// Minimal type signature for the database client
+export type AppDb = DrizzleD1Database<typeof schema>;
 
 export interface DbContextEnv {
   DB?: D1Database;
@@ -15,19 +12,10 @@ export interface DbContextEnv {
 
 export type DbInput = D1Database | DbContextEnv | null | undefined;
 
-let fallbackSqliteDb: BetterSQLite3Database<typeof schema> | null = null;
+let fallbackSqliteDb: any = null;
 
 function isD1Database(val: unknown): val is D1Database {
   return !!val && typeof val === 'object' && typeof (val as D1Database).prepare === 'function';
-}
-
-function ensureDirExists(filePath: string) {
-  if (filePath && filePath !== ':memory:') {
-    const dir = path.dirname(path.resolve(filePath));
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  }
 }
 
 export interface GetDbOptions {
@@ -38,7 +26,7 @@ export interface GetDbOptions {
  * Returns a Drizzle database instance initialized with the schema.
  * Supports:
  * - Cloudflare D1 (via `drizzle-orm/d1`) when passed directly or as `env.DB`
- * - Local / VPS SQLite fallback (via `better-sqlite3`) when D1 is not present, connecting to `data/sqlite.db` or `./local.sqlite`
+ * - Local / VPS SQLite fallback (lazy loaded so better-sqlite3 is not bundled into Cloudflare Workers)
  */
 export function getDb(envOrD1?: DbInput, options?: GetDbOptions): AppDb {
   // Case 1: Directly passed a D1Database instance
@@ -53,33 +41,67 @@ export function getDb(envOrD1?: DbInput, options?: GetDbOptions): AppDb {
     }
     // Optional custom file path for SQLite in env
     if (typeof envOrD1.DATABASE_PATH === 'string' && envOrD1.DATABASE_PATH) {
-      ensureDirExists(envOrD1.DATABASE_PATH);
-      const sqlite = new Database(envOrD1.DATABASE_PATH);
-      return drizzleBetterSqlite(sqlite, { schema });
+      return getLocalSqliteDb(envOrD1.DATABASE_PATH);
     }
   }
 
   // Case 3: Options specified sqlitePath directly
   if (options?.sqlitePath) {
-    ensureDirExists(options.sqlitePath);
-    const sqlite = new Database(options.sqlitePath);
-    return drizzleBetterSqlite(sqlite, { schema });
+    return getLocalSqliteDb(options.sqlitePath);
   }
 
   // Case 4: Local SQLite fallback (singleton for process)
   if (!fallbackSqliteDb) {
     const dbPath =
-      process.env.SQLITE_DB_PATH ||
-      process.env.LOCAL_DB_PATH ||
-      process.env.DATABASE_URL ||
-      path.resolve(process.cwd(), 'data', 'sqlite.db');
+      (typeof process !== 'undefined' &&
+        (process.env.SQLITE_DB_PATH || process.env.LOCAL_DB_PATH || process.env.DATABASE_URL)) ||
+      './data/sqlite.db';
 
-    ensureDirExists(dbPath);
-    const sqlite = new Database(dbPath);
-    fallbackSqliteDb = drizzleBetterSqlite(sqlite, { schema });
+    fallbackSqliteDb = getLocalSqliteDb(dbPath);
   }
 
   return fallbackSqliteDb;
+}
+
+function getLocalSqliteDb(dbPath: string): any {
+  // Isolate require from Vite static analysis by resolving dynamic require at runtime
+  try {
+    let req: any;
+    if (typeof require === 'function') {
+      req = require;
+    } else {
+      const getModule = new Function('return import("node:module")');
+      // For synchronous fallback in Node ESM/Bun
+      const nodeModule = (globalThis as any).process?.getBuiltinModule?.('node:module');
+      if (nodeModule?.createRequire) {
+        req = nodeModule.createRequire(import.meta.url);
+      }
+    }
+
+    if (!req) {
+      throw new Error('Runtime require function is not available.');
+    }
+
+    const Database = (globalThis as any).Bun?.Database || req('better-sqlite3');
+    const { drizzle: drizzleBetterSqlite } = req('drizzle-orm/better-sqlite3');
+    const fs = req('node:fs');
+    const path = req('node:path');
+
+    if (dbPath && dbPath !== ':memory:') {
+      const resolved = path.resolve(dbPath);
+      const dir = path.dirname(resolved);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    }
+
+    const sqlite = new Database(dbPath);
+    return drizzleBetterSqlite(sqlite, { schema });
+  } catch (err) {
+    throw new Error(
+      `Failed to initialize local SQLite database at "${dbPath}". Ensure better-sqlite3 is installed or run with Cloudflare D1. Error: ${err}`
+    );
+  }
 }
 
 export { schema };

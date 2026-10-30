@@ -1,19 +1,9 @@
 import React from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
-import {
-  LayoutDashboard,
-  Wallet,
-  HeartPulse,
-  Calendar,
-  Users,
-  Send,
-  BookOpen,
-  MessageSquare,
-  Menu,
-  LucideIcon,
-} from "lucide-react";
+import { Menu, LucideIcon } from "lucide-react";
 import { useUserRole } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { getRoleBottomTabs } from "@/lib/navigation";
 
 interface MobileBottomNavProps {
   onOpenMenu: () => void;
@@ -32,87 +22,13 @@ export function MobileBottomNav({ onOpenMenu }: MobileBottomNavProps): JSX.Eleme
   const location = useLocation();
   const userRole = useUserRole();
 
-  const getRoleTabs = (): NavTab[] => {
-    if (userRole === "amil_zakat") {
-      return [
-        {
-          name: "Dashboard",
-          icon: LayoutDashboard,
-          href: `/app/${slug}/dashboard`,
-        },
-        {
-          name: "ZIS",
-          icon: HeartPulse,
-          href: `/app/${slug}/zis`,
-        },
-        {
-          name: "Mustahik",
-          icon: Users,
-          href: `/app/${slug}/zis?tab=mustahik`,
-          matchPrefix: `/app/${slug}/zis`,
-          matchQueryTab: "mustahik",
-        },
-        {
-          name: "Distribusi",
-          icon: Send,
-          href: `/app/${slug}/zis?tab=distribution`,
-          matchPrefix: `/app/${slug}/zis`,
-          matchQueryTab: "distribution",
-        },
-      ];
+  const tabs: NavTab[] = getRoleBottomTabs(slug, userRole).map(tab => {
+    if (tab.href.includes('?tab=')) {
+      const [path, query] = tab.href.split('?tab=');
+      return { ...tab, matchPrefix: path, matchQueryTab: query };
     }
-
-    if (userRole === "ustadz" || userRole === "jamaah") {
-      return [
-        {
-          name: "Jadwal",
-          icon: Calendar,
-          href: `/app/${slug}/jadwal-sholat`,
-        },
-        {
-          name: "Kajian",
-          icon: BookOpen,
-          href: `/app/${slug}/kajian-videos`,
-        },
-        {
-          name: "Kegiatan",
-          icon: Calendar,
-          href: `/app/${slug}/events`,
-        },
-        {
-          name: "Forum",
-          icon: MessageSquare,
-          href: `/app/${slug}/forum`,
-        },
-      ];
-    }
-
-    // Default / DKM Admin / Superadmin
-    return [
-      {
-        name: "Dashboard",
-        icon: LayoutDashboard,
-        href: `/app/${slug}/dashboard`,
-      },
-      {
-        name: "Kas",
-        icon: Wallet,
-        href: `/app/${slug}/finance`,
-      },
-      {
-        name: "ZIS",
-        icon: HeartPulse,
-        href: `/app/${slug}/zis`,
-      },
-      {
-        name: "Kegiatan",
-        icon: Calendar,
-        href: `/app/${slug}/events`,
-      },
-    ];
-  };
-
-  const tabs = getRoleTabs();
+    return tab;
+  });
   const currentPath = location.pathname;
   const searchParams = new URLSearchParams(location.search);
   const currentQueryTab = searchParams.get("tab");

@@ -53,7 +53,9 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
   await api(`/api/${slug}/endpoint`, { method: 'POST', body: JSON.stringify(payload) });
   ```
   Do NOT assume Axios-style methods (`api.get`, `api.post`).
-- **Centralized Shared Utilities:** Common media or external service helpers (such as `extractYoutubeVideoId`, URL parsers, and data formatting) must live in `shared/` (e.g. `shared/youtube.ts`) rather than duplicating regex and utility functions across frontend and backend.
+- **Centralized Shared Utilities & Navigation:** Common media or external service helpers (such as `extractYoutubeVideoId`, URL parsers, and data formatting) must live in `shared/` (e.g. `shared/youtube.ts`) rather than duplicating regex across frontend and backend. Similarly, tenant navigation routes, role-permission matrices, and menu trees must live in centralized frontend helpers (such as `src/lib/navigation.ts`) rather than duplicating route arrays across desktop sidebars, mobile bottom navigation bars, and off-canvas drawers.
+- **Mobile Ergonomics & Touch Targets:** All interactive controls (buttons, icon triggers, form selectors, navigation items) must enforce a minimum 44x44px touch target area (`min-h-[44px] min-w-[44px]`) to ensure accessibility on mobile devices.
+- **Defensive Form Typing:** Avoid untyped form payloads (`Record<string, any>` or raw `Object.fromEntries(formData)`). Explicitly type or validate form inputs with typed interfaces before invoking API mutations.
 - **Endpoint Authorization:** Any mutations on tenant configuration (e.g. `PUT /api/:slug/settings`) must enforce tenant ownership/membership verification.
 
 ---

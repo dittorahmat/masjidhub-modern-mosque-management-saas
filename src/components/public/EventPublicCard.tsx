@@ -40,8 +40,16 @@ export function EventPublicCard({ event, slug }: { event: Event; slug: string })
   const handleRegister = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const data = Object.fromEntries(formData.entries());
-    mutation.mutate(data);
+    const payload = {
+      name: String(formData.get('name') || '').trim(),
+      email: String(formData.get('email') || '').trim(),
+      phone: String(formData.get('phone') || '').trim(),
+    };
+    if (!payload.name) {
+      toast.error('Mohon isi nama lengkap');
+      return;
+    }
+    mutation.mutate(payload);
   };
 
   const isFull = event.currentRegistrations >= event.capacity;

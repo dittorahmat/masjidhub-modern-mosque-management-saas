@@ -2,11 +2,13 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { format } from 'date-fns';
+import { id } from 'date-fns/locale';
 
 export interface PresensiRecord {
   name: string;
   contact: string;
-  date: string;
+  date: number | string;
   attended: boolean;
 }
 
@@ -19,6 +21,10 @@ export const PresensiCard: React.FC<PresensiCardProps> = ({
   record,
   onToggleAttendance,
 }) => {
+  const formattedDate =
+    typeof record.date === 'number'
+      ? format(record.date, 'dd MMM yyyy, HH:mm', { locale: id })
+      : record.date;
   return (
     <Card className="p-4 border border-stone-200/80 shadow-sm rounded-2xl bg-white space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -51,7 +57,7 @@ export const PresensiCard: React.FC<PresensiCardProps> = ({
 
       <div className="flex items-center justify-between pt-2 border-t border-stone-100">
         <span className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider">
-          {record.date}
+          {formattedDate}
         </span>
         <Button
           size="sm"

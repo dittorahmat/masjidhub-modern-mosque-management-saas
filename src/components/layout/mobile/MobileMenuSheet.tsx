@@ -1,28 +1,6 @@
 import React from "react";
 import { Link, useParams } from "react-router-dom";
-import { 
-  X, 
-  Settings, 
-  LogOut, 
-  ShieldCheck, 
-  LayoutDashboard, 
-  Sparkles, 
-  BrainCircuit, 
-  LayoutTemplate, 
-  Video, 
-  BookOpen, 
-  ImageIcon, 
-  Wallet, 
-  HeartPulse, 
-  FileText, 
-  CreditCard, 
-  QrCode, 
-  Package, 
-  Calendar, 
-  MessageSquare, 
-  Search, 
-  Users 
-} from "lucide-react";
+import { X, Settings, LogOut, ShieldCheck, LayoutDashboard } from "lucide-react";
 import {
   Sheet,
   SheetContent,
@@ -32,6 +10,7 @@ import {
   SheetClose,
 } from "@/components/ui/sheet";
 import { useAppStore, useUserRole, useUserName, useTenantName } from "@/lib/store";
+import { getAppNavigation } from "@/lib/navigation";
 
 interface MobileMenuSheetProps {
   open: boolean;
@@ -47,35 +26,7 @@ export function MobileMenuSheet({ open, onOpenChange }: MobileMenuSheetProps): J
   const logout = actions.logout;
 
   const isSuper = userRole === "superadmin_platform";
-  const isAdminOrAmil =
-    userRole === "dkm_admin" ||
-    userRole === "amil_zakat" ||
-    userRole === "ustadz" ||
-    isSuper;
-
-  const navigation = [
-    { name: "Executive Dashboard", icon: LayoutDashboard, href: `/app/${slug}/dashboard`, show: true },
-    { name: "Shared Inbox", icon: Sparkles, href: `/app/${slug}/inbox`, show: isAdminOrAmil },
-    { name: "Pusat Kendali AI", icon: BrainCircuit, href: `/app/${slug}/knowledge`, show: isAdminOrAmil },
-    { name: "Puzzle Builder", icon: LayoutTemplate, href: `/app/${slug}/builder`, show: isAdminOrAmil },
-    { name: "Rekaman Kajian", icon: Video, href: `/app/${slug}/kajian-videos`, show: true },
-    { name: "Kajian & Blog", icon: BookOpen, href: `/app/${slug}/blog`, show: isAdminOrAmil },
-    { name: "Media & Galeri", icon: ImageIcon, href: `/app/${slug}/media`, show: isAdminOrAmil },
-    { name: "Keuangan", icon: Wallet, href: `/app/${slug}/finance`, show: isAdminOrAmil },
-    { name: "ZIS Module", icon: HeartPulse, href: `/app/${slug}/zis`, show: isAdminOrAmil },
-    { name: "Laporan ZIS", icon: FileText, href: `/app/${slug}/zis/report`, show: isAdminOrAmil },
-    { name: "Pembayaran ZIS", icon: CreditCard, href: `/app/${slug}/zis/payment`, show: true },
-    { name: "Donasi QRIS", icon: QrCode, href: `/app/${slug}/qris`, show: true },
-    { name: "Inventaris", icon: Package, href: `/app/${slug}/inventory`, show: isAdminOrAmil },
-    { name: "Jadwal Sholat", icon: Calendar, href: `/app/${slug}/jadwal-sholat`, show: isAdminOrAmil },
-    { name: "Pengumuman", icon: MessageSquare, href: `/app/${slug}/notifikasi`, show: isAdminOrAmil },
-    { name: "Pencarian", icon: Search, href: `/app/${slug}/search`, show: true },
-    { name: "QR Code", icon: QrCode, href: `/app/${slug}/qr-code`, show: isAdminOrAmil },
-    { name: "Struktur Organisasi", icon: Users, href: `/app/${slug}/organization`, show: isAdminOrAmil },
-    { name: "Kegiatan", icon: Calendar, href: `/app/${slug}/events`, show: true },
-    { name: "Forum Ummat", icon: MessageSquare, href: `/app/${slug}/forum`, show: true },
-    { name: "Anggota", icon: Users, href: `/app/${slug}/members`, show: isAdminOrAmil },
-  ];
+  const navigation = getAppNavigation(slug, userRole);
 
   const handleLinkClick = () => {
     onOpenChange(false);

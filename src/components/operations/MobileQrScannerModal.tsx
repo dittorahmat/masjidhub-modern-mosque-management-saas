@@ -51,6 +51,29 @@ export function MobileQrScannerModal({
           videoRef.current.play();
         }
         setCameraActive(true);
+
+        // Attempt real-time BarcodeDetector if available on device
+        if ('BarcodeDetector' in window) {
+          try {
+            // @ts-expect-error - standard experimental API
+            const barcodeDetector = new window.BarcodeDetector({ formats: ['qr_code'] });
+            const interval = setInterval(async () => {
+              if (videoRef.current && videoRef.current.readyState >= 2) {
+                try {
+                  const barcodes = await barcodeDetector.detect(videoRef.current);
+                  if (barcodes.length > 0) {
+                    clearInterval(interval);
+                    simulateSuccessScan(barcodes[0].rawValue);
+                  }
+                } catch {
+                  // Ignore frame detection errors
+                }
+              }
+            }, 300);
+          } catch {
+            // BarcodeDetector not fully initialized
+          }
+        }
       }
     } catch {
       // Silently fall back to interactive mock target on browsers without camera permissions

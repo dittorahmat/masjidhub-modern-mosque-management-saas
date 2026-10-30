@@ -9,6 +9,7 @@ import {
   toTimestampMs,
 } from "../common";
 import { extractYoutubeVideoId, getYoutubeThumbnailUrl } from "../../../shared/youtube";
+import { ParseKajianUrlRequest, ParsedKajianMetadata } from "../../../shared/types";
 
 export { extractYoutubeVideoId };
 
@@ -20,24 +21,25 @@ export function registerKajianRoutes(app: Hono<any>) {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Tenant not found');
 
-    const body = await c.req.json();
-    const url = body.url || body.youtubeUrl;
-    if (!url || typeof url !== 'string' || !url.trim()) {
+    const body = await c.req.json() as ParseKajianUrlRequest;
+    if (!body || typeof body.url !== 'string' || !body.url.trim()) {
       return bad(c, 'URL YouTube wajib diisi');
     }
 
-    const videoId = extractYoutubeVideoId(url.trim());
+    const videoId = extractYoutubeVideoId(body.url.trim());
     if (!videoId) {
       return bad(c, 'URL atau ID YouTube tidak valid');
     }
 
     const apiKey = c.env.GEMINI_API_KEY;
-    const metadata = await parseYoutubeKajianMetadata(url.trim(), videoId, apiKey);
+    const metadata = await parseYoutubeKajianMetadata(videoId, apiKey);
 
-    return ok(c, {
+    const responseData: ParsedKajianMetadata = {
       videoId,
       ...metadata,
-    });
+    };
+
+    return ok(c, responseData);
   });
 
   // GET all kajian videos for a tenant

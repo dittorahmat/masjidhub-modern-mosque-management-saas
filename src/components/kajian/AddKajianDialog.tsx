@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { extractYoutubeVideoId, getYoutubeThumbnailUrl } from '@shared/youtube';
+import { ParsedKajianMetadata } from '@shared/types';
 import { Sparkles, Youtube, Loader2, Bot } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { api } from '@/lib/api-client';
@@ -73,13 +74,7 @@ export function AddKajianDialog({
 
     setIsParsing(true);
     try {
-      const result = await api<{
-        title?: string;
-        ustadzName?: string;
-        category?: string;
-        duration?: string;
-        description?: string;
-      }>(`/api/${slug}/kajian-videos/parse-url`, {
+      const result = await api<ParsedKajianMetadata>(`/api/${slug}/kajian-videos/parse-url`, {
         method: 'POST',
         body: JSON.stringify({ url: youtubeUrl.trim() }),
       });
@@ -89,7 +84,7 @@ export function AddKajianDialog({
         if (result.ustadzName) setUstadzName(result.ustadzName);
         if (result.category) setCategory(result.category);
         if (result.duration) setDuration(result.duration);
-        if (result.description) setDescription(result.description);
+        if (result.summary || result.description) setDescription(result.summary || result.description || '');
         toast.success('Metadata video berhasil diisi otomatis!');
       }
     } catch (err: any) {

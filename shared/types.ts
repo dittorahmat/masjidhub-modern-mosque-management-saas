@@ -379,3 +379,19 @@ export interface KajianVideo {
   publishedAt?: number;
   createdAt: number;
 }
+
+export interface ParseKajianUrlRequest {
+  url: string;
+}
+
+export interface ParsedKajianMetadata {
+  videoId: string;
+  title: string;
+  ustadzName: string;
+  category: string;
+  duration?: string;
+  summary?: string;
+  description?: string;
+  channelTitle?: string;
+  thumbnailUrl: string;
+}

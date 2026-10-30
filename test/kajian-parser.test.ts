@@ -13,7 +13,6 @@ describe("YouTube Kajian Metadata Extractor", () => {
   it("handles metadata parsing with graceful fallback when no AI key is provided", async () => {
     const videoId = "dQw4w9WgXcQ";
     const result = await parseYoutubeKajianMetadata(
-      `https://www.youtube.com/watch?v=${videoId}`,
       videoId,
       undefined // No AI Key
     );

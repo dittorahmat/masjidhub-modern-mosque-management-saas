@@ -1,25 +1,49 @@
 import { GoogleGenAI } from "@google/genai";
+import { getYoutubeThumbnailUrl } from "../../../shared/youtube";
+import { ParsedKajianMetadata } from "../../../shared/types";
 
-export interface ParsedKajianMetadata {
-  title: string;
-  ustadzName: string;
-  category: string;
-  duration?: string;
-  description?: string;
-  channelTitle?: string;
-  thumbnailUrl: string;
+export const ALLOWED_KAJIAN_CATEGORIES = [
+  'kajian_tematik',
+  'tafsir',
+  'fiqih',
+  'aqidah',
+  'sirah',
+  'tahsin',
+  'kajian_rutin',
+] as const;
+
+export type KajianCategory = typeof ALLOWED_KAJIAN_CATEGORIES[number];
+
+const SCHOLAR_HONORIFICS = ['ustadz', 'habib', 'syekh', 'buya', 'kyai', 'ustazah', 'guru'];
+
+/**
+ * Checks if a channel name likely represents an Islamic scholar.
+ */
+function isScholarChannel(channelName: string): boolean {
+  const lower = channelName.toLowerCase();
+  return SCHOLAR_HONORIFICS.some(h => lower.includes(h));
 }
 
 /**
- * Parses raw YouTube metadata using YouTube oEmbed and optionally enhances it with Gemini AI.
+ * Validates whether the suggested category is part of the supported categories.
+ */
+function sanitizeCategory(rawCategory?: string): string {
+  if (!rawCategory) return 'kajian_tematik';
+  const trimmed = rawCategory.trim().toLowerCase();
+  return (ALLOWED_KAJIAN_CATEGORIES as readonly string[]).includes(trimmed)
+    ? trimmed
+    : 'kajian_tematik';
+}
+
+/**
+ * Parses raw YouTube metadata using YouTube oEmbed and enhances it with Gemini AI.
  */
 export async function parseYoutubeKajianMetadata(
-  urlOrId: string,
   videoId: string,
   apiKey?: string
-): Promise<ParsedKajianMetadata> {
+): Promise<Omit<ParsedKajianMetadata, 'videoId'>> {
   const watchUrl = `https://www.youtube.com/watch?v=${videoId}`;
-  const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+  const thumbnailUrl = getYoutubeThumbnailUrl(videoId);
 
   let rawTitle = '';
   let channelTitle = '';
@@ -41,7 +65,7 @@ export async function parseYoutubeKajianMetadata(
   let ustadzName = '';
   let category = 'kajian_tematik';
   let duration = '';
-  let description = '';
+  let summary = '';
 
   // 2. Enhance with Gemini AI if API key is provided
   if (apiKey && rawTitle) {
@@ -80,9 +104,9 @@ Format output WAJIB HANYA JSON objek valid:
           const parsed = JSON.parse(jsonMatch[0]);
           if (parsed.cleanTitle?.trim()) title = parsed.cleanTitle.trim();
           if (parsed.ustadzName?.trim()) ustadzName = parsed.ustadzName.trim();
-          if (parsed.category?.trim()) category = parsed.category.trim();
+          category = sanitizeCategory(parsed.category);
           if (parsed.duration?.trim()) duration = parsed.duration.trim();
-          if (parsed.summary?.trim()) description = parsed.summary.trim();
+          if (parsed.summary?.trim()) summary = parsed.summary.trim();
         }
       }
     } catch (aiErr) {
@@ -90,11 +114,9 @@ Format output WAJIB HANYA JSON objek valid:
     }
   }
 
-  // If ustadzName is still empty, fallback check channel name
-  if (!ustadzName && channelTitle) {
-    if (/ustadz|habib|syekh|buya|kyai/i.test(channelTitle)) {
-      ustadzName = channelTitle;
-    }
+  // Fallback: check if channel title has an Islamic honorific
+  if (!ustadzName && channelTitle && isScholarChannel(channelTitle)) {
+    ustadzName = channelTitle;
   }
 
   return {
@@ -102,7 +124,8 @@ Format output WAJIB HANYA JSON objek valid:
     ustadzName,
     category,
     duration,
-    description,
+    summary,
+    description: summary, // alias for backward compatibility
     channelTitle,
     thumbnailUrl,
   };

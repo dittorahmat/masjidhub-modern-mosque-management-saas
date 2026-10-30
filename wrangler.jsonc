@@ -4,9 +4,10 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "masjidhub-saas-jtbg-y-udxepva-ni4x4t",
+	"name": "masjidhub",
 	"main": "worker/index.ts",
 	"compatibility_date": "2025-04-24",
+	"compatibility_flags": ["nodejs_compat"],
 	"assets": {
 		"not_found_handling": "single-page-application",
 		"run_worker_first": ["/api/*", "!/api/docs/*"]

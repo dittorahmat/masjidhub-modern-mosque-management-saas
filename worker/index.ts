@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import { sql } from 'drizzle-orm';
 import { Env } from './core-utils';
+import { getDb } from './db';
 import { userRoutes } from './user-routes';
 export * from './core-utils';
 
@@ -17,7 +19,37 @@ app.use('*', logger());
 
 app.use('/api/*', cors({ origin: '*', allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'], allowHeaders: ['Content-Type', 'Authorization'] }));
 
-app.get('/api/health', (c) => c.json({ success: true, data: { status: 'healthy', timestamp: new Date().toISOString() }}));
+app.get('/api/health', async (c) => {
+  try {
+    const db = getDb(c.env);
+    if ('all' in db && typeof (db as any).all === 'function') {
+      await (db as any).all(sql`SELECT 1`);
+    } else if ('run' in db && typeof (db as any).run === 'function') {
+      await (db as any).run(sql`SELECT 1`);
+    } else {
+      await db.run(sql`SELECT 1`);
+    }
+    return c.json({
+      success: true,
+      data: {
+        status: 'healthy',
+        database: 'connected',
+        timestamp: Date.now(),
+      },
+    });
+  } catch (error: any) {
+    console.error('[HEALTH CHECK FAILED]', error);
+    return c.json({
+      success: false,
+      data: {
+        status: 'unhealthy',
+        database: 'disconnected',
+        error: error?.message || 'Database connectivity error',
+        timestamp: Date.now(),
+      },
+    }, 500);
+  }
+});
 
 app.post('/api/client-errors', async (c) => {
   try {

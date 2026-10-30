@@ -12,7 +12,34 @@ import { extractYoutubeVideoId, getYoutubeThumbnailUrl } from "../../../shared/y
 
 export { extractYoutubeVideoId };
 
+import { parseYoutubeKajianMetadata } from "./kajian-ai";
+
 export function registerKajianRoutes(app: Hono<any>) {
+  // POST parse YouTube video metadata for auto-fill
+  app.post('/api/:slug/kajian-videos/parse-url', async (c) => {
+    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+    if (!tenant) return notFound(c, 'Tenant not found');
+
+    const body = await c.req.json();
+    const url = body.url || body.youtubeUrl;
+    if (!url || typeof url !== 'string' || !url.trim()) {
+      return bad(c, 'URL YouTube wajib diisi');
+    }
+
+    const videoId = extractYoutubeVideoId(url.trim());
+    if (!videoId) {
+      return bad(c, 'URL atau ID YouTube tidak valid');
+    }
+
+    const apiKey = c.env.GEMINI_API_KEY;
+    const metadata = await parseYoutubeKajianMetadata(url.trim(), videoId, apiKey);
+
+    return ok(c, {
+      videoId,
+      ...metadata,
+    });
+  });
+
   // GET all kajian videos for a tenant
   app.get('/api/:slug/kajian-videos', async (c) => {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);

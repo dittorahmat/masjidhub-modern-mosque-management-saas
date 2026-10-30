@@ -14,6 +14,11 @@
     --ring: 161 94% 30%;
     --card: 0 0% 100%;
     --card-foreground: 24 10% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 10% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --input: 40 10% 90%;
     --radius: 0.75rem;
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -24,6 +29,11 @@
   .dark {
     --background: 240 10% 4%;
     --foreground: 0 0% 98%;
+    --popover: 240 10% 4%;
+    --popover-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --input: 240 10% 14.9%;
     /* Add dark mode specifics if needed, but primary is emerald */
   }
   * {

@@ -70,3 +70,7 @@ temp/
 
 # Bun lock file
 bun.lockb
+
+# Uploads directory (local storage fallback)
+uploads/
+

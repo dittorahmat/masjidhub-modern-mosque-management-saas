@@ -9,6 +9,8 @@ import type { Context } from "hono";
 
 export interface Env {
   GlobalDurableObject: DurableObjectNamespace<GlobalDurableObject>;
+  BUCKET?: R2Bucket;
+  DB?: D1Database;
 }
 
 type Doc<T> = { v: number; data: T };

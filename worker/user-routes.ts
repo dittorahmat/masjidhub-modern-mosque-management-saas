@@ -1,3 +1,4 @@
+import { getStorage } from "./storage";
 import { Hono } from "hono";
 import type { Env } from './core-utils';
 import {
@@ -551,5 +552,83 @@ export function userRoutes(app: Hono<any>) {
     const tenant = await getTenantBySlugOrSubdomain(c, c.env);
     if (!tenant) return notFound(c, 'Mosque not found');
     return ok(c, tenant);
+  });
+
+  // --- STORAGE & FILE UPLOAD ---
+  app.post('/api/upload', async (c) => {
+    try {
+      const storage = getStorage(c.env);
+      const contentTypeHeader = c.req.header('content-type') || '';
+
+      if (contentTypeHeader.includes('multipart/form-data')) {
+        const formData = await c.req.formData();
+        const file = (formData.get('file') || formData.get('media')) as unknown as File | null;
+        if (!file || !(file instanceof File)) {
+          return bad(c, 'No file found in multipart form-data. Key should be "file" or "media".');
+        }
+
+        const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '';
+        const randomId = crypto.randomUUID();
+        const key = 'uploads/' + randomId + ext;
+        const buffer = await file.arrayBuffer();
+
+        const result = await storage.put(key, buffer, { contentType: file.type || 'application/octet-stream' });
+        return ok(c, {
+          key: result.key,
+          url: result.url,
+          fileName: file.name,
+          fileType: file.type || 'application/octet-stream',
+          size: file.size,
+        });
+      }
+
+      // Handle raw binary file upload
+      const arrayBuffer = await c.req.arrayBuffer();
+      if (!arrayBuffer || arrayBuffer.byteLength === 0) {
+        return bad(c, 'Upload payload is empty');
+      }
+
+      const customKey = c.req.query('key');
+      const filename = c.req.header('x-filename') || 'file.bin';
+      const ext = filename.includes('.') ? filename.slice(filename.lastIndexOf('.')) : '';
+      const key = customKey || ('uploads/' + crypto.randomUUID() + ext);
+      const contentType = c.req.header('content-type') || 'application/octet-stream';
+
+      const result = await storage.put(key, arrayBuffer, { contentType });
+      return ok(c, {
+        key: result.key,
+        url: result.url,
+        fileName: filename,
+        fileType: contentType,
+        size: arrayBuffer.byteLength,
+      });
+    } catch (err: any) {
+      console.error('[UPLOAD ERROR]', err);
+      return bad(c, err?.message || 'Failed to upload file');
+    }
+  });
+
+  app.get('/api/storage/*', async (c) => {
+    const rawPath = c.req.path.replace(/^\/api\/storage\//, '');
+    const key = decodeURIComponent(rawPath);
+    if (!key) return notFound(c, 'Storage key required');
+
+    const storage = getStorage(c.env);
+    const item = await storage.get(key);
+    if (!item) {
+      return notFound(c, 'File not found');
+    }
+
+    const headers: Record<string, string> = {
+      'Cache-Control': 'public, max-age=31536000, immutable',
+    };
+    if (item.contentType) {
+      headers['Content-Type'] = item.contentType;
+    }
+
+    return new Response(item.data as any, {
+      status: 200,
+      headers,
+    });
   });
 }

@@ -39,11 +39,20 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
   - `super-admin.ts` - Platform admin dashboards, tenant approvals, feature toggles.
   - `common.ts` - Shared mappers, timestamp utilities, tenant resolution helpers.
 - **Frontend Component Hygiene:** The same anti-monolith rule applies to frontend pages (`src/pages/*`). Break complex views with multiple tabs or modals into subcomponents under `src/components/<feature>/` (e.g., `src/components/qris/`, `src/components/kajian/`) instead of dumping all JSX, state, and dialogs into a single monolithic page file.
+- **File-Size Check Command:** Always run `bun run validate` (`tsc -b && bun run check:size`) before reporting any task or committing changes to ensure no files exceed the 500 LOC cap.
 
 ---
 
 ## 5. Code Hygiene, Shared Utilities & Scope Discipline
-- **Zero Scope Creep on Commits:** Never stage or commit extraneous tooling files, agent frameworks (e.g. `.agents/skills/*`, `.qwen/`), or scratch transcripts into application feature commits. Feature commits must only include production code and tests.
+- **Zero Scope Creep on Commits:** Never stage or commit extraneous tooling files, agent frameworks (e.g. `.agents/`, `.qwen/`, `.scratch/`), or scratch transcripts into application feature commits. Feature commits must only include production code and tests.
+- **API Client Calling Signature:** When communicating with backend endpoints from frontend components, use the strongly-typed `api` helper from `@/lib/api-client`:
+  ```ts
+  // GET:
+  const data = await api<DataType>(`/api/${slug}/endpoint`);
+  // POST / PUT / DELETE:
+  await api(`/api/${slug}/endpoint`, { method: 'POST', body: JSON.stringify(payload) });
+  ```
+  Do NOT assume Axios-style methods (`api.get`, `api.post`).
 - **Centralized Shared Utilities:** Common media or external service helpers (such as `extractYoutubeVideoId`, URL parsers, and data formatting) must live in `shared/` (e.g. `shared/youtube.ts`) rather than duplicating regex and utility functions across frontend and backend.
 - **Endpoint Authorization:** Any mutations on tenant configuration (e.g. `PUT /api/:slug/settings`) must enforce tenant ownership/membership verification.
 

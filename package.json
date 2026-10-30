@@ -9,6 +9,8 @@
     "start:node": "node --import tsx/esm worker/server-node.ts",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
+    "check:size": "bun run scripts/check-file-size.ts",
+    "validate": "bun run typecheck && bun run check:size",
     "lint": "eslint --cache -f json --quiet .",
     "test": "bun test test/db-roundtrip.test.ts",
     "test:db": "bun test test/db-roundtrip.test.ts",

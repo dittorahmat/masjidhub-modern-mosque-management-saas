@@ -39,7 +39,8 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
   - `super-admin.ts` - Platform admin dashboards, tenant approvals, feature toggles.
   - `common.ts` - Shared mappers, timestamp utilities, tenant resolution helpers.
 - **Frontend Component Hygiene:** The same anti-monolith rule applies to frontend pages (`src/pages/*`). Break complex views with multiple tabs or modals into subcomponents under `src/components/<feature>/` (e.g., `src/components/qris/`, `src/components/kajian/`) instead of dumping all JSX, state, and dialogs into a single monolithic page file.
-- **File-Size Check Command:** Always run `bun run validate` (`tsc -b && bun run check:size`) before reporting any task or committing changes to ensure no files exceed the 500 LOC cap.
+- **Validation & Guardrail Command:** Always run `bun run validate` (`tsc -b && bun run check:size && bun run check:touch`) before reporting any task or committing changes. This automatically checks TypeScript compilation, enforces the 500 LOC anti-monolith cap, and verifies 44px mobile touch targets.
+- **Sub-Agent Concurrency Limits:** When using `self` (heavy prompt) sub-agents, run at most **2 sub-agents concurrently** to prevent hitting individual rate/quota exhaustion (`RESOURCE_EXHAUSTED / code 429`). For lightweight refactoring or pure styling tasks, specify lighter sub-agent models (`flash` / `flash_lite`) or serialize execution on the primary thread.
 
 ---
 

@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { ok, bad, notFound } from "../../core-utils";
 import { getStorage } from "../../storage";
+import { uploadAsset } from "../../storage/asset-manager";
 
 export function registerStorageRoutes(app: Hono<any>) {
   // Config Cloudinary
@@ -24,18 +25,13 @@ export function registerStorageRoutes(app: Hono<any>) {
           return bad(c, 'No file found in multipart form-data. Key should be "file" or "media".');
         }
 
-        const ext = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '';
-        const randomId = crypto.randomUUID();
-        const key = 'uploads/' + randomId + ext;
-        const buffer = await file.arrayBuffer();
-
-        const result = await storage.put(key, buffer, { contentType: file.type || 'application/octet-stream' });
+        const uploaded = await uploadAsset(c.env, file);
         return ok(c, {
-          key: result.key,
-          url: result.url,
-          fileName: file.name,
-          fileType: file.type || 'application/octet-stream',
-          size: file.size,
+          key: uploaded.key,
+          url: uploaded.url,
+          fileName: uploaded.filename,
+          fileType: uploaded.contentType,
+          size: uploaded.size,
         });
       }
 

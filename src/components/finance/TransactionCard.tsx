@@ -3,6 +3,7 @@ import { format } from 'date-fns';
 import { id } from 'date-fns/locale/id';
 import { ArrowUpRight, ArrowDownRight, MoreVertical } from 'lucide-react';
 import type { Transaction } from '@shared/types';
+import { formatRupiah } from '@shared/format';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -68,7 +69,7 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction })
             isIncome ? 'text-emerald-600' : 'text-rose-600'
           }`}
         >
-          {isIncome ? '+' : '-'} Rp {transaction.amount.toLocaleString('id-ID')}
+          {isIncome ? '+' : '-'} {formatRupiah(transaction.amount)}
         </span>
       </div>
     </Card>

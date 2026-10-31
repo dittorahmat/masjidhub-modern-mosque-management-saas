@@ -29,7 +29,8 @@ import {
 import { toast } from 'sonner';
 import { getYoutubeEmbedUrl } from '@shared/youtube';
 import { KajianVideoCard } from '@/components/kajian/KajianVideoCard';
-import { AddKajianDialog, KAJIAN_CATEGORIES } from '@/components/kajian/AddKajianDialog';
+import { AddKajianDialog } from '@/components/kajian/AddKajianDialog';
+import { KAJIAN_CATEGORIES } from '@shared/types';
 
 export default function KajianVideosPage() {
   const { slug } = useParams();

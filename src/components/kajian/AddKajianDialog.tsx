@@ -17,18 +17,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { extractYoutubeVideoId, getYoutubeThumbnailUrl } from '@shared/youtube';
-import { Sparkles, Youtube } from 'lucide-react';
+import { ParsedKajianMetadata, KAJIAN_CATEGORIES } from '@shared/types';
+import { Sparkles, Youtube, Loader2, Bot } from 'lucide-react';
+import { useParams } from 'react-router-dom';
+import { api } from '@/lib/api-client';
+import { toast } from 'sonner';
 
-export const KAJIAN_CATEGORIES = [
-  { value: 'all', label: 'Semua Kategori' },
-  { value: 'kajian_tematik', label: 'Kajian Tematik' },
-  { value: 'tafsir', label: 'Tafsir Al-Qur\'an' },
-  { value: 'fiqih', label: 'Fiqih & Muamalah' },
-  { value: 'aqidah', label: 'Aqidah & Akhlak' },
-  { value: 'sirah', label: 'Sirah Nabawiyah' },
-  { value: 'tahsin', label: 'Tahsin & Tajwid' },
-  { value: 'kajian_rutin', label: 'Kajian Rutin' },
-];
+export { KAJIAN_CATEGORIES } from "@shared/types";
 
 interface AddKajianDialogProps {
   isOpen: boolean;
@@ -57,6 +52,45 @@ export function AddKajianDialog({
   const [duration, setDuration] = useState('');
   const [category, setCategory] = useState('kajian_tematik');
   const [description, setDescription] = useState('');
+  const [isParsing, setIsParsing] = useState(false);
+  const { slug } = useParams();
+
+  const handleAutoFill = async () => {
+    if (!slug) {
+      toast.error('Konteks masjid tidak ditemukan');
+      return;
+    }
+    if (!youtubeUrl.trim()) {
+      toast.error('Silakan masukkan URL YouTube terlebih dahulu');
+      return;
+    }
+    const vId = extractYoutubeVideoId(youtubeUrl.trim());
+    if (!vId) {
+      toast.error('URL YouTube belum valid');
+      return;
+    }
+
+    setIsParsing(true);
+    try {
+      const result = await api<ParsedKajianMetadata>(`/api/${slug}/kajian-videos/parse-url`, {
+        method: 'POST',
+        body: JSON.stringify({ url: youtubeUrl.trim() }),
+      });
+
+      if (result) {
+        if (result.title) setTitle(result.title);
+        if (result.ustadzName) setUstadzName(result.ustadzName);
+        if (result.category) setCategory(result.category);
+        if (result.duration) setDuration(result.duration);
+        if (result.summary || result.description) setDescription(result.summary || result.description || '');
+        toast.success('Metadata video berhasil diisi otomatis!');
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengambil metadata YouTube');
+    } finally {
+      setIsParsing(false);
+    }
+  };
 
   const detectedVideoId = extractYoutubeVideoId(youtubeUrl);
   const previewThumbnail = detectedVideoId ? getYoutubeThumbnailUrl(detectedVideoId) : null;
@@ -106,14 +140,36 @@ export function AddKajianDialog({
               required
             />
             {detectedVideoId ? (
-              <div className="mt-2 p-2 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-3">
-                <img src={previewThumbnail!} alt="Preview" className="w-20 h-12 object-cover rounded shadow-sm" />
-                <div className="text-xs text-emerald-800">
-                  <p className="font-semibold flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> ID YouTube Terdeteksi:
-                  </p>
-                  <p className="font-mono text-stone-600">{detectedVideoId}</p>
+              <div className="mt-2 p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <img src={previewThumbnail!} alt="Preview" className="w-20 h-12 object-cover rounded" />
+                  <div className="text-xs text-emerald-800">
+                    <p className="font-semibold flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-600" /> ID YouTube Terdeteksi:
+                    </p>
+                    <p className="font-mono text-stone-600">{detectedVideoId}</p>
+                  </div>
                 </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={isParsing}
+                  onClick={handleAutoFill}
+                  className="min-h-[44px] border-emerald-300 text-emerald-800 hover:bg-emerald-100 flex items-center gap-2 self-start sm:self-auto"
+                >
+                  {isParsing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-emerald-700" />
+                      Menganalisis...
+                    </>
+                  ) : (
+                    <>
+                      <Bot className="w-4 h-4 text-emerald-700" />
+                      Auto-Fill dengan AI
+                    </>
+                  )}
+                </Button>
               </div>
             ) : youtubeUrl.length > 5 ? (
               <p className="text-xs text-rose-500">Format tautan YouTube belum valid</p>
@@ -156,7 +212,7 @@ export function AddKajianDialog({
                 <SelectValue placeholder="Pilih Kategori" />
               </SelectTrigger>
               <SelectContent>
-                {KAJIAN_CATEGORIES.filter(c => c.value !== 'all').map((cat) => (
+                {KAJIAN_CATEGORIES.map((cat) => (
                   <SelectItem key={cat.value} value={cat.value}>
                     {cat.label}
                   </SelectItem>

@@ -379,3 +379,32 @@ export interface KajianVideo {
   publishedAt?: number;
   createdAt: number;
 }
+
+
+export const KAJIAN_CATEGORIES = [
+  { value: 'kajian_tematik', label: 'Kajian Tematik' },
+  { value: 'tafsir', label: 'Tafsir Al-Quran' },
+  { value: 'fiqih', label: 'Fiqih & Muamalah' },
+  { value: 'aqidah', label: 'Aqidah & Tauhid' },
+  { value: 'sirah', label: 'Sirah Nabawiyah' },
+  { value: 'tahsin', label: 'Tahsin & Tajwid' },
+  { value: 'kajian_rutin', label: 'Kajian Rutin' },
+] as const;
+
+export type KajianCategoryValue = typeof KAJIAN_CATEGORIES[number]['value'];
+
+export interface ParseKajianUrlRequest {
+  url: string;
+}
+
+export interface ParsedKajianMetadata {
+  videoId: string;
+  title: string;
+  ustadzName: string;
+  category: string;
+  duration?: string;
+  summary?: string;
+  description?: string;
+  channelTitle?: string;
+  thumbnailUrl: string;
+}

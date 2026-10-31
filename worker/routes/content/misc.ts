@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { getDb, schema } from "../../db";
-import { eq, and, desc, asc, sql } from "drizzle-orm";
+import { eq, and, desc, asc, sql, like, or } from "drizzle-orm";
 import { ok, bad, notFound } from "../../core-utils";
+import { resolveTenantContext } from "../../middleware/tenant";
 import {
   ensureDbInitialized,
   mapNotificationRow,
@@ -436,29 +437,36 @@ export function registerMiscRoutes(app: Hono<any>) {
   });
 
   app.get('/api/:slug/search', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    await ensureDbInitialized(c.env);
-    const db = getDb(c.env);
-    const q = c.req.query('q')?.toLowerCase() || "";
+    const ctx = await resolveTenantContext(c);
+    if (!ctx) return notFound(c, 'Tenant not found');
+    const rawQ = c.req.query('q') || "";
+    const searchPattern = `%${rawQ}%`;
+
+    // Deep database query with SQL LIKE and LIMIT 20 bounds
     const [txRows, invRows, evRows, postRows, zisRows] = await Promise.all([
-      db.select().from(schema.transactions).where(eq(schema.transactions.tenantId, tenant.id)),
-      db.select().from(schema.inventoryItems).where(eq(schema.inventoryItems.tenantId, tenant.id)),
-      db.select().from(schema.events).where(eq(schema.events.tenantId, tenant.id)),
-      db.select().from(schema.forumPosts).where(eq(schema.forumPosts.tenantId, tenant.id)),
-      db.select().from(schema.zisTransactions).where(eq(schema.zisTransactions.tenantId, tenant.id)),
+      ctx.db.select().from(schema.transactions)
+        .where(and(eq(schema.transactions.tenantId, ctx.tenant.id), like(schema.transactions.description, searchPattern)))
+        .limit(20),
+      ctx.db.select().from(schema.inventoryItems)
+        .where(and(eq(schema.inventoryItems.tenantId, ctx.tenant.id), or(like(schema.inventoryItems.name, searchPattern), like(schema.inventoryItems.location, searchPattern))))
+        .limit(20),
+      ctx.db.select().from(schema.events)
+        .where(and(eq(schema.events.tenantId, ctx.tenant.id), or(like(schema.events.title, searchPattern), like(schema.events.description, searchPattern))))
+        .limit(20),
+      ctx.db.select().from(schema.forumPosts)
+        .where(and(eq(schema.forumPosts.tenantId, ctx.tenant.id), or(like(schema.forumPosts.title, searchPattern), like(schema.forumPosts.content, searchPattern))))
+        .limit(20),
+      ctx.db.select().from(schema.zisTransactions)
+        .where(and(eq(schema.zisTransactions.tenantId, ctx.tenant.id), or(like(schema.zisTransactions.description, searchPattern), like(schema.zisTransactions.muzakkiName, searchPattern))))
+        .limit(20),
     ]);
-    const mappedTxs = txRows.map(mapTransactionRow);
-    const mappedInv = invRows.map(mapInventoryItemRow);
-    const mappedEvs = evRows.map(mapEventRow);
-    const mappedPosts = postRows.map(mapForumPostRow);
-    const mappedZis = zisRows.map(mapZisTransactionRow);
+
     return ok(c, {
-      transactions: mappedTxs.filter(t => t.description.toLowerCase().includes(q)),
-      inventory: mappedInv.filter(i => i.name.toLowerCase().includes(q) || i.location.toLowerCase().includes(q)),
-      events: mappedEvs.filter(e => e.title.toLowerCase().includes(q) || e.description.toLowerCase().includes(q)),
-      forum: mappedPosts.filter(p => p.title.toLowerCase().includes(q) || p.content.toLowerCase().includes(q)),
-      zis: mappedZis.filter(z => z.description.toLowerCase().includes(q) || (z.muzakki_name && z.muzakki_name.toLowerCase().includes(q))),
+      transactions: txRows.map(mapTransactionRow),
+      inventory: invRows.map(mapInventoryItemRow),
+      events: evRows.map(mapEventRow),
+      forum: postRows.map(mapForumPostRow),
+      zis: zisRows.map(mapZisTransactionRow),
     });
   });
 }

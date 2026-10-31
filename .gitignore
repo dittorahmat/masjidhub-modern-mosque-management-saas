@@ -78,9 +78,10 @@ data/
 uploads/
 
 
-# Agent skills, framework and scratch directories
+# Agent skills, commands, framework and scratch directories
 .agents/
 .agent/
 .qwen/
 .scratch/
+.gemini/
 skills-lock.json

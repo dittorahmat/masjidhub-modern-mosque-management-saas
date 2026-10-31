@@ -2,6 +2,8 @@ import { Hono } from "hono";
 import { getDb, schema } from "../db";
 import { eq, and, desc } from "drizzle-orm";
 import { ok, bad, notFound } from "../core-utils";
+import { FinanceRepository, type CreateTransactionInput } from "../repositories/finance";
+import { resolveTenantContext } from "../middleware/tenant";
 import {
   ensureDbInitialized,
   mapTransactionRow,
@@ -18,52 +20,28 @@ const normalizeText = (text: string) => text.toLowerCase().replace(/[^a-z0-9]/g,
 export function registerFinanceRoutes(app: Hono<any>) {
   // 1. Transactions List (supports both /finance and /finance/transactions)
   const getTransactionsHandler = async (c: any) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    await ensureDbInitialized(c.env);
-    const db = getDb(c.env);
-    const rows = await db
-      .select()
-      .from(schema.transactions)
-      .where(eq(schema.transactions.tenantId, tenant.id))
-      .orderBy(desc(schema.transactions.date));
-    return ok(c, rows.map(mapTransactionRow));
+    const ctx = await resolveTenantContext(c);
+    if (!ctx) return notFound(c, 'Tenant not found');
+    const repo = new FinanceRepository(ctx.db);
+    const transactions = await repo.listTransactions(ctx.tenant.id);
+    return ok(c, transactions);
   };
   app.get('/api/:slug/finance', getTransactionsHandler);
   app.get('/api/:slug/finance/transactions', getTransactionsHandler);
 
   // 2. Transaction Create (supports both /finance and /finance/transactions)
   const createTransactionHandler = async (c: any) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    await ensureDbInitialized(c.env);
-    const db = getDb(c.env);
-    const body = await c.req.json();
-    const id = body.id || crypto.randomUUID();
-    const dateVal = toEpochSeconds(body.date ?? Date.now());
-
-    await db.insert(schema.transactions).values({
-      id,
-      tenantId: tenant.id,
-      type: body.type,
-      amount: Number(body.amount),
-      category: body.category,
-      description: body.description || '',
-      date: dateVal,
-      paymentMethod: body.paymentMethod ?? null,
-      referenceNumber: body.referenceNumber ?? null,
-      receiptUrl: body.receiptUrl ?? null,
-      createdBy: body.createdBy || 'admin',
-      createdAt: Math.floor(Date.now() / 1000),
-    });
-
-    const inserted = await db
-      .select()
-      .from(schema.transactions)
-      .where(and(eq(schema.transactions.id, id), eq(schema.transactions.tenantId, tenant.id)))
-      .limit(1);
-
-    return ok(c, mapTransactionRow(inserted[0]));
+    const ctx = await resolveTenantContext(c);
+    if (!ctx) return notFound(c, 'Tenant not found');
+    let body: CreateTransactionInput;
+    try {
+      body = await c.req.json();
+    } catch {
+      return bad(c, 'Invalid JSON payload');
+    }
+    const repo = new FinanceRepository(ctx.db);
+    const created = await repo.createTransaction(ctx.tenant.id, body);
+    return ok(c, created);
   };
   app.post('/api/:slug/finance', createTransactionHandler);
   app.post('/api/:slug/finance/transactions', createTransactionHandler);
@@ -170,38 +148,17 @@ export function registerFinanceRoutes(app: Hono<any>) {
 
   // 6. Finance Overview / Summary / Insights
   app.get('/api/:slug/finance/overview', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    await ensureDbInitialized(c.env);
-    const db = getDb(c.env);
-
-    const rows = await db
-      .select()
-      .from(schema.transactions)
-      .where(eq(schema.transactions.tenantId, tenant.id));
-
-    let totalIncome = 0;
-    let totalExpense = 0;
-    const byCategory: Record<string, number> = {};
-
-    for (const r of rows) {
-      if (r.type === 'income') {
-        totalIncome += r.amount;
-      } else {
-        totalExpense += r.amount;
-      }
-      byCategory[r.category] = (byCategory[r.category] || 0) + r.amount;
-    }
-
-    const balance = totalIncome - totalExpense;
-    const idleCashWarning = balance > 10000000;
+    const ctx = await resolveTenantContext(c);
+    if (!ctx) return notFound(c, 'Tenant not found');
+    const repo = new FinanceRepository(ctx.db);
+    const overview = await repo.getOverview(ctx.tenant.id);
+    const idleCashWarning = overview.netBalance > 10000000;
 
     return ok(c, {
-      totalIncome,
-      totalExpense,
-      balance,
-      transactionCount: rows.length,
-      byCategory,
+      totalIncome: overview.totalIncome,
+      totalExpense: overview.totalExpense,
+      balance: overview.netBalance,
+      byCategory: overview.byCategory,
       idleCashWarning,
       insights: idleCashWarning
         ? 'Saldo kas melebihi Rp 10.000.000. Pertimbangkan untuk menyalurkan ke program mustahik atau pembangunan agar dana lebih produktif.'

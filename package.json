@@ -11,9 +11,9 @@
     "typecheck": "tsc -b",
     "check:size": "bun run scripts/check-file-size.ts",
     "check:touch": "bun run scripts/check-touch-targets.ts",
-    "validate": "bun run typecheck && bun run check:size && bun run check:touch && bun run check:taste",
+    "validate": "bun run typecheck && bun test && bun run check:size && bun run check:touch && bun run check:contracts && bun run check:taste",
     "lint": "eslint --cache -f json --quiet .",
-    "test": "bun test test/db-roundtrip.test.ts",
+    "test": "bun test",
     "test:db": "bun test test/db-roundtrip.test.ts",
     "preview": "bun run build && vite preview --host 0.0.0.0 --port ${PORT:-4173}",
     "deploy": "bun run build && wrangler deploy",
@@ -25,6 +25,7 @@
     "db:seed:local": "bun worker/db/seed.ts",
     "db:seed:d1": "bun worker/db/seed.ts --local-d1",
     "db:generate-sql": "bun worker/db/generate-seed-sql.ts",
+    "check:contracts": "bun run scripts/check-contract-centralization.ts",
     "check:taste": "bun run scripts/check-frontend-taste.ts"
   },
   "dependencies": {

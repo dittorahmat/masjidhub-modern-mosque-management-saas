@@ -39,12 +39,22 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
   - `super-admin.ts` - Platform admin dashboards, tenant approvals, feature toggles.
   - `common.ts` - Shared mappers, timestamp utilities, tenant resolution helpers.
 - **Frontend Component Hygiene:** The same anti-monolith rule applies to frontend pages (`src/pages/*`). Break complex views with multiple tabs or modals into subcomponents under `src/components/<feature>/` (e.g., `src/components/qris/`, `src/components/kajian/`) instead of dumping all JSX, state, and dialogs into a single monolithic page file.
-- **Validation & Guardrail Command:** Always run `bun run validate` (`tsc -b && bun run check:size && bun run check:touch && bun run check:taste`) before reporting any task or committing changes. This automatically checks TypeScript compilation, enforces the 500 LOC anti-monolith cap, verifies 44px mobile touch targets, and enforces the design-taste anti-slop rules on modified files.
-- **Sub-Agent Concurrency Limits:** When using `self` (heavy prompt) sub-agents, run at most **2 sub-agents concurrently** to prevent hitting individual rate/quota exhaustion (`RESOURCE_EXHAUSTED / code 429`). For lightweight refactoring or pure styling tasks, specify lighter sub-agent models (`flash` / `flash_lite`) or serialize execution on the primary thread.
+- **Validation & Guardrail Command:** Always run `bun run validate` (`tsc -b && bun test && bun run check:size && bun run check:touch && bun run check:contracts && bun run check:taste`) before reporting any task or committing changes. This automatically checks TypeScript compilation, enforces the 500 LOC anti-monolith cap, verifies 44px mobile touch targets, and enforces the design-taste anti-slop rules on modified files.
+- **Sub-Agent Concurrency Limits & Reactive Wakeup:** When using `self` (heavy prompt) sub-agents, run at most **2 sub-agents concurrently** to prevent hitting individual rate/quota exhaustion (`RESOURCE_EXHAUSTED / code 429`). For lightweight exploration or code reviews, specify lighter models (`flash` / `flash_lite`). Crucially, subagents deliver completion notifications automatically; NEVER spawn repetitive sleep/polling schedules waiting for them.
 
 ---
 
-## 5. Code Hygiene, Shared Utilities & Scope Discipline
+## 5. Deep Architecture & Test Locality (Anti-Shallow Codebase Rules)
+- **Deep Repositories over Route Inlining:** Route controllers under `worker/routes/` must be thin adapters (3-5 LOC per endpoint). Business logic, aggregations, and Drizzle SQL operations belong inside deep domain repositories (`worker/repositories/*`, e.g., `FinanceRepository`, `ZisRepository`).
+- **Database-Level Aggregation:** NEVER pull thousands of rows into worker memory to compute sums, counts, or balances in JavaScript `for...of` loops or `.reduce()`. Always push metric calculations down into SQL (`sql<number>`coalesce(sum(...), 0)``, `groupBy`, `like`, and bounded `limit`).
+- **Tenant Context Middleware:** All tenant-scoped routes (`/api/:slug/*`) must resolve the tenant and db instance via `tenantMiddleware` or `resolveTenantContext(c)` from `worker/middleware/tenant.ts`. Never duplicate the 4-line `getTenantBySlugOrSubdomain / 404 / ensureDbInitialized / getDb` ceremony.
+- **Deep Asset Management:** File uploads, MIME validation, and UUID key generation must go through `uploadAsset()` in `worker/storage/asset-manager.ts`. Do not parse multipart form buffers directly in HTTP route closures.
+- **AI Provider Seam:** Gemini or LLM calls must be accessed via the `AIProvider` port (`worker/ai/provider.ts`), allowing deterministic test execution with `MockAIAdapter` without requiring live network calls or API keys.
+- **Shared Formatters:** All currency, number, and date string representations in UI components must use canonical shared helpers (`formatRupiah`, `formatNumber` in `@shared/format`) instead of ad-hoc `toLocaleString('id-ID')` calls.
+
+---
+
+## 6. Code Hygiene, Shared Utilities & Scope Discipline
 - **Zero Scope Creep on Commits:** Never stage or commit extraneous tooling files, agent frameworks (e.g. `.agents/`, `.qwen/`, `.scratch/`), or scratch transcripts into application feature commits. Feature commits must only include production code and tests.
 - **API Client Calling Signature:** When communicating with backend endpoints from frontend components, use the strongly-typed `api` helper from `@/lib/api-client`:
   ```ts
@@ -58,19 +68,20 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
 - **Mobile Ergonomics & Touch Targets:** All interactive controls (buttons, icon triggers, form selectors, navigation items) must enforce a minimum 44x44px touch target area (`min-h-[44px] min-w-[44px]`) to ensure accessibility on mobile devices.
 - **Mobile-Friendly & Mobile-Responsive First:** Every screen, dashboard page, modal, and table MUST be fully responsive and optimized for mobile devices (360px - 430px viewport widths). Never allow horizontal viewport scrolling (`overflow-x-hidden` on roots), break wide data tables into mobile cards or horizontally scrollable containers, ensure form inputs are thumb-friendly, and maintain seamless mobile bottom-nav or drawer navigation.
 - **Implement YAGNI & Prefer One-Liner Solutions:** Strictly follow YAGNI (You Aren't Gonna Need It). Do not over-engineer, create speculative abstractions, or write multi-layered helper cascades when standard built-ins or concise one-liners suffice. Keep implementations lean, direct, and straightforward.
-- **Defensive Form & API Payload Typing:** Avoid untyped request/form payloads (`Record<string, any>`, unvalidated `c.req.json()`, or raw `Object.fromEntries(formData)`). Explicitly declare and type all request bodies and response DTOs using centralized TypeScript interfaces in `shared/types.ts` before invoking or consuming API mutations.
+- **Defensive Form & API Payload Typing:** Avoid untyped request/form payloads (`Record<string, any>`, unvalidated `c.req.json()`, or raw `Object.fromEntries(formData)`). Explicitly declare and type all request bodies and response DTOs using centralized TypeScript interfaces in `shared/types.ts` before invoking or consuming API mutations. Wrap `await c.req.json()` in try-catch to return 400 Bad Request instead of throwing unhandled 500 SyntaxErrors.
+- **Resilient External HTTP Calls:** All external network calls (e.g. YouTube oEmbed, third-party APIs) must attach `signal: AbortSignal.timeout(2000)` to prevent worker thread hangs. If the upstream provider fails, gracefully fall back to local parsing or default attributes.
 - **AI Output Defensive Whitelisting & Normalization:** When using LLMs (e.g., Gemini) to extract, categorize, or summarize domain data (such as categories, tags, or statuses), never pass raw LLM text directly to the database or UI without defensive whitelisting and sanitation against domain enums/arrays.
 - **Contract Type Centralization:** Never define duplicate DTO/payload interfaces separately in backend worker files and frontend components. All data models shared between endpoints and UI dialogs/pages MUST reside in `shared/types.ts`.
 - **Endpoint Authorization:** Any mutations on tenant configuration (e.g. `PUT /api/:slug/settings`) must enforce tenant ownership/membership verification.
 
 ---
 
-## 6. Active Health Checks
+## 7. Active Health Checks
 - The `/api/health` endpoint must actively verify database connectivity with a live query (`SELECT 1`) and report `{ success: true, data: { status: 'healthy', database: 'connected', timestamp: Date.now() } }`.
 
 ---
 
-## 7. Frontend Design Taste & Anti-Slop Policy (design-taste-frontend)
+## 8. Frontend Design Taste & Anti-Slop Policy (design-taste-frontend)
 - **Mandatory Skill Execution:** Every frontend design, UI modification, redesign, styling, or new page/component creation **MUST follow and pass the `design-taste-frontend` skill guidelines**.
 - **No AI-Slop Ornaments:**
   - **No Decorative Shadows:** Elements at rest must carry no shadow (`shadow-lg`, `shadow-2xl`). Shadows are reserved solely for floating overlays (modal dialogs, dropdown popovers).
@@ -85,5 +96,5 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
 
 ---
 
-## 8. Documentation Integrity
+## 9. Documentation Integrity
 - **No Documentation Drift:** When modifying backend architectures, configuration scripts, or API contracts, immediately synchronize `GEMINI.md`, `README.md`, and `docs/architecture-backend.md`.

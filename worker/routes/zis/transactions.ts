@@ -3,6 +3,8 @@ import { getDb, schema } from "../../db";
 import { eq, and, desc } from "drizzle-orm";
 import type { ZisTransaction } from "@shared/types";
 import { ok, notFound } from "../../core-utils";
+import { ZisRepository } from "../../repositories/zis";
+import { resolveTenantContext } from "../../middleware/tenant";
 import {
   ensureDbInitialized,
   mapZisTransactionRow,
@@ -25,18 +27,11 @@ async function processZisPayment(transaction: any, paymentMethod: string, amount
 export function registerZisTransactionRoutes(app: Hono<any>) {
   // 10. ZIS Transactions List (supports both /zis and /zis/transactions)
   const getZisTransactionsHandler = async (c: any) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    await ensureDbInitialized(c.env);
-    const db = getDb(c.env);
-
-    const rows = await db
-      .select()
-      .from(schema.zisTransactions)
-      .where(eq(schema.zisTransactions.tenantId, tenant.id))
-      .orderBy(desc(schema.zisTransactions.date));
-
-    return ok(c, rows.map(mapZisTransactionRow));
+    const ctx = await resolveTenantContext(c);
+    if (!ctx) return notFound(c, 'Tenant not found');
+    const repo = new ZisRepository(ctx.db);
+    const transactions = await repo.listTransactions(ctx.tenant.id);
+    return ok(c, transactions);
   };
   app.get('/api/:slug/zis', getZisTransactionsHandler);
   app.get('/api/:slug/zis/transactions', getZisTransactionsHandler);
@@ -250,36 +245,18 @@ export function registerZisTransactionRoutes(app: Hono<any>) {
 
   // 15. ZIS Overview Endpoint
   app.get('/api/:slug/zis/overview', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
-    if (!tenant) return notFound(c, 'Tenant not found');
-    await ensureDbInitialized(c.env);
-    const db = getDb(c.env);
-
-    const [zisRows, mustahikRows] = await Promise.all([
-      db.select().from(schema.zisTransactions).where(eq(schema.zisTransactions.tenantId, tenant.id)),
-      db.select().from(schema.mustahiks).where(eq(schema.mustahiks.tenantId, tenant.id)),
-    ]);
-
-    let totalIn = 0;
-    let totalOut = 0;
-    const inByType: Record<string, number> = {};
-
-    for (const tx of zisRows) {
-      if (tx.flow === 'in' && (tx.paymentStatus === 'completed' || !tx.paymentStatus)) {
-        totalIn += tx.amount;
-        inByType[tx.type] = (inByType[tx.type] || 0) + tx.amount;
-      } else if (tx.flow === 'out') {
-        totalOut += tx.amount;
-      }
-    }
+    const ctx = await resolveTenantContext(c);
+    if (!ctx) return notFound(c, 'Tenant not found');
+    const repo = new ZisRepository(ctx.db);
+    const overview = await repo.getOverview(ctx.tenant.id);
 
     return ok(c, {
-      totalIn,
-      totalOut,
-      balance: totalIn - totalOut,
-      inByType,
-      totalMustahik: mustahikRows.length,
-      activeMustahik: mustahikRows.filter(m => m.status === 'active').length,
+      totalIn: overview.totalInflow,
+      totalOut: overview.totalOutflow,
+      balance: overview.netZisBalance,
+      inByType: overview.byType,
+      totalMustahik: overview.activeMustahikCount,
+      activeMustahik: overview.activeMustahikCount,
     });
   });
 

@@ -17,22 +17,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { extractYoutubeVideoId, getYoutubeThumbnailUrl } from '@shared/youtube';
-import { ParsedKajianMetadata } from '@shared/types';
+import { ParsedKajianMetadata, KAJIAN_CATEGORIES } from '@shared/types';
 import { Sparkles, Youtube, Loader2, Bot } from 'lucide-react';
 import { useParams } from 'react-router-dom';
 import { api } from '@/lib/api-client';
 import { toast } from 'sonner';
 
-export const KAJIAN_CATEGORIES = [
-  { value: 'all', label: 'Semua Kategori' },
-  { value: 'kajian_tematik', label: 'Kajian Tematik' },
-  { value: 'tafsir', label: 'Tafsir Al-Qur\'an' },
-  { value: 'fiqih', label: 'Fiqih & Muamalah' },
-  { value: 'aqidah', label: 'Aqidah & Akhlak' },
-  { value: 'sirah', label: 'Sirah Nabawiyah' },
-  { value: 'tahsin', label: 'Tahsin & Tajwid' },
-  { value: 'kajian_rutin', label: 'Kajian Rutin' },
-];
+export { KAJIAN_CATEGORIES } from "@shared/types";
 
 interface AddKajianDialogProps {
   isOpen: boolean;
@@ -65,7 +56,14 @@ export function AddKajianDialog({
   const { slug } = useParams();
 
   const handleAutoFill = async () => {
-    if (!youtubeUrl.trim() || !slug) return;
+    if (!slug) {
+      toast.error('Konteks masjid tidak ditemukan');
+      return;
+    }
+    if (!youtubeUrl.trim()) {
+      toast.error('Silakan masukkan URL YouTube terlebih dahulu');
+      return;
+    }
     const vId = extractYoutubeVideoId(youtubeUrl.trim());
     if (!vId) {
       toast.error('URL YouTube belum valid');
@@ -214,7 +212,7 @@ export function AddKajianDialog({
                 <SelectValue placeholder="Pilih Kategori" />
               </SelectTrigger>
               <SelectContent>
-                {KAJIAN_CATEGORIES.filter(c => c.value !== 'all').map((cat) => (
+                {KAJIAN_CATEGORIES.map((cat) => (
                   <SelectItem key={cat.value} value={cat.value}>
                     {cat.label}
                   </SelectItem>

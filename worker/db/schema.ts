@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 
 // 1. Tenants
@@ -89,7 +89,11 @@ export const transactions = sqliteTable('transactions', {
   receiptUrl: text('receipt_url'),
   createdBy: text('created_by').notNull(),
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
-});
+}, (table) => ({
+  tenantDateIdx: index('idx_transactions_tenant_date').on(table.tenantId, table.date),
+  tenantCategoryIdx: index('idx_transactions_tenant_category').on(table.tenantId, table.category),
+  tenantTypeIdx: index('idx_transactions_tenant_type').on(table.tenantId, table.type),
+}));
 
 // 4. ZIS Transactions
 export const zisTransactions = sqliteTable('zis_transactions', {
@@ -115,7 +119,11 @@ export const zisTransactions = sqliteTable('zis_transactions', {
   description: text('description'),
   receiptUrl: text('receipt_url'),
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
-});
+}, (table) => ({
+  tenantDateIdx: index('idx_zis_tenant_date').on(table.tenantId, table.date),
+  tenantFlowIdx: index('idx_zis_tenant_flow').on(table.tenantId, table.flow),
+  tenantTypeIdx: index('idx_zis_tenant_type').on(table.tenantId, table.type),
+}));
 
 // 5. Mustahiks
 export const mustahiks = sqliteTable('mustahiks', {
@@ -133,7 +141,10 @@ export const mustahiks = sqliteTable('mustahiks', {
   registrationDate: integer('registration_date').notNull().default(sql`(unixepoch())`),
   notes: text('notes'),
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
-});
+}, (table) => ({
+  tenantStatusIdx: index('idx_mustahiks_tenant_status').on(table.tenantId, table.status),
+  tenantCategoryIdx: index('idx_mustahiks_tenant_category').on(table.tenantId, table.category),
+}));
 
 // 6. Inventory Items
 export const inventoryItems = sqliteTable('inventory_items', {
@@ -158,7 +169,10 @@ export const inventoryItems = sqliteTable('inventory_items', {
   maintenanceIntervalDays: integer('maintenance_interval_days'),
   nextMaintenanceDate: integer('next_maintenance_date'),
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
-});
+}, (table) => ({
+  tenantCategoryIdx: index('idx_inventory_tenant_category').on(table.tenantId, table.category),
+  tenantLocationIdx: index('idx_inventory_tenant_location').on(table.tenantId, table.location),
+}));
 
 // 7. Events
 export const events = sqliteTable('events', {
@@ -184,7 +198,10 @@ export const events = sqliteTable('events', {
   targetAmount: real('target_amount'),
   collectedAmount: real('collected_amount').default(0),
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
-});
+}, (table) => ({
+  tenantDateIdx: index('idx_events_tenant_date').on(table.tenantId, table.date),
+  tenantCategoryIdx: index('idx_events_tenant_category').on(table.tenantId, table.category),
+}));
 
 // 8. Event Registrations
 export const eventRegistrations = sqliteTable('event_registrations', {

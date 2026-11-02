@@ -39,7 +39,7 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
   - `super-admin.ts` - Platform admin dashboards, tenant approvals, feature toggles.
   - `common.ts` - Shared mappers, timestamp utilities, tenant resolution helpers.
 - **Frontend Component Hygiene:** The same anti-monolith rule applies to frontend pages (`src/pages/*`). Break complex views with multiple tabs or modals into subcomponents under `src/components/<feature>/` (e.g., `src/components/qris/`, `src/components/kajian/`) instead of dumping all JSX, state, and dialogs into a single monolithic page file.
-- **Validation & Guardrail Command:** Always run `bun run validate` (`tsc -b && bun test && bun run check:size && bun run check:touch && bun run check:contracts && bun run check:taste`) before reporting any task or committing changes. This automatically checks TypeScript compilation, enforces the 500 LOC anti-monolith cap, verifies 44px mobile touch targets, and enforces the design-taste anti-slop rules on modified files.
+- **Validation & Guardrail Command:** Always run `bun run validate` (`tsc -b && bun test && bun run check:size && bun run check:touch && bun run check:contracts && bun run check:canonical && bun run check:taste`) before reporting any task or committing changes. This automatically checks TypeScript compilation, enforces the 500 LOC anti-monolith cap, verifies 44px mobile touch targets, asserts canonical HTTP response helpers, and enforces the design-taste anti-slop rules on modified files.
 - **Sub-Agent Concurrency Limits & Reactive Wakeup:** When using `self` (heavy prompt) sub-agents, run at most **2 sub-agents concurrently** to prevent hitting individual rate/quota exhaustion (`RESOURCE_EXHAUSTED / code 429`). For lightweight exploration or code reviews, specify lighter models (`flash` / `flash_lite`). Crucially, subagents deliver completion notifications automatically; NEVER spawn repetitive sleep/polling schedules waiting for them.
 
 ---
@@ -56,6 +56,8 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
 
 ## 6. Code Hygiene, Shared Utilities & Scope Discipline
 - **Zero Scope Creep on Commits:** Never stage or commit extraneous tooling files, agent frameworks (e.g. `.agents/`, `.qwen/`, `.scratch/`), or scratch transcripts into application feature commits. Feature commits must only include production code and tests.
+- **Cross-Platform CRLF / Line Ending Discipline:** Repository code and document files must strictly use LF (`\n`) line endings as governed by `.gitattributes`. When writing or editing scripts and files on Windows environments, avoid CRLF pollution (`\r\n`) to prevent exact target string match failures in automated refactoring tools.
+- **PowerShell Scripting Hygiene:** When running inline evaluation commands in Windows `pwsh`, never construct complex multi-line inline JavaScript strings containing nested quotes and regexes (`node -e "..."` or `bun -e "..."`) that are prone to shell quote stripping and process hangs. Instead, write temporary scripts to `.scratch/` and execute the file directly, cleaning it up after execution.
 - **API Client Calling Signature:** When communicating with backend endpoints from frontend components, use the strongly-typed `api` helper from `@/lib/api-client`:
   ```ts
   // GET:

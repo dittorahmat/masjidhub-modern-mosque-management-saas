@@ -1,22 +1,28 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale/id';
-import { ArrowUpRight, ArrowDownRight, MoreVertical } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import type { Transaction } from '@shared/types';
 import { formatRupiah } from '@shared/format';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { TransactionActionsMenu } from './TransactionActionsMenu';
 
 interface TransactionCardProps {
   transaction: Transaction;
+  onEdit?: (tx: Transaction) => void;
+  onDelete?: (tx: Transaction) => void;
 }
 
-export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction }) => {
+export const TransactionCard: React.FC<TransactionCardProps> = ({
+  transaction,
+  onEdit,
+  onDelete,
+}) => {
   const isIncome = transaction.type === 'income';
 
   return (
-    <Card className="p-4 border border-stone-200/80 shadow-sm rounded-2xl bg-white space-y-3">
+    <Card className="p-4 border border-stone-200/80 rounded-2xl bg-white space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2.5 min-w-0">
           <div
@@ -42,16 +48,26 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({ transaction })
           </div>
         </div>
 
-        <Badge
-          variant="outline"
-          className={`shrink-0 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
-            isIncome
-              ? 'border-emerald-200 bg-emerald-50/50 text-emerald-700'
-              : 'border-rose-200 bg-rose-50/50 text-rose-700'
-          }`}
-        >
-          {isIncome ? 'Masuk' : 'Keluar'}
-        </Badge>
+        <div className="flex items-center gap-1 shrink-0">
+          <Badge
+            variant="outline"
+            className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+              isIncome
+                ? 'border-emerald-200 bg-emerald-50/50 text-emerald-700'
+                : 'border-rose-200 bg-rose-50/50 text-rose-700'
+            }`}
+          >
+            {isIncome ? 'Masuk' : 'Keluar'}
+          </Badge>
+
+          {onEdit && onDelete && (
+            <TransactionActionsMenu
+              transaction={transaction}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
+          )}
+        </div>
       </div>
 
       {transaction.description && (

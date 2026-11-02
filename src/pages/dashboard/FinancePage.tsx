@@ -14,21 +14,50 @@ import {
   ResponsiveDialogTrigger,
 } from '@/components/ui/responsive-dialog';
 import { Input } from '@/components/ui/input';
-import { Plus, PlusCircle, Wallet, ArrowUpCircle, ArrowDownCircle, Search, FileSpreadsheet, FileText, BrainCircuit, ChevronRight } from 'lucide-react';
+import {
+  Plus,
+  PlusCircle,
+  Wallet,
+  ArrowUpCircle,
+  ArrowDownCircle,
+  Search,
+  FileSpreadsheet,
+  FileText,
+  BrainCircuit,
+  ChevronRight,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale/id';
 import { toast } from 'sonner';
-import type { Transaction } from '@shared/types';
+import type {
+  Transaction,
+  CreateTransactionPayload,
+  UpdateTransactionPayload,
+} from '@shared/types';
+import { formatRupiah } from '@shared/format';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MobileFAB } from '@/components/layout/mobile/MobileFAB';
 import { TransactionCard } from '@/components/finance/TransactionCard';
 import { TransactionForm } from '@/components/finance/TransactionForm';
+import { TransactionActionsMenu } from '@/components/finance/TransactionActionsMenu';
+import { EditTransactionDialog } from '@/components/finance/EditTransactionDialog';
+import { DeleteTransactionDialog } from '@/components/finance/DeleteTransactionDialog';
+
+const parseFormDateToTimestamp = (dateVal: string | null, fallback: number): number => {
+  if (!dateVal) return fallback;
+  // Parse YYYY-MM-DD cleanly into local midnight
+  const [year, month, day] = dateVal.split('-').map(Number);
+  if (!year || !month || !day) return fallback;
+  return new Date(year, month - 1, day).getTime();
+};
 
 export default function FinancePage() {
   const { slug } = useParams();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [deletingTransaction, setDeletingTransaction] = useState<Transaction | null>(null);
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ['finance', slug],
@@ -36,14 +65,49 @@ export default function FinancePage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (newTx: Partial<Transaction>) => api(`/api/${slug}/finance`, {
-      method: 'POST',
-      body: JSON.stringify(newTx)
-    }),
+    mutationFn: (payload: CreateTransactionPayload) =>
+      api(`/api/${slug}/finance`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', slug] });
       toast.success('Transaksi berhasil dicatat');
-      setIsDialogOpen(false);
+      setIsCreateOpen(false);
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Gagal mencatat transaksi');
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id: txId, payload }: { id: string; payload: UpdateTransactionPayload }) =>
+      api(`/api/${slug}/finance/${txId}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finance', slug] });
+      toast.success('Transaksi berhasil diperbarui');
+      setEditingTransaction(null);
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Gagal memperbarui transaksi');
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (txId: string) =>
+      api(`/api/${slug}/finance/${txId}`, {
+        method: 'DELETE'
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['finance', slug] });
+      toast.success('Transaksi berhasil dihapus');
+      setDeletingTransaction(null);
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Gagal menghapus transaksi');
     }
   });
 
@@ -61,12 +125,35 @@ export default function FinancePage() {
   const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    const dateTimestamp = parseFormDateToTimestamp(formData.get('date') as string, Date.now());
+
     createMutation.mutate({
       type: formData.get('type') as 'income' | 'expense',
       amount: Number(formData.get('amount')),
       category: formData.get('category') as string,
-      description: formData.get('description') as string,
-      date: Date.now(),
+      description: (formData.get('description') as string) || '',
+      date: dateTimestamp,
+    });
+  };
+
+  const handleUpdate = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingTransaction) return;
+    const formData = new FormData(e.currentTarget);
+    const dateTimestamp = parseFormDateToTimestamp(
+      formData.get('date') as string,
+      editingTransaction.date
+    );
+
+    updateMutation.mutate({
+      id: editingTransaction.id,
+      payload: {
+        type: formData.get('type') as 'income' | 'expense',
+        amount: Number(formData.get('amount')),
+        category: formData.get('category') as string,
+        description: (formData.get('description') as string) || '',
+        date: dateTimestamp,
+      }
     });
   };
 
@@ -104,22 +191,22 @@ export default function FinancePage() {
         
         <div className="flex flex-wrap items-center gap-3 md:gap-4">
           <Link to={`/app/${slug}/finance/import`}>
-            <Button variant="outline" className="rounded-full border-2 h-12 md:h-14 px-6 md:px-8 gap-2 md:gap-3 font-bold shadow-sm hover:shadow-md transition-all text-sm md:text-base bg-white text-emerald-700">
+            <Button variant="outline" className="min-h-[44px] rounded-full border-2 h-12 md:h-14 px-6 md:px-8 gap-2 md:gap-3 font-bold transition-all text-sm md:text-base bg-white text-emerald-700">
               <BrainCircuit className="h-4 w-4 md:h-5 md:w-5" /> Impor Mutasi
             </Button>
           </Link>
-          <ResponsiveDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <ResponsiveDialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <ResponsiveDialogTrigger asChild>
-              <Button className="rounded-full h-12 md:h-14 px-8 md:px-10 font-bold gap-2 md:gap-3 shadow-xl shadow-primary/20 text-sm md:text-base">
+              <Button className="min-h-[44px] rounded-full h-12 md:h-14 px-8 md:px-10 font-bold gap-2 md:gap-3 text-sm md:text-base bg-emerald-600 hover:bg-emerald-700 text-white">
                 <PlusCircle className="h-4 w-4 md:h-5 md:w-5" /> Catat Transaksi
               </Button>
             </ResponsiveDialogTrigger>
-            <ResponsiveDialogContent className="rounded-t-[2rem] md:rounded-[2.5rem] illustrative-card p-6 md:p-10 max-h-[85vh] overflow-y-auto">
+            <ResponsiveDialogContent className="rounded-t-[2rem] md:rounded-[2.5rem] p-6 md:p-10 max-h-[85vh] overflow-y-auto">
               <ResponsiveDialogHeader>
                 <ResponsiveDialogTitle className="text-2xl md:text-3xl font-display font-bold italic tracking-tight">Transaksi Baru</ResponsiveDialogTitle>
                 <ResponsiveDialogDescription className="text-sm md:text-base">Masukkan detail pemasukan atau pengeluaran operasional.</ResponsiveDialogDescription>
               </ResponsiveDialogHeader>
-              <TransactionForm onSubmit={handleCreate} isPending={createMutation.isPending} />
+              <TransactionForm onSubmit={handleCreate} isPending={createMutation.isPending} onCancel={() => setIsCreateOpen(false)} />
             </ResponsiveDialogContent>
           </ResponsiveDialog>
         </div>
@@ -129,44 +216,44 @@ export default function FinancePage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
         <StatCard 
           title="Total Saldo" 
-          value={`Rp ${(totals.income - totals.expense).toLocaleString('id-ID')}`} 
+          value={formatRupiah(totals.income - totals.expense)} 
           icon={<Wallet className="h-5 w-5 md:h-6 md:w-6" />} 
           color="primary"
           delay={0.1}
         />
         <StatCard 
           title="Total Pemasukan" 
-          value={`Rp ${totals.income.toLocaleString('id-ID')}`} 
+          value={formatRupiah(totals.income)} 
           icon={<ArrowUpCircle className="h-5 w-5 md:h-6 md:w-6" />} 
           color="emerald"
           delay={0.2}
         />
         <StatCard 
           title="Total Pengeluaran" 
-          value={`Rp ${totals.expense.toLocaleString('id-ID')}`} 
+          value={formatRupiah(totals.expense)} 
           icon={<ArrowDownCircle className="h-5 w-5 md:h-6 md:w-6" />} 
           color="amber"
           delay={0.3}
         />
       </div>
 
-      {/* Main Table Container (Illustrative Style) */}
-      <Card className="illustrative-card overflow-hidden border-none shadow-none hover:shadow-none">
+      {/* Main Table Container */}
+      <Card className="rounded-2xl overflow-hidden border border-stone-200/80 bg-white shadow-none">
         <div className="p-4 md:p-8 border-b border-stone-100 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 bg-stone-50/30">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-stone-300" />
             <Input
               placeholder="Cari transaksi berdasarkan kategori atau deskripsi..."
-              className="pl-11 md:pl-12 h-12 md:h-14 rounded-full border-2 border-stone-200/60 bg-white focus:ring-emerald-500 text-sm md:text-base"
+              className="pl-11 md:pl-12 min-h-[44px] h-12 md:h-14 rounded-full border-2 border-stone-200/60 bg-white focus:ring-emerald-500 text-sm md:text-base"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <div className="flex items-center gap-2 md:gap-3 bg-stone-100/80 p-1 rounded-2xl border-2 border-stone-200/40 w-full md:w-auto justify-end">
-            <Button variant="ghost" size="sm" onClick={() => handleExport('CSV')} className="h-9 md:h-10 gap-1.5 md:gap-2 rounded-xl font-bold px-3 md:px-4 hover:bg-white hover:shadow-sm text-xs md:text-sm">
+            <Button variant="ghost" size="sm" onClick={() => handleExport('CSV')} className="min-h-[44px] h-10 gap-1.5 md:gap-2 rounded-xl font-bold px-3 md:px-4 hover:bg-white text-xs md:text-sm">
               <FileSpreadsheet className="h-4 w-4 text-emerald-600" /> CSV
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => handleExport('PDF')} className="h-9 md:h-10 gap-1.5 md:gap-2 rounded-xl font-bold px-3 md:px-4 hover:bg-white hover:shadow-sm text-xs md:text-sm">
+            <Button variant="ghost" size="sm" onClick={() => handleExport('PDF')} className="min-h-[44px] h-10 gap-1.5 md:gap-2 rounded-xl font-bold px-3 md:px-4 hover:bg-white text-xs md:text-sm">
               <FileText className="h-4 w-4 text-red-600" /> PDF
             </Button>
           </div>
@@ -181,7 +268,14 @@ export default function FinancePage() {
           ) : (
             filtered
               .sort((a, b) => b.date - a.date)
-              .map((tx) => <TransactionCard key={tx.id} transaction={tx} />)
+              .map((tx) => (
+                <TransactionCard
+                  key={tx.id}
+                  transaction={tx}
+                  onEdit={(t) => setEditingTransaction(t)}
+                  onDelete={(t) => setDeletingTransaction(t)}
+                />
+              ))
           )}
         </div>
 
@@ -190,18 +284,19 @@ export default function FinancePage() {
           <Table>
             <TableHeader className="bg-stone-50/50">
               <TableRow className="border-b border-stone-100">
-                <TableHead className="px-10 py-6 font-black uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Tanggal</TableHead>
-                <TableHead className="py-6 font-black uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Kategori & Tipe</TableHead>
-                <TableHead className="py-6 font-black uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Deskripsi</TableHead>
-                <TableHead className="px-10 py-6 font-black uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-right">Jumlah</TableHead>
+                <TableHead className="px-8 py-5 font-black uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Tanggal</TableHead>
+                <TableHead className="py-5 font-black uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Kategori & Tipe</TableHead>
+                <TableHead className="py-5 font-black uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Deskripsi</TableHead>
+                <TableHead className="py-5 font-black uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-right">Jumlah</TableHead>
+                <TableHead className="px-8 py-5 font-black uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-center w-24">Aksi</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-20 text-stone-400 animate-pulse font-bold">Memuat data transaksi...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center py-20 text-stone-400 animate-pulse font-bold">Memuat data transaksi...</TableCell></TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={4} className="text-center py-24">
+                  <TableCell colSpan={5} className="text-center py-24">
                     <div className="flex flex-col items-center gap-6 opacity-40">
                       <div className="p-8 bg-stone-50 rounded-[3rem] border-4 border-dashed border-stone-200">
                          <Wallet className="h-20 w-20 text-muted-foreground" />
@@ -220,22 +315,29 @@ export default function FinancePage() {
                       key={tx.id}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.05 }}
-                      className="hover:bg-stone-50 transition-colors border-b border-stone-50 group last:border-none"
+                      transition={{ delay: idx * 0.03 }}
+                      className="hover:bg-stone-50 transition-colors border-b border-stone-100 group last:border-none"
                     >
-                      <TableCell className="px-10 py-5 font-bold text-muted-foreground/70">{format(tx.date, 'dd MMM yyyy', { locale: id })}</TableCell>
-                      <TableCell>
+                      <TableCell className="px-8 py-4 font-bold text-muted-foreground/70">{format(tx.date, 'dd MMM yyyy', { locale: id })}</TableCell>
+                      <TableCell className="py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-1.5 h-6 rounded-full ${tx.type === 'income' ? 'bg-emerald-500 shadow-lg shadow-emerald-500/20' : 'bg-amber-500 shadow-lg shadow-amber-500/20'}`} />
+                          <div className={`w-1.5 h-6 rounded-full ${tx.type === 'income' ? 'bg-emerald-500' : 'bg-amber-500'}`} />
                           <div className="flex flex-col">
-                             <span className="font-black text-slate-800 text-sm tracking-tight">{tx.category}</span>
+                             <span className="font-bold text-slate-800 text-sm tracking-tight">{tx.category}</span>
                              <span className="text-[10px] font-black uppercase text-muted-foreground/50 tracking-widest">{tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran'}</span>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-muted-foreground text-sm font-medium italic pr-10">{tx.description}</TableCell>
-                      <TableCell className={`px-10 py-5 text-right font-black text-lg tracking-tighter ${tx.type === 'income' ? 'text-emerald-600' : 'text-amber-600'}`}>
-                        {tx.type === 'income' ? '+' : '-'} Rp {tx.amount.toLocaleString('id-ID')}
+                      <TableCell className="text-muted-foreground text-sm font-medium italic pr-8 py-4">{tx.description || '-'}</TableCell>
+                      <TableCell className={`py-4 text-right font-black text-base tabular-nums ${tx.type === 'income' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        {tx.type === 'income' ? '+' : '-'} {formatRupiah(tx.amount)}
+                      </TableCell>
+                      <TableCell className="px-8 py-4 text-center">
+                        <TransactionActionsMenu
+                          transaction={tx}
+                          onEdit={(t) => setEditingTransaction(t)}
+                          onDelete={(t) => setDeletingTransaction(t)}
+                        />
                       </TableCell>
                     </motion.tr>
                   ))}
@@ -246,11 +348,35 @@ export default function FinancePage() {
         </div>
       </Card>
 
+      {/* Reusable Edit Transaction Dialog */}
+      <EditTransactionDialog
+        transaction={editingTransaction}
+        isOpen={Boolean(editingTransaction)}
+        onOpenChange={(open) => {
+          if (!open) setEditingTransaction(null);
+        }}
+        onSubmit={handleUpdate}
+        isPending={updateMutation.isPending}
+      />
+
+      {/* Reusable Delete Transaction Dialog */}
+      <DeleteTransactionDialog
+        transaction={deletingTransaction}
+        isOpen={Boolean(deletingTransaction)}
+        onOpenChange={(open) => {
+          if (!open) setDeletingTransaction(null);
+        }}
+        onConfirm={() => {
+          if (deletingTransaction) deleteMutation.mutate(deletingTransaction.id);
+        }}
+        isPending={deleteMutation.isPending}
+      />
+
       {/* Floating Action Button for Mobile */}
       <MobileFAB 
         icon={Plus} 
         label="Tambah Transaksi" 
-        onClick={() => setIsDialogOpen(true)} 
+        onClick={() => setIsCreateOpen(true)} 
       />
     </div>
   );
@@ -269,10 +395,10 @@ function StatCard({ title, value, icon, color, delay }: any) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.5, ease: "easeOut" }}
       whileHover={{ y: -8, transition: { duration: 0.2 } }}
-      className="illustrative-card p-6 md:p-8 flex flex-col justify-between group cursor-default"
+      className="p-6 md:p-8 flex flex-col justify-between rounded-2xl bg-white border border-stone-200/80 cursor-default group"
     >
        <div className="flex justify-between items-start mb-6 md:mb-8">
-          <div className={`p-3 md:p-4 rounded-2xl bg-white shadow-sm group-hover:scale-110 transition-transform duration-300 ${colorMap[color].split(' ')[1]}`}>
+          <div className={`p-3 md:p-4 rounded-2xl bg-white border border-stone-100 group-hover:scale-110 transition-transform duration-300 ${colorMap[color].split(' ')[1]}`}>
              {icon}
           </div>
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">{title}</p>

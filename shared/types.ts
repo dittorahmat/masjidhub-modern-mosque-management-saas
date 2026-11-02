@@ -22,6 +22,22 @@ export interface Transaction {
   date: number;
   createdBy: string;
 }
+
+export interface CreateTransactionPayload {
+  type: 'income' | 'expense';
+  amount: number;
+  category: string;
+  description?: string;
+  date: number;
+}
+
+export interface UpdateTransactionPayload {
+  type?: 'income' | 'expense';
+  amount?: number;
+  category?: string;
+  description?: string;
+  date?: number;
+}
 export interface ZisTransaction {
   id: string;
   tenantId: string;

@@ -5,9 +5,32 @@ import type { AppUser, UserRole } from "@shared/types";
 import { ok, bad, notFound } from "../core-utils";
 import { ensureDbInitialized, mapUserRow, mapTenantRow } from "./common";
 import { resolveCurrentUser, requireAuth } from "../middleware/auth";
-import { createSessionToken } from "../crypto-utils";
+import { authRateLimiter } from "../middleware/rate-limit";
+import { getAuth } from "../auth";
+import { createBetterAuthSession } from "../session-bridge";
 
 export function registerAuthRoutes(app: Hono<any>) {
+  // Rate limiter guard on all authentication mutations
+  app.use("/api/auth/*", authRateLimiter(60, 60 * 1000));
+
+  // Better Auth Wildcard Handler supporting all HTTP methods
+  app.all("/api/auth/*", async (c, next) => {
+    const path = c.req.path;
+    // Let custom domain routes fall through to dedicated controllers below
+    if (
+      path === "/api/auth/register" ||
+      path === "/api/auth/register-mosque" ||
+      path === "/api/auth/login" ||
+      path === "/api/auth/demo-login" ||
+      path === "/api/auth/demo-users" ||
+      path === "/api/auth/me"
+    ) {
+      return next();
+    }
+    const auth = getAuth(c.env);
+    return auth.handler(c.req.raw);
+  });
+
   app.post('/api/auth/register', async (c) => {
     await ensureDbInitialized(c.env);
     const db = getDb(c.env);
@@ -15,7 +38,7 @@ export function registerAuthRoutes(app: Hono<any>) {
     const tenantId = crypto.randomUUID();
     const userId = crypto.randomUUID();
     const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '');
-    const nowSec = Math.floor(Date.now() / 1000);
+    const nowMs = Date.now();
 
     const defaultIqomah = { fajr: 12, dhuhr: 10, asr: 10, maghrib: 7, isha: 10 };
 
@@ -24,8 +47,8 @@ export function registerAuthRoutes(app: Hono<any>) {
       name: mosqueName,
       slug: cleanSlug,
       ownerId: userId,
-      createdAt: nowSec,
-      updatedAt: nowSec,
+      createdAt: nowMs,
+      updatedAt: nowMs,
       address,
       status: 'pending',
       selectedPersona: 'marbot_muda',
@@ -44,8 +67,8 @@ export function registerAuthRoutes(app: Hono<any>) {
       role: 'dkm_admin',
       isActive: true,
       isBanned: false,
-      createdAt: nowSec,
-      updatedAt: nowSec,
+      createdAt: nowMs,
+      updatedAt: nowMs,
     });
 
     const tenant = mapTenantRow({
@@ -53,8 +76,8 @@ export function registerAuthRoutes(app: Hono<any>) {
       name: mosqueName,
       slug: cleanSlug,
       ownerId: userId,
-      createdAt: nowSec,
-      updatedAt: nowSec,
+      createdAt: nowMs,
+      updatedAt: nowMs,
       address,
       city: null,
       phone: null,
@@ -91,7 +114,12 @@ export function registerAuthRoutes(app: Hono<any>) {
       isBanned: false,
     };
 
-    return ok(c, { user, tenant });
+    // Issue authentic Better Auth session
+    const { token } = await createBetterAuthSession(user, c.env, {
+      userAgent: c.req.header('user-agent'),
+    });
+
+    return ok(c, { user, tenant, token });
   });
 
   // Alias route for register-mosque
@@ -100,7 +128,46 @@ export function registerAuthRoutes(app: Hono<any>) {
       method: 'POST',
       headers: c.req.raw.headers,
       body: JSON.stringify(await c.req.json()),
-    }), c.env, c.executionCtx);
+    }), c.env);
+  });
+
+  // Demo Login endpoint
+  app.post('/api/auth/demo-login', async (c) => {
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    let body: { role?: UserRole } = {};
+    try {
+      body = await c.req.json();
+    } catch {
+      return bad(c, 'Invalid JSON payload');
+    }
+    const targetRole = body?.role || 'dkm_admin';
+
+    const users = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.role, targetRole))
+      .limit(1);
+
+    let user: AppUser;
+    if (users.length > 0) {
+      user = mapUserRow(users[0]);
+    } else {
+      user = {
+        id: `demo-${targetRole}`,
+        name: `Demo ${targetRole}`,
+        email: `demo-${targetRole}@masjidhub.com`,
+        role: targetRole,
+        tenantIds: ['t1'],
+        isBanned: false,
+      };
+    }
+
+    const { token } = await createBetterAuthSession(user, c.env, {
+      userAgent: c.req.header('user-agent'),
+    });
+
+    return ok(c, { user, token });
   });
 
   app.post('/api/auth/login', async (c) => {
@@ -121,13 +188,16 @@ export function registerAuthRoutes(app: Hono<any>) {
       const role: UserRole = email === 'admin@masjidhub.com' ? 'superadmin_platform' : 'dkm_admin';
       user = { id: crypto.randomUUID(), name: "Demo User", email, role, tenantIds: ['t1'] };
     }
-    const secret = c.env?.INTERNAL_SECRET_KEY || 'masjidhub_default_secret_salt_2025';
-    const token = await createSessionToken(user.id, secret);
+
+    const { token } = await createBetterAuthSession(user, c.env, {
+      userAgent: c.req.header('user-agent'),
+    });
+
     return ok(c, { user, token });
   });
 
   // Auth me endpoint - requires authentication token
-  app.get('/api/auth/me', requireAuth(), async (c) => {
+  app.get('/api/auth/me', requireAuth(), async (c: any) => {
     const user = c.get('user') || (await resolveCurrentUser(c));
     if (!user) {
       return notFound(c, 'User not found');

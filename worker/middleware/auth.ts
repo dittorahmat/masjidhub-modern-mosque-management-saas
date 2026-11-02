@@ -5,6 +5,7 @@ import type { AppUser, UserRole } from '@shared/types';
 import { mapUserRow, ensureDbInitialized } from '../routes/common';
 import { verifySessionToken } from '../crypto-utils';
 import { unauthorized, forbidden, bad } from '../core-utils';
+import { getAuth } from '../auth';
 
 export interface AuthContextState {
   user: AppUser;
@@ -12,25 +13,50 @@ export interface AuthContextState {
 
 /**
  * Resolves the authenticated user from the request context.
- * Enforces cryptographic session tokens via Authorization: Bearer <token>.
- * Allows development/demo fallback via explicit query param ?demo_role= only in non-production.
+ * Enforces Better Auth sessions via cookies or Authorization: Bearer <token>.
+ * Maintains fallback verification for legacy cryptographic tokens during transition.
  */
 export async function resolveCurrentUser(c: Context<any>): Promise<AppUser | null> {
   const existingUser = c.get('user') as AppUser | undefined;
   if (existingUser) return existingUser;
 
+  await ensureDbInitialized(c.env);
+  const db = getDb(c.env);
+
+  // 1. Check Better Auth session via getSession
+  try {
+    const auth = getAuth(c.env);
+    const session = await auth.api.getSession({
+      headers: c.req.raw.headers,
+    });
+
+    if (session?.user?.id) {
+      const users = await db
+        .select()
+        .from(schema.users)
+        .where(eq(schema.users.id, session.user.id))
+        .limit(1);
+
+      if (users.length > 0) {
+        const user = mapUserRow(users[0]);
+        c.set('user', user);
+        return user;
+      }
+    }
+  } catch (err) {
+    // Graceful fallback to legacy verification if Better Auth encounters parsing error
+  }
+
+  // 2. Legacy token fallback & verification
   const authHeader = c.req.header('authorization') || c.req.header('Authorization');
   let token = '';
   if (authHeader && authHeader.startsWith('Bearer ')) {
     token = authHeader.slice(7).trim();
   }
 
-  await ensureDbInitialized(c.env);
-  const db = getDb(c.env);
   const secret = c.env?.INTERNAL_SECRET_KEY || 'masjidhub_default_secret_salt_2025';
 
   if (token) {
-    // 1. Verify cryptographic session token
     const verifiedUserId = await verifySessionToken(token, secret);
     const userIdToLookup = verifiedUserId || (token.startsWith('demo-') || token === 'u1' || token === 'admin@masjidhub.com' ? token : null);
 
@@ -64,7 +90,7 @@ export async function resolveCurrentUser(c: Context<any>): Promise<AppUser | nul
     }
   }
 
-  // 2. Demo role selector (for localhost / preview testing when DEMO_MODE or non-prod)
+  // 3. Demo role selector (for localhost / preview testing when non-prod)
   const isProd = c.env?.ENVIRONMENT === 'production';
   if (!isProd) {
     const demoRole = c.req.query('demo_role');
@@ -83,61 +109,70 @@ export async function resolveCurrentUser(c: Context<any>): Promise<AppUser | nul
 }
 
 /**
- * Middleware requiring an authenticated user.
+ * Middleware: Requires a valid authenticated user session.
  */
 export function requireAuth() {
   return async (c: Context<any>, next: () => Promise<void>) => {
     const user = await resolveCurrentUser(c);
     if (!user) {
-      return unauthorized(c, 'Unauthorized: Authentication required');
+      return unauthorized(c, 'Authentication required');
+    }
+    if (user.isBanned) {
+      return forbidden(c, 'Your account is banned');
     }
     await next();
   };
 }
 
 /**
- * Middleware requiring a specific platform user role (e.g. 'superadmin_platform').
+ * Middleware: Requires the user to have one of the specified platform roles.
+ * Accepts either an array of UserRole or a single UserRole.
  */
-export function requireRole(requiredRole: UserRole) {
+export function requireRole(allowedRoles: UserRole[] | UserRole) {
+  const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
   return async (c: Context<any>, next: () => Promise<void>) => {
     const user = await resolveCurrentUser(c);
     if (!user) {
-      return unauthorized(c, 'Unauthorized: Authentication required');
+      return unauthorized(c, 'Authentication required');
     }
-    if (user.role !== requiredRole && user.role !== 'superadmin_platform') {
-      return forbidden(c, `Forbidden: Requires role ${requiredRole}`);
+    if (user.isBanned) {
+      return forbidden(c, 'Your account is banned');
+    }
+    if (!roles.includes(user.role)) {
+      return forbidden(c, `Insufficient permissions. Allowed roles: ${roles.join(', ')}`);
     }
     await next();
   };
 }
 
 /**
- * Middleware requiring that the authenticated user belongs to the target tenant
- * and has one of the allowed roles (defaults to 'dkm_admin' or 'superadmin_platform').
+ * Middleware: Requires the user to have access to the specific tenant and a permitted role.
+ * Accepts either an array of UserRole or a single UserRole.
  */
-export function requireTenantRole(allowedRoles: UserRole[] = ['dkm_admin']) {
+export function requireTenantRole(allowedRoles: UserRole[] | UserRole) {
+  const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
   return async (c: Context<any>, next: () => Promise<void>) => {
     const user = await resolveCurrentUser(c);
     if (!user) {
-      return unauthorized(c, 'Unauthorized: Authentication required');
+      return unauthorized(c, 'Authentication required');
+    }
+    if (user.isBanned) {
+      return forbidden(c, 'Your account is banned');
     }
 
-    // Platform superadmins have omni-tenant access
+    // Super admin can access any tenant
     if (user.role === 'superadmin_platform') {
       return await next();
     }
 
-    const tenantId = c.get('tenantId') || (c.get('tenant') && c.get('tenant').id);
-    if (!tenantId) {
-      return bad(c, 'Tenant context unresolved');
+    if (!roles.includes(user.role)) {
+      return forbidden(c, `Insufficient permissions. Allowed roles: ${roles.join(', ')}`);
     }
 
-    if (!user.tenantIds.includes(tenantId)) {
-      return forbidden(c, 'Forbidden: You do not belong to this mosque tenant');
-    }
-
-    if (!allowedRoles.includes(user.role)) {
-      return forbidden(c, `Forbidden: Requires one of roles: ${allowedRoles.join(', ')}`);
+    // Determine target tenant ID from context
+    const tenantId = c.get('tenantId') || (c.get('tenant') as any)?.id;
+    if (tenantId && user.tenantIds && !user.tenantIds.includes(tenantId)) {
+      return forbidden(c, 'You are not authorized to access this mosque');
     }
 
     await next();

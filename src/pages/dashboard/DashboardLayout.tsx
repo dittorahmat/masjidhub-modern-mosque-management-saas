@@ -4,10 +4,12 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { AppSidebar } from "@/components/app-sidebar";
 import { useAppStore, useTenantStatus, useTenantName, useUserId, useUserTenantIds } from '@/lib/store';
 import { api } from '@/lib/api-client';
+import { useAuthSync } from '@/hooks/useAuthSync';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Clock, ShieldAlert, SearchX } from 'lucide-react';
 import type { Tenant } from '@shared/types';
 export function DashboardLayout() {
+  useAuthSync();
   const { slug } = useParams();
   const userId = useUserId();
   const userTenantIds = useUserTenantIds();

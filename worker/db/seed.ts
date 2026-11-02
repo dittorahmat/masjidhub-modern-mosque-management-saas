@@ -88,7 +88,7 @@ export async function seedDatabase(options: SeedOptions = {}) {
   }
   if (verbose) console.log(`✓ Seeded ${MOCK_TENANTS.length} tenant(s)`);
 
-  // 2. Users
+  // 2. Users (with Better Auth schema compatibility)
   for (const u of MOCK_USERS) {
     await db.insert(schema.users).values({
       id: u.id,
@@ -96,6 +96,8 @@ export async function seedDatabase(options: SeedOptions = {}) {
       tenantIds: u.tenantIds,
       email: u.email,
       name: u.name,
+      emailVerified: true,
+      image: (u as any).avatarUrl || null,
       role: u.role,
       isActive: true,
       isBanned: u.isBanned || false,

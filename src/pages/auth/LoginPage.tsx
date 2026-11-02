@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { api } from '@/lib/api-client';
 import { useAppActions } from '@/lib/store';
 import { toast } from 'sonner';
+import { authClient } from '@/lib/auth-client';
 import { Landmark, ShieldAlert, Sparkles, ArrowRight, Lock, Mail } from 'lucide-react';
 import type { AppUser, Tenant, UserRole } from '@shared/types';
 import { motion } from 'framer-motion';
@@ -51,11 +52,13 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { user } = await api<{ user: AppUser }>('/api/auth/login', {
+      const endpoint = isDemoMode ? '/api/auth/demo-login' : '/api/auth/login';
+      const payload = isDemoMode ? { role: selectedRole } : { email };
+      const { user, token } = await api<{ user: AppUser; token?: string }>(endpoint, {
         method: 'POST',
-        body: JSON.stringify({ email })
+        body: JSON.stringify(payload)
       });
-      setUser(user);
+      setUser(user, token);
       toast.success('Selamat datang kembali!');
       if (user.role === 'superadmin_platform') {
         navigate('/super-admin/dashboard');
@@ -93,7 +96,7 @@ export default function LoginPage() {
         >
           <div className="illustrative-card p-12 space-y-10 relative overflow-hidden border-none shadow-none hover:shadow-none hover:translate-y-0">
             {isDemoMode && (
-              <div className="absolute top-0 right-0 bg-primary text-white px-6 py-1.5 rounded-bl-[2rem] text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2 shadow-xl">
+              <div className="absolute top-0 right-0 bg-primary text-white px-6 py-1.5 rounded-bl-[2rem] text-[10px] font-black uppercase tracking-[0.3em] flex items-center gap-2">
                 <Sparkles className="h-3 w-3 fill-white animate-pulse" /> Mode Demo
               </div>
             )}
@@ -114,7 +117,7 @@ export default function LoginPage() {
                     <SelectTrigger className="h-14 rounded-2xl border-2 font-bold focus:ring-primary bg-white">
                       <SelectValue placeholder="Pilih peran demo" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-2xl border-2 shadow-2xl">
+                    <SelectContent className="rounded-2xl border-2">
                       <SelectItem value="superadmin_platform">Super Admin Platform</SelectItem>
                       <SelectItem value="dkm_admin">Admin DKM (Penuh)</SelectItem>
                       <SelectItem value="amil_zakat">Amil Zakat (ZIS)</SelectItem>
@@ -154,7 +157,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full h-20 text-xl rounded-full font-black shadow-2xl shadow-primary/30 bg-primary group" disabled={loading}>
+              <Button type="submit" className="w-full h-20 text-xl rounded-full font-black bg-primary group" disabled={loading}>
                 {loading ? 'Memproses...' : (
                   <span className="flex items-center gap-3">
                     Masuk Sekarang <ArrowRight className="h-6 w-6 group-hover:translate-x-2 transition-transform" />

@@ -42,7 +42,7 @@ export function registerTenantRoutes(app: Hono<any>) {
     const body = await c.req.json();
     const tenantId = body.id || crypto.randomUUID();
     const cleanSlug = (body.slug || body.name || '').toLowerCase().replace(/[^a-z0-9-]/g, '');
-    const nowSec = Math.floor(Date.now() / 1000);
+    const nowMs = Date.now();
 
     await db.insert(schema.tenants).values({
       id: tenantId,
@@ -74,8 +74,8 @@ export function registerTenantRoutes(app: Hono<any>) {
       kioskPrayerMode: body.kioskPrayerMode || 'silent',
       sholatDuration: body.sholatDuration || 15,
       iqomahMinutes: body.iqomahMinutes || { fajr: 12, dhuhr: 10, asr: 10, maghrib: 7, isha: 10 },
-      createdAt: nowSec,
-      updatedAt: nowSec,
+      createdAt: nowMs,
+      updatedAt: nowMs,
     });
 
     const rows = await db.select().from(schema.tenants).where(eq(schema.tenants.id, tenantId)).limit(1);
@@ -90,7 +90,7 @@ export function registerTenantRoutes(app: Hono<any>) {
   });
 
   // Update tenant settings (PUT /api/:slug/settings)
-  app.put('/api/:slug/settings', tenantMiddleware, requireTenantRole(['dkm_admin']), async (c) => {
+  app.put('/api/:slug/settings', tenantMiddleware, requireTenantRole(['dkm_admin']), async (c: any) => {
     const tenant = c.get('tenant')!;
     const db = c.get('db')!;
     const body = await c.req.json();

@@ -49,3 +49,35 @@ export function generateSessionSalt(): string {
     .map(b => b.toString(16).padStart(2, "0"))
     .join("");
 }
+
+/**
+ * Creates a signed session token: base64(payload).signature
+ */
+export async function createSessionToken(userId: string, secret: string): Promise<string> {
+  const payload = JSON.stringify({ userId, exp: Date.now() + 7 * 24 * 3600 * 1000 });
+  const encodedPayload = btoa(payload);
+  const signature = await generateShadowId(secret, encodedPayload);
+  return `${encodedPayload}.${signature}`;
+}
+
+/**
+ * Verifies a signed session token and returns userId if valid and not expired.
+ */
+export async function verifySessionToken(token: string, secret: string): Promise<string | null> {
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [encodedPayload, providedSignature] = parts;
+
+  try {
+    const expectedSignature = await generateShadowId(secret, encodedPayload);
+    if (expectedSignature !== providedSignature) return null;
+
+    const payload = JSON.parse(atob(encodedPayload));
+    if (!payload?.userId || !payload?.exp) return null;
+    if (Date.now() > payload.exp) return null;
+
+    return payload.userId;
+  } catch {
+    return null;
+  }
+}

@@ -5,6 +5,7 @@ import type { AppUser, UserRole } from "@shared/types";
 import { ok, bad, notFound } from "../core-utils";
 import { ensureDbInitialized, mapUserRow, mapTenantRow } from "./common";
 import { resolveCurrentUser, requireAuth } from "../middleware/auth";
+import { createSessionToken } from "../crypto-utils";
 
 export function registerAuthRoutes(app: Hono<any>) {
   app.post('/api/auth/register', async (c) => {
@@ -120,7 +121,9 @@ export function registerAuthRoutes(app: Hono<any>) {
       const role: UserRole = email === 'admin@masjidhub.com' ? 'superadmin_platform' : 'dkm_admin';
       user = { id: crypto.randomUUID(), name: "Demo User", email, role, tenantIds: ['t1'] };
     }
-    return ok(c, { user });
+    const secret = c.env?.INTERNAL_SECRET_KEY || 'masjidhub_default_secret_salt_2025';
+    const token = await createSessionToken(user.id, secret);
+    return ok(c, { user, token });
   });
 
   // Auth me endpoint - requires authentication token

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AppUser, Tenant } from '@shared/types';
+import { getStoredUser, setStoredUser } from './auth-storage';
 
 interface AppActions {
   setUser: (user: AppUser | null) => void;
@@ -15,45 +16,17 @@ interface AppState {
 
 const EMPTY_ARRAY: any[] = [];
 
-const getInitialUser = (): AppUser | null => {
-  try {
-    if (typeof localStorage !== 'undefined') {
-      const stored = localStorage.getItem('masjidhub_user');
-      return stored ? JSON.parse(stored) : null;
-    }
-  } catch {
-    return null;
-  }
-  return null;
-};
-
 export const useAppStore = create<AppState>((set) => ({
-  user: getInitialUser(),
+  user: getStoredUser(),
   currentTenant: null,
   actions: {
     setUser: (user) => {
-      try {
-        if (typeof localStorage !== 'undefined') {
-          if (user) {
-            localStorage.setItem('masjidhub_user', JSON.stringify(user));
-          } else {
-            localStorage.removeItem('masjidhub_user');
-          }
-        }
-      } catch {
-        // Ignore storage errors
-      }
+      setStoredUser(user);
       set({ user });
     },
     setCurrentTenant: (tenant) => set({ currentTenant: tenant }),
     logout: () => {
-      try {
-        if (typeof localStorage !== 'undefined') {
-          localStorage.removeItem('masjidhub_user');
-        }
-      } catch {
-        // Ignore storage errors
-      }
+      setStoredUser(null);
       set({ user: null, currentTenant: null });
     },
   },

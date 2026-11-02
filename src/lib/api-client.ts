@@ -1,4 +1,5 @@
 import { ApiResponse } from "../../shared/types";
+import { getStoredUser } from "./auth-storage";
 
 export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;
@@ -34,16 +35,9 @@ export async function api<T>(path: string, options?: RequestOptions): Promise<T>
   }
 
   // Automatically attach auth header if session user exists in local storage
-  try {
-    const rawUser = typeof localStorage !== 'undefined' ? localStorage.getItem('masjidhub_user') : null;
-    if (rawUser) {
-      const parsed = JSON.parse(rawUser);
-      if (parsed?.id || parsed?.email) {
-        headers['Authorization'] = `Bearer ${parsed.id || parsed.email}`;
-      }
-    }
-  } catch {
-    // Ignore in non-browser or corrupted storage
+  const storedUser = getStoredUser();
+  if (storedUser?.id || storedUser?.email) {
+    headers['Authorization'] = `Bearer ${storedUser.id || storedUser.email}`;
   }
 
   const queryString = buildQueryString(options?.params);

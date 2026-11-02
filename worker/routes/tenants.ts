@@ -91,11 +91,9 @@ export function registerTenantRoutes(app: Hono<any>) {
 
   // Update tenant settings (PUT /api/:slug/settings)
   app.put('/api/:slug/settings', tenantMiddleware, requireTenantRole(['dkm_admin']), async (c) => {
-    const tenant = c.get('tenant') || (await getTenantBySlugOrSubdomain(c, c.env));
-    if (!tenant) return notFound(c, 'Tenant not found');
+    const tenant = c.get('tenant')!;
+    const db = c.get('db')!;
     const body = await c.req.json();
-    await ensureDbInitialized(c.env);
-    const db = getDb(c.env);
 
     const updateData: Partial<typeof schema.tenants.$inferInsert> = {
       updatedAt: Date.now()

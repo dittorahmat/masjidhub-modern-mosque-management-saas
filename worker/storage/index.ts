@@ -112,16 +112,25 @@ class LocalFilesystemStorageService implements StorageService {
     return merged;
   }
 
+  private async resolveSafePath(cleanKey: string): Promise<string | null> {
+    const { path } = await this.getFsModules();
+    const rootDir = path.resolve(process.cwd(), this.uploadDir);
+    const filePath = path.resolve(rootDir, cleanKey);
+    if (!filePath.startsWith(rootDir + path.sep) && filePath !== rootDir) {
+      return null;
+    }
+    return filePath;
+  }
+
   async put(
     key: string,
     data: ArrayBuffer | Uint8Array | ReadableStream,
     options?: { contentType?: string }
   ): Promise<{ key: string; url: string }> {
     const cleanKey = key.replace(/^\/+/, '');
-    const { fs, path } = await this.getFsModules();
-    const rootDir = path.resolve(process.cwd(), this.uploadDir);
-    const filePath = path.resolve(rootDir, cleanKey);
-    if (!filePath.startsWith(rootDir + path.sep) && filePath !== rootDir) {
+    const { fs } = await this.getFsModules();
+    const filePath = await this.resolveSafePath(cleanKey);
+    if (!filePath) {
       throw new Error('Invalid storage key: directory traversal detected');
     }
     const metaPath = `${filePath}.meta.json`;
@@ -153,10 +162,9 @@ class LocalFilesystemStorageService implements StorageService {
     key: string
   ): Promise<{ data: ReadableStream | ArrayBuffer; contentType?: string } | null> {
     const cleanKey = key.replace(/^\/+/, '');
-    const { fs, path } = await this.getFsModules();
-    const rootDir = path.resolve(process.cwd(), this.uploadDir);
-    const filePath = path.resolve(rootDir, cleanKey);
-    if (!filePath.startsWith(rootDir + path.sep) && filePath !== rootDir) {
+    const { fs } = await this.getFsModules();
+    const filePath = await this.resolveSafePath(cleanKey);
+    if (!filePath) {
       return null;
     }
     const metaPath = `${filePath}.meta.json`;
@@ -189,11 +197,10 @@ class LocalFilesystemStorageService implements StorageService {
 
   async delete(key: string): Promise<boolean> {
     const cleanKey = key.replace(/^\/+/, '');
-    const { fs, path } = await this.getFsModules();
-    const rootDir = path.resolve(process.cwd(), this.uploadDir);
-    const filePath = path.resolve(rootDir, cleanKey);
-    if (!filePath.startsWith(rootDir + path.sep) && filePath !== rootDir) {
-      return null;
+    const { fs } = await this.getFsModules();
+    const filePath = await this.resolveSafePath(cleanKey);
+    if (!filePath) {
+      return false;
     }
     const metaPath = `${filePath}.meta.json`;
 

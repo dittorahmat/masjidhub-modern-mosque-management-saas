@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import type { AppUser, UserRole } from "@shared/types";
 import { ok, bad, notFound } from "../core-utils";
 import { ensureDbInitialized, mapUserRow, mapTenantRow } from "./common";
+import { resolveCurrentUser, requireAuth } from "../middleware/auth";
 
 export function registerAuthRoutes(app: Hono<any>) {
   app.post('/api/auth/register', async (c) => {
@@ -122,26 +123,13 @@ export function registerAuthRoutes(app: Hono<any>) {
     return ok(c, { user });
   });
 
-  // Auth me endpoint
-  app.get('/api/auth/me', async (c) => {
-    await ensureDbInitialized(c.env);
-    const email = c.req.query('email');
-    const userId = c.req.query('id');
-    const db = getDb(c.env);
-
-    if (!email && !userId) {
-      return bad(c, 'Query parameter email or id is required');
-    }
-
-    const whereClause = email
-      ? eq(schema.users.email, email)
-      : eq(schema.users.id, userId!);
-
-    const users = await db.select().from(schema.users).where(whereClause).limit(1);
-    if (users.length === 0) {
+  // Auth me endpoint - requires authentication token
+  app.get('/api/auth/me', requireAuth(), async (c) => {
+    const user = c.get('user') || (await resolveCurrentUser(c));
+    if (!user) {
       return notFound(c, 'User not found');
     }
-    return ok(c, { user: mapUserRow(users[0]) });
+    return ok(c, { user });
   });
 
   // Demo users endpoint

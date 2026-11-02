@@ -7,8 +7,12 @@ import {
   mapUserRow,
   mapTenantRow
 } from "./common";
+import { requireRole } from "../middleware/auth";
 
 export function registerSuperAdminRoutes(app: Hono<any>) {
+  // Enforce superadmin_platform role authorization on all /api/super/* endpoints
+  app.use('/api/super/*', requireRole('superadmin_platform'));
+
   app.get('/api/super/summary', async (c) => {
     await ensureDbInitialized(c.env);
     const db = getDb(c.env);

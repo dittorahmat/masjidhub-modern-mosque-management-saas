@@ -33,6 +33,19 @@ export async function api<T>(path: string, options?: RequestOptions): Promise<T>
     headers['Content-Type'] = 'application/json';
   }
 
+  // Automatically attach auth header if session user exists in local storage
+  try {
+    const rawUser = typeof localStorage !== 'undefined' ? localStorage.getItem('masjidhub_user') : null;
+    if (rawUser) {
+      const parsed = JSON.parse(rawUser);
+      if (parsed?.id || parsed?.email) {
+        headers['Authorization'] = `Bearer ${parsed.id || parsed.email}`;
+      }
+    }
+  } catch {
+    // Ignore in non-browser or corrupted storage
+  }
+
   const queryString = buildQueryString(options?.params);
   const fullPath = `${path}${queryString}`;
 

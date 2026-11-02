@@ -15,13 +15,47 @@ interface AppState {
 
 const EMPTY_ARRAY: any[] = [];
 
+const getInitialUser = (): AppUser | null => {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      const stored = localStorage.getItem('masjidhub_user');
+      return stored ? JSON.parse(stored) : null;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+};
+
 export const useAppStore = create<AppState>((set) => ({
-  user: null,
+  user: getInitialUser(),
   currentTenant: null,
   actions: {
-    setUser: (user) => set({ user }),
+    setUser: (user) => {
+      try {
+        if (typeof localStorage !== 'undefined') {
+          if (user) {
+            localStorage.setItem('masjidhub_user', JSON.stringify(user));
+          } else {
+            localStorage.removeItem('masjidhub_user');
+          }
+        }
+      } catch {
+        // Ignore storage errors
+      }
+      set({ user });
+    },
     setCurrentTenant: (tenant) => set({ currentTenant: tenant }),
-    logout: () => set({ user: null, currentTenant: null }),
+    logout: () => {
+      try {
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('masjidhub_user');
+        }
+      } catch {
+        // Ignore storage errors
+      }
+      set({ user: null, currentTenant: null });
+    },
   },
 }));
 

@@ -8,6 +8,8 @@ import {
   mapUserRow,
   getTenantBySlugOrSubdomain
 } from "./common";
+import { requireTenantRole } from "../middleware/auth";
+import { tenantMiddleware } from "../middleware/tenant";
 
 export function registerTenantRoutes(app: Hono<any>) {
   // Check subdomain availability
@@ -88,8 +90,8 @@ export function registerTenantRoutes(app: Hono<any>) {
   });
 
   // Update tenant settings (PUT /api/:slug/settings)
-  app.put('/api/:slug/settings', async (c) => {
-    const tenant = await getTenantBySlugOrSubdomain(c, c.env);
+  app.put('/api/:slug/settings', tenantMiddleware, requireTenantRole(['dkm_admin']), async (c) => {
+    const tenant = c.get('tenant') || (await getTenantBySlugOrSubdomain(c, c.env));
     if (!tenant) return notFound(c, 'Tenant not found');
     const body = await c.req.json();
     await ensureDbInitialized(c.env);

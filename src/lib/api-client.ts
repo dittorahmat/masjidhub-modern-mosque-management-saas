@@ -1,5 +1,5 @@
 import { ApiResponse } from "../../shared/types";
-import { getStoredUser } from "./auth-storage";
+import { getStoredUser, getStoredToken } from "./auth-storage";
 
 export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;
@@ -34,9 +34,12 @@ export async function api<T>(path: string, options?: RequestOptions): Promise<T>
     headers['Content-Type'] = 'application/json';
   }
 
-  // Automatically attach auth header if session user exists in local storage
+  // Automatically attach auth header if session token or user exists
+  const storedToken = getStoredToken();
   const storedUser = getStoredUser();
-  if (storedUser?.id || storedUser?.email) {
+  if (storedToken) {
+    headers['Authorization'] = `Bearer ${storedToken}`;
+  } else if (storedUser?.id || storedUser?.email) {
     headers['Authorization'] = `Bearer ${storedUser.id || storedUser.email}`;
   }
 
@@ -44,6 +47,7 @@ export async function api<T>(path: string, options?: RequestOptions): Promise<T>
   const fullPath = `${path}${queryString}`;
 
   const res = await fetch(fullPath, {
+    credentials: 'include',
     ...options,
     headers: {
       ...headers,
@@ -58,16 +62,18 @@ export async function api<T>(path: string, options?: RequestOptions): Promise<T>
     try {
       json = (await res.json()) as ApiResponse<T>;
     } catch {
-      throw new ApiError(res.status, 'Invalid JSON returned from server');
+      // non-JSON or broken JSON body
     }
-  } else {
-    const text = await res.text();
-    throw new ApiError(res.status, text || `Request failed with status ${res.status}`);
   }
 
-  if (!res.ok || !json?.success || json?.data === undefined) {
-    throw new ApiError(res.status, json?.error || 'Request failed', json);
+  if (!res.ok) {
+    const errorMessage = json?.error || `Request failed with status ${res.status}`;
+    throw new ApiError(res.status, errorMessage, json?.data);
   }
 
-  return json.data;
+  if (json && !json.success) {
+    throw new ApiError(res.status, json.error || 'Operation failed', json.data);
+  }
+
+  return (json?.data !== undefined ? json.data : (json as unknown as T));
 }

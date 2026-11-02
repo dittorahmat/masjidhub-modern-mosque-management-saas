@@ -1,15 +1,16 @@
 import { create } from 'zustand';
 import type { AppUser, Tenant } from '@shared/types';
-import { getStoredUser, setStoredUser } from './auth-storage';
+import { getStoredUser, setStoredUser, getStoredToken } from './auth-storage';
 
 interface AppActions {
-  setUser: (user: AppUser | null) => void;
+  setUser: (user: AppUser | null, token?: string | null) => void;
   setCurrentTenant: (tenant: Tenant | null) => void;
   logout: () => void;
 }
 
 interface AppState {
   user: AppUser | null;
+  token: string | null;
   currentTenant: Tenant | null;
   actions: AppActions;
 }
@@ -18,16 +19,17 @@ const EMPTY_ARRAY: any[] = [];
 
 export const useAppStore = create<AppState>((set) => ({
   user: getStoredUser(),
+  token: getStoredToken(),
   currentTenant: null,
   actions: {
-    setUser: (user) => {
-      setStoredUser(user);
-      set({ user });
+    setUser: (user, token) => {
+      setStoredUser(user, token);
+      set({ user, token: token || null });
     },
     setCurrentTenant: (tenant) => set({ currentTenant: tenant }),
     logout: () => {
-      setStoredUser(null);
-      set({ user: null, currentTenant: null });
+      setStoredUser(null, null);
+      set({ user: null, token: null, currentTenant: null });
     },
   },
 }));

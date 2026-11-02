@@ -20,6 +20,7 @@ export function getStoredUser(): AppUser | null {
 
 /**
  * Safely saves the AppUser to localStorage or clears it if null.
+ * Prevents stale token retention bug: explicitly removes TOKEN_KEY when token is null/undefined.
  */
 export function setStoredUser(user: AppUser | null, token?: string | null): void {
   try {
@@ -28,6 +29,8 @@ export function setStoredUser(user: AppUser | null, token?: string | null): void
         localStorage.setItem(STORAGE_KEY, JSON.stringify(user));
         if (token) {
           localStorage.setItem(TOKEN_KEY, token);
+        } else {
+          localStorage.removeItem(TOKEN_KEY);
         }
       } else {
         localStorage.removeItem(STORAGE_KEY);

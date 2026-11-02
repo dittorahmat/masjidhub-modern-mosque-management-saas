@@ -4,9 +4,16 @@ import type { AppUser } from "@shared/types";
 import { eq } from "drizzle-orm";
 
 /**
+ * Generates a clean, cryptographically secure 64-character session token.
+ */
+export function generateSessionToken(): string {
+  return crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
+}
+
+/**
  * Creates an authentic Better Auth session for a user programmatically.
  * Used for onboarding (/api/auth/register-mosque) and verified persona demo switching.
- * Inserts directly into Better Auth sessions table with epoch millisecond timestamps.
+ * Strictly adheres to epoch milliseconds (Date.now()) per AGENTS.md § 2.
  */
 export async function createBetterAuthSession(
   user: AppUser,
@@ -22,7 +29,7 @@ export async function createBetterAuthSession(
     .where(eq(schema.users.id, user.id))
     .limit(1);
 
-  const nowSec = Math.floor(Date.now() / 1000);
+  const nowMs = Date.now();
 
   if (existingUsers.length === 0) {
     await db.insert(schema.users).values({
@@ -35,24 +42,23 @@ export async function createBetterAuthSession(
       emailVerified: true,
       isActive: true,
       isBanned: false,
-      createdAt: nowSec,
-      updatedAt: nowSec,
+      createdAt: nowMs,
+      updatedAt: nowMs,
     });
   }
 
-  // Create an authentic session token for Better Auth
-  const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
-  const expiresAtMs = Date.now() + 1000 * 60 * 60 * 24 * 7; // 7 days in ms
+  const token = generateSessionToken();
+  const expiresAtMs = nowMs + 1000 * 60 * 60 * 24 * 7; // 7 days in ms
   const sessionId = crypto.randomUUID();
 
-  // Better Auth expects epoch milliseconds for expiresAt in sqlite integer mode
+  // Better Auth expects epoch milliseconds for expiresAt, createdAt, updatedAt
   await db.insert(schema.sessions).values({
     id: sessionId,
     userId: user.id,
     token,
     expiresAt: expiresAtMs,
-    createdAt: nowSec,
-    updatedAt: nowSec,
+    createdAt: nowMs,
+    updatedAt: nowMs,
     ipAddress: metadata?.ipAddress || null,
     userAgent: metadata?.userAgent || null,
   });

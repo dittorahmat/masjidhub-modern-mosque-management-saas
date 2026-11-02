@@ -9,8 +9,8 @@ import { getAuth } from "../auth";
 import { createBetterAuthSession } from "../session-bridge";
 
 export function registerAuthRoutes(app: Hono<any>) {
-  // Better Auth Wildcard Handler
-  app.on(["POST", "GET"], "/api/auth/*", async (c, next) => {
+  // Better Auth Wildcard Handler supporting all HTTP methods
+  app.all("/api/auth/*", async (c, next) => {
     const path = c.req.path;
     // Let custom domain routes fall through to dedicated controllers below
     if (
@@ -131,7 +131,12 @@ export function registerAuthRoutes(app: Hono<any>) {
   app.post('/api/auth/demo-login', async (c) => {
     await ensureDbInitialized(c.env);
     const db = getDb(c.env);
-    const body = await c.req.json();
+    let body: { role?: UserRole } = {};
+    try {
+      body = await c.req.json();
+    } catch {
+      return bad(c, 'Invalid JSON payload');
+    }
     const targetRole = body?.role || 'dkm_admin';
 
     const users = await db

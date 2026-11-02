@@ -14,7 +14,14 @@ import type { Env } from "./core-utils";
  */
 export function getAuth(env?: Env) {
   const db = getDb(env);
-  const secret = env?.INTERNAL_SECRET_KEY || "masjidhub_default_secret_salt_2025_betterauth";
+  const isProd = env?.ENVIRONMENT === "production";
+  const defaultDevSecret = "masjidhub_default_secret_salt_2025_betterauth";
+
+  if (isProd && (!env?.INTERNAL_SECRET_KEY || env.INTERNAL_SECRET_KEY === defaultDevSecret)) {
+    console.error("[FATAL SECURITY] INTERNAL_SECRET_KEY must be explicitly set with high entropy in production.");
+  }
+
+  const secret = env?.INTERNAL_SECRET_KEY || defaultDevSecret;
   const baseURL = env?.PUBLIC_URL || "http://localhost:3000";
 
   return betterAuth({
@@ -31,7 +38,7 @@ export function getAuth(env?: Env) {
     baseURL,
     plugins: [bearer()],
     advanced: {
-      useSecureCookies: false, // Allows cookie verification across localhost and flexible dev/prod proxy
+      useSecureCookies: isProd, // Enforce Secure cookies in production, allow plain cookies on dev/localhost
     },
     emailAndPassword: {
       enabled: true,

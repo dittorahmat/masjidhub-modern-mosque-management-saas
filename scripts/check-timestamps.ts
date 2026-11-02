@@ -10,8 +10,9 @@ import { execSync } from 'node:child_process';
 
 const BANNED_UNIX_SECONDS_PATTERN = /Math\.floor\(\s*Date\.now\(\)\s*\/\s*1000\s*\)/g;
 
-// Whitelist legacy seed and mappers that explicitly handle conversion
+// Whitelist legacy seed, mappers, and the linter itself
 const WHITELIST = new Set([
+  'scripts/check-timestamps.ts',
   'worker/crypto-utils.ts',
   'worker/db/seed.ts',
   'worker/routes/common.ts',
@@ -46,9 +47,6 @@ for (const file of filesToCheck) {
   const lines = content.split('\n');
 
   lines.forEach((line, idx) => {
-    // Ignore routes/auth legacy handler for now
-    if (file === 'worker/routes/auth.ts' && idx < 50) return;
-
     if (BANNED_UNIX_SECONDS_PATTERN.test(line)) {
       violations.push(
         `${file}:${idx + 1} - Found banned unix seconds \`Math.floor(Date.now() / 1000)\`. Standardize to epoch milliseconds (\`Date.now()\`) per AGENTS.md § 2.`

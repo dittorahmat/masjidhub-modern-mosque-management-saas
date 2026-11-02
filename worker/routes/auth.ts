@@ -5,10 +5,14 @@ import type { AppUser, UserRole } from "@shared/types";
 import { ok, bad, notFound } from "../core-utils";
 import { ensureDbInitialized, mapUserRow, mapTenantRow } from "./common";
 import { resolveCurrentUser, requireAuth } from "../middleware/auth";
+import { authRateLimiter } from "../middleware/rate-limit";
 import { getAuth } from "../auth";
 import { createBetterAuthSession } from "../session-bridge";
 
 export function registerAuthRoutes(app: Hono<any>) {
+  // Rate limiter guard on all authentication mutations
+  app.use("/api/auth/*", authRateLimiter(60, 60 * 1000));
+
   // Better Auth Wildcard Handler supporting all HTTP methods
   app.all("/api/auth/*", async (c, next) => {
     const path = c.req.path;
@@ -34,7 +38,7 @@ export function registerAuthRoutes(app: Hono<any>) {
     const tenantId = crypto.randomUUID();
     const userId = crypto.randomUUID();
     const cleanSlug = slug.toLowerCase().replace(/[^a-z0-9-]/g, '');
-    const nowSec = Math.floor(Date.now() / 1000);
+    const nowMs = Date.now();
 
     const defaultIqomah = { fajr: 12, dhuhr: 10, asr: 10, maghrib: 7, isha: 10 };
 
@@ -43,8 +47,8 @@ export function registerAuthRoutes(app: Hono<any>) {
       name: mosqueName,
       slug: cleanSlug,
       ownerId: userId,
-      createdAt: nowSec,
-      updatedAt: nowSec,
+      createdAt: nowMs,
+      updatedAt: nowMs,
       address,
       status: 'pending',
       selectedPersona: 'marbot_muda',
@@ -63,8 +67,8 @@ export function registerAuthRoutes(app: Hono<any>) {
       role: 'dkm_admin',
       isActive: true,
       isBanned: false,
-      createdAt: nowSec,
-      updatedAt: nowSec,
+      createdAt: nowMs,
+      updatedAt: nowMs,
     });
 
     const tenant = mapTenantRow({
@@ -72,8 +76,8 @@ export function registerAuthRoutes(app: Hono<any>) {
       name: mosqueName,
       slug: cleanSlug,
       ownerId: userId,
-      createdAt: nowSec,
-      updatedAt: nowSec,
+      createdAt: nowMs,
+      updatedAt: nowMs,
       address,
       city: null,
       phone: null,

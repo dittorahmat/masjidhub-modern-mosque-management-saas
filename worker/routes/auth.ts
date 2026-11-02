@@ -6,8 +6,27 @@ import { ok, bad, notFound } from "../core-utils";
 import { ensureDbInitialized, mapUserRow, mapTenantRow } from "./common";
 import { resolveCurrentUser, requireAuth } from "../middleware/auth";
 import { createSessionToken } from "../crypto-utils";
+import { getAuth } from "../auth";
 
 export function registerAuthRoutes(app: Hono<any>) {
+  // Better Auth Wildcard Handler
+  app.on(["POST", "GET"], "/api/auth/*", async (c, next) => {
+    const path = c.req.path;
+    // Let custom domain routes fall through to dedicated controllers below
+    if (
+      path === "/api/auth/register" ||
+      path === "/api/auth/register-mosque" ||
+      path === "/api/auth/login" ||
+      path === "/api/auth/demo-login" ||
+      path === "/api/auth/demo-users" ||
+      path === "/api/auth/me"
+    ) {
+      return next();
+    }
+    const auth = getAuth(c.env);
+    return auth.handler(c.req.raw);
+  });
+
   app.post('/api/auth/register', async (c) => {
     await ensureDbInitialized(c.env);
     const db = getDb(c.env);

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AppUser, Tenant } from '@shared/types';
+import { getStoredUser, setStoredUser } from './auth-storage';
 
 interface AppActions {
   setUser: (user: AppUser | null) => void;
@@ -16,12 +17,18 @@ interface AppState {
 const EMPTY_ARRAY: any[] = [];
 
 export const useAppStore = create<AppState>((set) => ({
-  user: null,
+  user: getStoredUser(),
   currentTenant: null,
   actions: {
-    setUser: (user) => set({ user }),
+    setUser: (user) => {
+      setStoredUser(user);
+      set({ user });
+    },
     setCurrentTenant: (tenant) => set({ currentTenant: tenant }),
-    logout: () => set({ user: null, currentTenant: null }),
+    logout: () => {
+      setStoredUser(null);
+      set({ user: null, currentTenant: null });
+    },
   },
 }));
 

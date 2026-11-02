@@ -1,4 +1,5 @@
 import { ApiResponse } from "../../shared/types";
+import { getStoredUser } from "./auth-storage";
 
 export interface RequestOptions extends RequestInit {
   params?: Record<string, string | number | boolean | undefined | null>;
@@ -31,6 +32,12 @@ export async function api<T>(path: string, options?: RequestOptions): Promise<T>
 
   if (!(options?.body instanceof FormData)) {
     headers['Content-Type'] = 'application/json';
+  }
+
+  // Automatically attach auth header if session user exists in local storage
+  const storedUser = getStoredUser();
+  if (storedUser?.id || storedUser?.email) {
+    headers['Authorization'] = `Bearer ${storedUser.id || storedUser.email}`;
   }
 
   const queryString = buildQueryString(options?.params);

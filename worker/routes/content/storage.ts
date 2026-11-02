@@ -42,6 +42,9 @@ export function registerStorageRoutes(app: Hono<any>) {
       }
 
       const customKey = c.req.query('key');
+      if (customKey && (customKey.includes('..') || customKey.startsWith('/') || customKey.includes('\\'))) {
+        return bad(c, 'Invalid storage key: directory traversal or absolute paths not permitted');
+      }
       const filename = c.req.header('x-filename') || 'file.bin';
       const ext = filename.includes('.') ? filename.slice(filename.lastIndexOf('.')) : '';
       const key = customKey || ('uploads/' + crypto.randomUUID() + ext);

@@ -39,7 +39,7 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
   - `super-admin.ts` - Platform admin dashboards, tenant approvals, feature toggles.
   - `common.ts` - Shared mappers, timestamp utilities, tenant resolution helpers.
 - **Frontend Component Hygiene:** The same anti-monolith rule applies to frontend pages (`src/pages/*`). Break complex views with multiple tabs or modals into subcomponents under `src/components/<feature>/` (e.g., `src/components/qris/`, `src/components/kajian/`) instead of dumping all JSX, state, and dialogs into a single monolithic page file.
-- **Validation & Guardrail Command:** Always run `bun run validate` (`tsc -b && bun test && bun run check:size && bun run check:touch && bun run check:contracts && bun run check:taste`) before reporting any task or committing changes. This automatically checks TypeScript compilation, enforces the 500 LOC anti-monolith cap, verifies 44px mobile touch targets, and enforces the design-taste anti-slop rules on modified files.
+- **Validation & Guardrail Command:** Always run `bun run validate` (`tsc -b && bun test && bun run check:size && bun run check:touch && bun run check:contracts && bun run check:canonical && bun run check:taste`) before reporting any task or committing changes. This automatically checks TypeScript compilation, enforces the 500 LOC anti-monolith cap, verifies 44px mobile touch targets, asserts canonical HTTP response helpers, and enforces the design-taste anti-slop rules on modified files.
 - **Sub-Agent Concurrency Limits & Reactive Wakeup:** When using `self` (heavy prompt) sub-agents, run at most **2 sub-agents concurrently** to prevent hitting individual rate/quota exhaustion (`RESOURCE_EXHAUSTED / code 429`). For lightweight exploration or code reviews, specify lighter models (`flash` / `flash_lite`). Crucially, subagents deliver completion notifications automatically; NEVER spawn repetitive sleep/polling schedules waiting for them.
 
 ---
@@ -56,6 +56,8 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
 
 ## 6. Code Hygiene, Shared Utilities & Scope Discipline
 - **Zero Scope Creep on Commits:** Never stage or commit extraneous tooling files, agent frameworks (e.g. `.agents/`, `.qwen/`, `.scratch/`), or scratch transcripts into application feature commits. Feature commits must only include production code and tests.
+- **Cross-Platform CRLF / Line Ending Discipline:** Repository code and document files must strictly use LF (`\n`) line endings as governed by `.gitattributes`. When writing or editing scripts and files on Windows environments, avoid CRLF pollution (`\r\n`) to prevent exact target string match failures in automated refactoring tools.
+- **PowerShell Scripting Hygiene:** When running inline evaluation commands in Windows `pwsh`, never construct complex multi-line inline JavaScript strings containing nested quotes and regexes (`node -e "..."` or `bun -e "..."`) that are prone to shell quote stripping and process hangs. Instead, write temporary scripts to `.scratch/` and execute the file directly, cleaning it up after execution.
 - **API Client Calling Signature:** When communicating with backend endpoints from frontend components, use the strongly-typed `api` helper from `@/lib/api-client`:
   ```ts
   // GET:
@@ -73,7 +75,9 @@ Welcome to MasjidHub. All AI agents working on this codebase MUST strictly follo
 - **Resilient External HTTP Calls:** All external network calls (e.g. YouTube oEmbed, third-party APIs) must attach `signal: AbortSignal.timeout(2000)` to prevent worker thread hangs. If the upstream provider fails, gracefully fall back to local parsing or default attributes.
 - **AI Output Defensive Whitelisting & Normalization:** When using LLMs (e.g., Gemini) to extract, categorize, or summarize domain data (such as categories, tags, or statuses), never pass raw LLM text directly to the database or UI without defensive whitelisting and sanitation against domain enums/arrays.
 - **Contract Type Centralization:** Never define duplicate DTO/payload interfaces separately in backend worker files and frontend components. All data models shared between endpoints and UI dialogs/pages MUST reside in `shared/types.ts`.
-- **Endpoint Authorization:** Any mutations on tenant configuration (e.g. `PUT /api/:slug/settings`) must enforce tenant ownership/membership verification.
+- **Endpoint Authorization & Session Integrity:** Any mutations on tenant configuration (e.g. `PUT /api/:slug/settings`) must enforce tenant ownership/membership verification via `requireTenantRole(['dkm_admin'])`. All platform-wide administration routes (`/api/super/*`) must be strictly guarded with `requireRole('superadmin_platform')`. User identity resolution (`/api/auth/me`) must verify a cryptographic session token and never trust raw client-supplied query parameters or unverified headers.
+- **Canonical Response Helpers:** All HTTP controllers and middlewares must use canonical API response helpers from `worker/core-utils.ts` (`ok(c, ...)`, `bad(c, ...)`, `notFound(c, ...)`, `unauthorized(c, ...)`, `forbidden(c, ...)`) rather than constructing ad-hoc `c.json()` responses with raw status codes.
+- **Strict Storage Sandboxing:** All local/fallback filesystem operations in `StorageService` must enforce strict path resolution boundaries (`path.resolve()`) within the designated root directory to prevent directory traversal (`../`). Delete operations must return a boolean (`false` on traversal or missing file, never `null`). Custom keys in file upload endpoints must be validated against traversal sequences.
 
 ---
 

@@ -5,8 +5,8 @@ import type { AppUser, UserRole } from "@shared/types";
 import { ok, bad, notFound } from "../core-utils";
 import { ensureDbInitialized, mapUserRow, mapTenantRow } from "./common";
 import { resolveCurrentUser, requireAuth } from "../middleware/auth";
-import { createSessionToken } from "../crypto-utils";
 import { getAuth } from "../auth";
+import { createBetterAuthSession } from "../session-bridge";
 
 export function registerAuthRoutes(app: Hono<any>) {
   // Better Auth Wildcard Handler
@@ -110,7 +110,12 @@ export function registerAuthRoutes(app: Hono<any>) {
       isBanned: false,
     };
 
-    return ok(c, { user, tenant });
+    // Issue authentic Better Auth session
+    const { token } = await createBetterAuthSession(user, c.env, {
+      userAgent: c.req.header('user-agent'),
+    });
+
+    return ok(c, { user, tenant, token });
   });
 
   // Alias route for register-mosque
@@ -119,7 +124,41 @@ export function registerAuthRoutes(app: Hono<any>) {
       method: 'POST',
       headers: c.req.raw.headers,
       body: JSON.stringify(await c.req.json()),
-    }), c.env, c.executionCtx);
+    }), c.env);
+  });
+
+  // Demo Login endpoint
+  app.post('/api/auth/demo-login', async (c) => {
+    await ensureDbInitialized(c.env);
+    const db = getDb(c.env);
+    const body = await c.req.json();
+    const targetRole = body?.role || 'dkm_admin';
+
+    const users = await db
+      .select()
+      .from(schema.users)
+      .where(eq(schema.users.role, targetRole))
+      .limit(1);
+
+    let user: AppUser;
+    if (users.length > 0) {
+      user = mapUserRow(users[0]);
+    } else {
+      user = {
+        id: `demo-${targetRole}`,
+        name: `Demo ${targetRole}`,
+        email: `demo-${targetRole}@masjidhub.com`,
+        role: targetRole,
+        tenantIds: ['t1'],
+        isBanned: false,
+      };
+    }
+
+    const { token } = await createBetterAuthSession(user, c.env, {
+      userAgent: c.req.header('user-agent'),
+    });
+
+    return ok(c, { user, token });
   });
 
   app.post('/api/auth/login', async (c) => {
@@ -140,8 +179,11 @@ export function registerAuthRoutes(app: Hono<any>) {
       const role: UserRole = email === 'admin@masjidhub.com' ? 'superadmin_platform' : 'dkm_admin';
       user = { id: crypto.randomUUID(), name: "Demo User", email, role, tenantIds: ['t1'] };
     }
-    const secret = c.env?.INTERNAL_SECRET_KEY || 'masjidhub_default_secret_salt_2025';
-    const token = await createSessionToken(user.id, secret);
+
+    const { token } = await createBetterAuthSession(user, c.env, {
+      userAgent: c.req.header('user-agent'),
+    });
+
     return ok(c, { user, token });
   });
 

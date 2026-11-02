@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { bearer } from "better-auth/plugins";
 import { getDb, schema } from "./db";
 import type { Env } from "./core-utils";
 
@@ -14,6 +15,7 @@ import type { Env } from "./core-utils";
 export function getAuth(env?: Env) {
   const db = getDb(env);
   const secret = env?.INTERNAL_SECRET_KEY || "masjidhub_default_secret_salt_2025_betterauth";
+  const baseURL = env?.PUBLIC_URL || "http://localhost:3000";
 
   return betterAuth({
     database: drizzleAdapter(db as any, {
@@ -26,6 +28,11 @@ export function getAuth(env?: Env) {
       },
     }),
     secret,
+    baseURL,
+    plugins: [bearer()],
+    advanced: {
+      useSecureCookies: false, // Allows cookie verification across localhost and flexible dev/prod proxy
+    },
     emailAndPassword: {
       enabled: true,
       // Public self-registration is explicitly disabled

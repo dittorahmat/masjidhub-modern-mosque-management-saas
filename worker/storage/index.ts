@@ -119,7 +119,11 @@ class LocalFilesystemStorageService implements StorageService {
   ): Promise<{ key: string; url: string }> {
     const cleanKey = key.replace(/^\/+/, '');
     const { fs, path } = await this.getFsModules();
-    const filePath = path.join(process.cwd(), this.uploadDir, cleanKey);
+    const rootDir = path.resolve(process.cwd(), this.uploadDir);
+    const filePath = path.resolve(rootDir, cleanKey);
+    if (!filePath.startsWith(rootDir + path.sep) && filePath !== rootDir) {
+      throw new Error('Invalid storage key: directory traversal detected');
+    }
     const metaPath = `${filePath}.meta.json`;
 
     await this.ensureDir(filePath);
@@ -150,7 +154,11 @@ class LocalFilesystemStorageService implements StorageService {
   ): Promise<{ data: ReadableStream | ArrayBuffer; contentType?: string } | null> {
     const cleanKey = key.replace(/^\/+/, '');
     const { fs, path } = await this.getFsModules();
-    const filePath = path.join(process.cwd(), this.uploadDir, cleanKey);
+    const rootDir = path.resolve(process.cwd(), this.uploadDir);
+    const filePath = path.resolve(rootDir, cleanKey);
+    if (!filePath.startsWith(rootDir + path.sep) && filePath !== rootDir) {
+      return null;
+    }
     const metaPath = `${filePath}.meta.json`;
 
     try {
@@ -182,7 +190,11 @@ class LocalFilesystemStorageService implements StorageService {
   async delete(key: string): Promise<boolean> {
     const cleanKey = key.replace(/^\/+/, '');
     const { fs, path } = await this.getFsModules();
-    const filePath = path.join(process.cwd(), this.uploadDir, cleanKey);
+    const rootDir = path.resolve(process.cwd(), this.uploadDir);
+    const filePath = path.resolve(rootDir, cleanKey);
+    if (!filePath.startsWith(rootDir + path.sep) && filePath !== rootDir) {
+      return null;
+    }
     const metaPath = `${filePath}.meta.json`;
 
     let deleted = false;

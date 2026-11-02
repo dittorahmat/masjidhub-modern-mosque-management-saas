@@ -53,14 +53,14 @@ export function RegisterMosquePage() {
 
     setLoading(true);
     try {
-      const response = await api<{ user: AppUser; tenant: Tenant }>('/api/auth/register', {
+      const response = await api<{ user: AppUser; tenant: Tenant; token?: string }>('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify(form)
       });
-      // Ensure user session is active before navigation to avoid access guard triggers
-      setUser(response.user);
+      // Ensure user session & token are active before navigation to avoid access guard triggers
+      setUser(response.user, response.token);
       setCurrentTenant(response.tenant);
-      toast.success('Masjid berhasil didaftarkan!');
+      toast.success('Masjid berhasil didaftarkan! Selamat datang.');
       navigate(`/app/${form.slug.toLowerCase()}/dashboard`);
     } catch (err: any) {
       toast.error(err.message || 'Pendaftaran gagal');

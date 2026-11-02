@@ -52,6 +52,7 @@ export function generateSessionSalt(): string {
 
 /**
  * Creates a signed session token: base64(payload).signature
+ * @deprecated Legacy HMAC session token generator. Better Auth sessions (`createBetterAuthSession`) are now preferred.
  */
 export async function createSessionToken(userId: string, secret: string): Promise<string> {
   const payload = JSON.stringify({ userId, exp: Date.now() + 7 * 24 * 3600 * 1000 });
@@ -62,6 +63,7 @@ export async function createSessionToken(userId: string, secret: string): Promis
 
 /**
  * Verifies a signed session token and returns userId if valid and not expired.
+ * @deprecated Legacy HMAC session token verifier. Retained for backward-compatible fallback during transitions.
  */
 export async function verifySessionToken(token: string, secret: string): Promise<string | null> {
   const parts = token.split('.');

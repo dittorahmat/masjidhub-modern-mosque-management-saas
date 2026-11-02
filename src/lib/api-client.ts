@@ -66,14 +66,9 @@ export async function api<T>(path: string, options?: RequestOptions): Promise<T>
     }
   }
 
-  if (!res.ok) {
-    const errorMessage = json?.error || `Request failed with status ${res.status}`;
-    throw new ApiError(res.status, errorMessage, json?.data);
+  if (!res.ok || !json?.success || json?.data === undefined) {
+    throw new ApiError(res.status, json?.error || `Request failed with status ${res.status}`, json);
   }
 
-  if (json && !json.success) {
-    throw new ApiError(res.status, json.error || 'Operation failed', json.data);
-  }
-
-  return (json?.data !== undefined ? json.data : (json as unknown as T));
+  return json.data;
 }

@@ -127,7 +127,7 @@ export function registerAuthRoutes(app: Hono<any>) {
   });
 
   // Auth me endpoint - requires authentication token
-  app.get('/api/auth/me', requireAuth(), async (c) => {
+  app.get('/api/auth/me', requireAuth(), async (c: any) => {
     const user = c.get('user') || (await resolveCurrentUser(c));
     if (!user) {
       return notFound(c, 'User not found');

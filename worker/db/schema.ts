@@ -59,13 +59,15 @@ export const tenants = sqliteTable('tenants', {
   updatedAt: integer('updated_at').notNull().default(sql`(unixepoch())`),
 });
 
-// 2. Users
+// 2. Users (Extended for Better Auth)
 export const users = sqliteTable('users', {
   id: text('id').primaryKey(),
   tenantId: text('tenant_id').references(() => tenants.id, { onDelete: 'cascade' }),
   tenantIds: text('tenant_ids', { mode: 'json' }).$type<string[]>(),
-  email: text('email').notNull(),
+  email: text('email').notNull().unique(),
   name: text('name').notNull(),
+  emailVerified: integer('email_verified', { mode: 'boolean' }).default(false),
+  image: text('image'),
   role: text('role').$type<'superadmin_platform' | 'dkm_admin' | 'amil_zakat' | 'ustadz' | 'jamaah'>().notNull().default('jamaah'),
   phone: text('phone'),
   avatarUrl: text('avatar_url'),
@@ -74,6 +76,53 @@ export const users = sqliteTable('users', {
   createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
   updatedAt: integer('updated_at').notNull().default(sql`(unixepoch())`),
 });
+
+// Better Auth: Sessions
+export const sessions = sqliteTable('sessions', {
+  id: text('id').primaryKey(),
+  expiresAt: integer('expires_at').notNull(),
+  token: text('token').notNull().unique(),
+  createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at').notNull().default(sql`(unixepoch())`),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+}, (table) => ({
+  userIdIdx: index('idx_sessions_user_id').on(table.userId),
+  tokenIdx: index('idx_sessions_token').on(table.token),
+}));
+
+// Better Auth: Accounts
+export const accounts = sqliteTable('accounts', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  idToken: text('id_token'),
+  accessTokenExpiresAt: integer('access_token_expires_at'),
+  refreshTokenExpiresAt: integer('refresh_token_expires_at'),
+  scope: text('scope'),
+  password: text('password'),
+  createdAt: integer('created_at').notNull().default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at').notNull().default(sql`(unixepoch())`),
+}, (table) => ({
+  userIdIdx: index('idx_accounts_user_id').on(table.userId),
+  providerAccountIdx: index('idx_accounts_provider_account').on(table.providerId, table.accountId),
+}));
+
+// Better Auth: Verifications
+export const verifications = sqliteTable('verifications', {
+  id: text('id').primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: integer('expires_at').notNull(),
+  createdAt: integer('created_at').default(sql`(unixepoch())`),
+  updatedAt: integer('updated_at').default(sql`(unixepoch())`),
+}, (table) => ({
+  identifierIdx: index('idx_verifications_identifier').on(table.identifier),
+}));
 
 // 3. Transactions
 export const transactions = sqliteTable('transactions', {

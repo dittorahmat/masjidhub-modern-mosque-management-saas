@@ -90,7 +90,7 @@ export function registerTenantRoutes(app: Hono<any>) {
   });
 
   // Update tenant settings (PUT /api/:slug/settings)
-  app.put('/api/:slug/settings', tenantMiddleware, requireTenantRole(['dkm_admin']), async (c) => {
+  app.put('/api/:slug/settings', tenantMiddleware, requireTenantRole(['dkm_admin']), async (c: any) => {
     const tenant = c.get('tenant')!;
     const db = c.get('db')!;
     const body = await c.req.json();

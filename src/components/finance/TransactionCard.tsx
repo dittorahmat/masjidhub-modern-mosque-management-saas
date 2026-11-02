@@ -1,18 +1,12 @@
 import React from 'react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale/id';
-import { ArrowUpRight, ArrowDownRight, MoreVertical, Pencil, Trash2 } from 'lucide-react';
+import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import type { Transaction } from '@shared/types';
 import { formatRupiah } from '@shared/format';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { TransactionActionsMenu } from './TransactionActionsMenu';
 
 interface TransactionCardProps {
   transaction: Transaction;
@@ -66,39 +60,12 @@ export const TransactionCard: React.FC<TransactionCardProps> = ({
             {isIncome ? 'Masuk' : 'Keluar'}
           </Badge>
 
-          {(onEdit || onDelete) && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="min-h-[44px] min-w-[44px] h-11 w-11 text-muted-foreground hover:text-foreground rounded-xl"
-                  aria-label="Opsi transaksi"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                {onEdit && (
-                  <DropdownMenuItem
-                    onClick={() => onEdit(transaction)}
-                    className="gap-2 cursor-pointer min-h-[40px] font-medium"
-                  >
-                    <Pencil className="h-4 w-4 text-emerald-600" />
-                    <span>Edit</span>
-                  </DropdownMenuItem>
-                )}
-                {onDelete && (
-                  <DropdownMenuItem
-                    onClick={() => onDelete(transaction)}
-                    className="gap-2 cursor-pointer min-h-[40px] text-destructive focus:text-destructive font-medium"
-                  >
-                    <Trash2 className="h-4 w-4 text-rose-600" />
-                    <span>Hapus</span>
-                  </DropdownMenuItem>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
+          {onEdit && onDelete && (
+            <TransactionActionsMenu
+              transaction={transaction}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
           )}
         </div>
       </div>

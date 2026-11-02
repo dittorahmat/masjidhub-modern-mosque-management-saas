@@ -13,25 +13,10 @@ import {
   ResponsiveDialogDescription,
   ResponsiveDialogTrigger,
 } from '@/components/ui/responsive-dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import {
   Plus,
+  PlusCircle,
   Wallet,
   ArrowUpCircle,
   ArrowDownCircle,
@@ -40,19 +25,31 @@ import {
   FileText,
   BrainCircuit,
   ChevronRight,
-  MoreVertical,
-  Pencil,
-  Trash2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale/id';
 import { toast } from 'sonner';
-import type { Transaction } from '@shared/types';
+import type {
+  Transaction,
+  CreateTransactionPayload,
+  UpdateTransactionPayload,
+} from '@shared/types';
 import { formatRupiah } from '@shared/format';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MobileFAB } from '@/components/layout/mobile/MobileFAB';
 import { TransactionCard } from '@/components/finance/TransactionCard';
 import { TransactionForm } from '@/components/finance/TransactionForm';
+import { TransactionActionsMenu } from '@/components/finance/TransactionActionsMenu';
+import { EditTransactionDialog } from '@/components/finance/EditTransactionDialog';
+import { DeleteTransactionDialog } from '@/components/finance/DeleteTransactionDialog';
+
+const parseFormDateToTimestamp = (dateVal: string | null, fallback: number): number => {
+  if (!dateVal) return fallback;
+  // Parse YYYY-MM-DD cleanly into local midnight
+  const [year, month, day] = dateVal.split('-').map(Number);
+  if (!year || !month || !day) return fallback;
+  return new Date(year, month - 1, day).getTime();
+};
 
 export default function FinancePage() {
   const { slug } = useParams();
@@ -68,10 +65,11 @@ export default function FinancePage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (newTx: Partial<Transaction>) => api(`/api/${slug}/finance`, {
-      method: 'POST',
-      body: JSON.stringify(newTx)
-    }),
+    mutationFn: (payload: CreateTransactionPayload) =>
+      api(`/api/${slug}/finance`, {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', slug] });
       toast.success('Transaksi berhasil dicatat');
@@ -83,10 +81,10 @@ export default function FinancePage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id: txId, data }: { id: string; data: Partial<Transaction> }) =>
+    mutationFn: ({ id: txId, payload }: { id: string; payload: UpdateTransactionPayload }) =>
       api(`/api/${slug}/finance/${txId}`, {
         method: 'PUT',
-        body: JSON.stringify(data)
+        body: JSON.stringify(payload)
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['finance', slug] });
@@ -127,14 +125,13 @@ export default function FinancePage() {
   const handleCreate = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
-    const dateStr = formData.get('date') as string;
-    const dateTimestamp = dateStr ? new Date(dateStr).getTime() : Date.now();
+    const dateTimestamp = parseFormDateToTimestamp(formData.get('date') as string, Date.now());
 
     createMutation.mutate({
       type: formData.get('type') as 'income' | 'expense',
       amount: Number(formData.get('amount')),
       category: formData.get('category') as string,
-      description: formData.get('description') as string,
+      description: (formData.get('description') as string) || '',
       date: dateTimestamp,
     });
   };
@@ -143,24 +140,21 @@ export default function FinancePage() {
     e.preventDefault();
     if (!editingTransaction) return;
     const formData = new FormData(e.currentTarget);
-    const dateStr = formData.get('date') as string;
-    const dateTimestamp = dateStr ? new Date(dateStr).getTime() : editingTransaction.date;
+    const dateTimestamp = parseFormDateToTimestamp(
+      formData.get('date') as string,
+      editingTransaction.date
+    );
 
     updateMutation.mutate({
       id: editingTransaction.id,
-      data: {
+      payload: {
         type: formData.get('type') as 'income' | 'expense',
         amount: Number(formData.get('amount')),
         category: formData.get('category') as string,
-        description: formData.get('description') as string,
+        description: (formData.get('description') as string) || '',
         date: dateTimestamp,
       }
     });
-  };
-
-  const handleConfirmDelete = () => {
-    if (!deletingTransaction) return;
-    deleteMutation.mutate(deletingTransaction.id);
   };
 
   const handleExport = (type: string) => {
@@ -171,7 +165,7 @@ export default function FinancePage() {
 
   return (
     <div className="space-y-8 md:space-y-12 pb-16 md:pb-10">
-      {/* Refined Header */}
+      {/* Refined Header (Editorial Style) */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -204,7 +198,7 @@ export default function FinancePage() {
           <ResponsiveDialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <ResponsiveDialogTrigger asChild>
               <Button className="min-h-[44px] rounded-full h-12 md:h-14 px-8 md:px-10 font-bold gap-2 md:gap-3 text-sm md:text-base bg-emerald-600 hover:bg-emerald-700 text-white">
-                <Plus className="h-4 w-4 md:h-5 md:w-5" /> Catat Transaksi
+                <PlusCircle className="h-4 w-4 md:h-5 md:w-5" /> Catat Transaksi
               </Button>
             </ResponsiveDialogTrigger>
             <ResponsiveDialogContent className="rounded-t-[2rem] md:rounded-[2.5rem] p-6 md:p-10 max-h-[85vh] overflow-y-auto">
@@ -339,34 +333,11 @@ export default function FinancePage() {
                         {tx.type === 'income' ? '+' : '-'} {formatRupiah(tx.amount)}
                       </TableCell>
                       <TableCell className="px-8 py-4 text-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="min-h-[44px] min-w-[44px] h-11 w-11 rounded-xl text-muted-foreground hover:text-foreground"
-                              aria-label="Aksi baris transaksi"
-                            >
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40 rounded-xl">
-                            <DropdownMenuItem
-                              onClick={() => setEditingTransaction(tx)}
-                              className="gap-2 cursor-pointer min-h-[40px] font-medium"
-                            >
-                              <Pencil className="h-4 w-4 text-emerald-600" />
-                              <span>Edit</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => setDeletingTransaction(tx)}
-                              className="gap-2 cursor-pointer min-h-[40px] text-destructive focus:text-destructive font-medium"
-                            >
-                              <Trash2 className="h-4 w-4 text-rose-600" />
-                              <span>Hapus</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <TransactionActionsMenu
+                          transaction={tx}
+                          onEdit={(t) => setEditingTransaction(t)}
+                          onDelete={(t) => setDeletingTransaction(t)}
+                        />
                       </TableCell>
                     </motion.tr>
                   ))}
@@ -377,71 +348,29 @@ export default function FinancePage() {
         </div>
       </Card>
 
-      {/* Edit Transaction Dialog */}
-      <ResponsiveDialog
-        open={Boolean(editingTransaction)}
+      {/* Reusable Edit Transaction Dialog */}
+      <EditTransactionDialog
+        transaction={editingTransaction}
+        isOpen={Boolean(editingTransaction)}
         onOpenChange={(open) => {
           if (!open) setEditingTransaction(null);
         }}
-      >
-        <ResponsiveDialogContent className="rounded-t-[2rem] md:rounded-[2.5rem] p-6 md:p-10 max-h-[85vh] overflow-y-auto">
-          <ResponsiveDialogHeader>
-            <ResponsiveDialogTitle className="text-2xl md:text-3xl font-display font-bold italic tracking-tight">
-              Edit Transaksi
-            </ResponsiveDialogTitle>
-            <ResponsiveDialogDescription className="text-sm md:text-base">
-              Perbarui rincian transaksi kas masjid.
-            </ResponsiveDialogDescription>
-          </ResponsiveDialogHeader>
-          {editingTransaction && (
-            <TransactionForm
-              initialData={editingTransaction}
-              onSubmit={handleUpdate}
-              isPending={updateMutation.isPending}
-              onCancel={() => setEditingTransaction(null)}
-              submitLabel="Perbarui Transaksi"
-            />
-          )}
-        </ResponsiveDialogContent>
-      </ResponsiveDialog>
+        onSubmit={handleUpdate}
+        isPending={updateMutation.isPending}
+      />
 
-      {/* Destructive Delete Confirmation AlertDialog */}
-      <AlertDialog
-        open={Boolean(deletingTransaction)}
+      {/* Reusable Delete Transaction Dialog */}
+      <DeleteTransactionDialog
+        transaction={deletingTransaction}
+        isOpen={Boolean(deletingTransaction)}
         onOpenChange={(open) => {
           if (!open) setDeletingTransaction(null);
         }}
-      >
-        <AlertDialogContent className="rounded-2xl max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="font-bold text-xl text-slate-900">
-              Hapus Transaksi?
-            </AlertDialogTitle>
-            <AlertDialogDescription className="text-sm text-stone-600">
-              Tindakan ini permanen. Transaksi senilai{' '}
-              <strong className="text-slate-900">
-                {deletingTransaction ? formatRupiah(deletingTransaction.amount) : ''}
-              </strong>{' '}
-              ({deletingTransaction?.category}) akan dihapus dari buku kas masjid.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 mt-4">
-            <AlertDialogCancel
-              disabled={deleteMutation.isPending}
-              className="min-h-[44px] rounded-xl font-bold"
-            >
-              Batal
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              disabled={deleteMutation.isPending}
-              className="min-h-[44px] rounded-xl font-bold bg-rose-600 hover:bg-rose-700 text-white"
-            >
-              {deleteMutation.isPending ? 'Menghapus...' : 'Ya, Hapus'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onConfirm={() => {
+          if (deletingTransaction) deleteMutation.mutate(deletingTransaction.id);
+        }}
+        isPending={deleteMutation.isPending}
+      />
 
       {/* Floating Action Button for Mobile */}
       <MobileFAB 
@@ -465,16 +394,17 @@ function StatCard({ title, value, icon, color, delay }: any) {
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay, duration: 0.5, ease: "easeOut" }}
-      className="p-6 md:p-8 flex flex-col justify-between rounded-2xl bg-white border border-stone-200/80 cursor-default"
+      whileHover={{ y: -8, transition: { duration: 0.2 } }}
+      className="p-6 md:p-8 flex flex-col justify-between rounded-2xl bg-white border border-stone-200/80 cursor-default group"
     >
        <div className="flex justify-between items-start mb-6 md:mb-8">
-          <div className={`p-3 md:p-4 rounded-2xl ${colorMap[color]}`}>
+          <div className={`p-3 md:p-4 rounded-2xl bg-white border border-stone-100 group-hover:scale-110 transition-transform duration-300 ${colorMap[color].split(' ')[1]}`}>
              {icon}
           </div>
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">{title}</p>
        </div>
        <div className="space-y-1">
-          <p className="text-2xl md:text-3xl font-display font-black tracking-tighter italic text-slate-900 leading-none">{value}</p>
+          <p className="text-2xl md:text-4xl font-display font-black tracking-tighter italic text-slate-900 leading-none">{value}</p>
        </div>
     </motion.div>
   );

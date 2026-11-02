@@ -4,33 +4,38 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import type { Transaction } from '@shared/types';
+import { format } from 'date-fns';
 
 interface TransactionFormProps {
   onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   isPending?: boolean;
   initialData?: Transaction | null;
+  isEdit?: boolean;
   submitLabel?: string;
   onCancel?: () => void;
 }
+
+// Safely normalize epoch milliseconds or seconds
+const safeToDate = (val?: number): Date => {
+  if (!val) return new Date();
+  const ms = val > 1e11 ? val : val * 1000;
+  return new Date(ms);
+};
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({
   onSubmit,
   isPending,
   initialData,
+  isEdit: isEditProp,
   submitLabel,
   onCancel
 }) => {
-  const isEdit = Boolean(initialData);
-  const formattedDate = initialData?.date
-    ? new Date(initialData.date).toISOString().split('T')[0]
-    : new Date().toISOString().split('T')[0];
+  const isEdit = isEditProp ?? Boolean(initialData);
+  // Format as YYYY-MM-DD in local time to avoid UTC day-shift
+  const formattedDate = format(safeToDate(initialData?.date), 'yyyy-MM-dd');
 
   return (
     <form onSubmit={onSubmit} className="space-y-5 pt-2">
-      {initialData?.id && (
-        <input type="hidden" name="id" value={initialData.id} />
-      )}
-
       <div className="space-y-2">
         <Label className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Tipe Transaksi</Label>
         <Select name="type" defaultValue={initialData?.type || "income"}>
